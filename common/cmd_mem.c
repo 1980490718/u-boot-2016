@@ -33,6 +33,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CONFIG_SYS_MEMTEST_SCRATCH 0
 #endif
 
+#define SECURE_BOARD_MAGIC	0x5ECB001
+
 static int mod_mem(cmd_tbl_t *, int, int, int, char * const []);
 
 /* Display values from last command.
@@ -170,6 +172,11 @@ static int do_mem_mw(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	int	size;
 	void *buf, *start;
 	ulong bytes;
+
+	if(SECURE_BOARD_MAGIC == gd->board_type) {
+		printf("Command not supported \'%s\'\n", argv[0]);
+		return 0;
+	}
 
 	if ((argc < 3) || (argc > 4))
 		return CMD_RET_USAGE;

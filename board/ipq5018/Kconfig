@@ -51,4 +51,7 @@ config GEPHY
 config ART_COMPRESSED
 	bool "Enable uncompress support for ipq5018"
 
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
 endif

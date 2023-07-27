@@ -13,6 +13,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <bootm.h>
 #include <image.h>
 #include <nand.h>
 #include <errno.h>
@@ -84,6 +85,21 @@ typedef struct {
 	unsigned int img_size;
 } image_info;
 #endif
+
+extern bootm_headers_t images;		/* pointers to os/initrd/fdt images */
+
+static int boot_os(int argc, char *const argv[])
+{
+
+	return do_bootm_states(NULL, 0, argc, argv, BOOTM_STATE_START |
+		BOOTM_STATE_FINDOS | BOOTM_STATE_FINDOTHER |
+		BOOTM_STATE_LOADOS |
+#if defined(CONFIG_PPC) || defined(CONFIG_MIPS)
+		BOOTM_STATE_OS_CMDLINE |
+#endif
+		BOOTM_STATE_OS_PREP | BOOTM_STATE_OS_FAKE_GO |
+		BOOTM_STATE_OS_GO, &images, 1);
+}
 
 void __stack_chk_fail(void)
 {
@@ -263,7 +279,7 @@ int config_select(unsigned int addr, char *rcmd, int rcmd_size)
 			ret = update_bootargs((void *)addr);
 			if (ret)
 				goto fail;
-			snprintf(rcmd, rcmd_size, "bootm 0x%x#%s\n",
+			snprintf(rcmd, rcmd_size, "0x%x#%s",
 				 addr, dtb_config_name);
 			return 0;
 		}
@@ -296,7 +312,7 @@ int config_select(unsigned int addr, char *rcmd, int rcmd_size)
 				ret = update_bootargs((void *)addr);
 				if (ret)
 					goto fail;
-				snprintf(rcmd, rcmd_size, "bootm 0x%x#%s\n",
+				snprintf(rcmd, rcmd_size, "0x%x#%s",
 					 addr, dtb_config_name);
 				return 0;
 			}
@@ -497,6 +513,7 @@ static int authenticate_rootfs_elf(unsigned int rootfs_hdr)
 static int do_boot_signedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	char runcmd[256];
+	char * const arg[1] = {runcmd};
 	int ret;
 	unsigned int request;
 #ifdef CONFIG_VERSION_ROLLBACK_PARTITION_INFO
@@ -741,7 +758,7 @@ static int do_boot_signedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const a
 	if (debug)
 		printf("%s", runcmd);
 
-	if (ret < 0 || run_command(runcmd, 0) != CMD_RET_SUCCESS) {
+	if (ret < 0 || boot_os(1, arg) != CMD_RET_SUCCESS) {
 #ifdef CONFIG_QCA_MMC
 		mmc_initialize(gd->bd);
 #endif
@@ -763,6 +780,7 @@ static int do_boot_unsignedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const
 {
 	int ret;
 	char runcmd[256];
+	char * const arg[1] = {runcmd};
 #ifdef CONFIG_QCA_MMC
 	block_dev_desc_t *blk_dev;
 	disk_partition_t disk_info;
@@ -881,7 +899,7 @@ static int do_boot_unsignedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const
 				    runcmd, sizeof(runcmd));
 	} else if (ret == IMAGE_FORMAT_LEGACY) {
 		snprintf(runcmd, sizeof(runcmd),
-			 "bootm 0x%x\n", CONFIG_SYS_LOAD_ADDR);
+			 "0x%x", CONFIG_SYS_LOAD_ADDR);
 	} else {
 		ret = genimg_get_format((void *)CONFIG_SYS_LOAD_ADDR +
 					sizeof(mbn_header_t));
@@ -898,16 +916,16 @@ static int do_boot_unsignedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const
 #endif
 		} else if (ret == IMAGE_FORMAT_LEGACY) {
 			snprintf(runcmd, sizeof(runcmd),
-				 "bootm 0x%x\n", (CONFIG_SYS_LOAD_ADDR +
+				 "0x%x", (CONFIG_SYS_LOAD_ADDR +
 						  sizeof(mbn_header_t)));
+
 		} else {
 			dcache_disable();
 			return CMD_RET_FAILURE;
 		}
 	}
 
-
-	if (ret < 0 || run_command(runcmd, 0) != CMD_RET_SUCCESS) {
+	if (ret < 0 || boot_os(1, arg) != CMD_RET_SUCCESS) {
 #ifdef CONFIG_USB_XHCI_IPQ
 		ipq_board_usb_init();
 #endif

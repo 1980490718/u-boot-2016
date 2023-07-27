@@ -21,4 +21,8 @@ config PCI_IPQ
 config IPQ6018_QCA_AQUANTIA_PHY
 	bool "Enable Aquantia PHY support for ipq6018"
 
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
+
 endif

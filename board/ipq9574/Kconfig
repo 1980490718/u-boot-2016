@@ -17,4 +17,8 @@ config IPQ9574_QCA_AQUANTIA_PHY
 
 config IPQ9574_QCA8075_PHY
 	bool "Enable Malibu PHY support for ipq9574"
+
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
 endif

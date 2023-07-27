@@ -121,6 +121,32 @@ __weak int bring_sec_core_up(unsigned int cpuid, unsigned int entry, unsigned in
 }
 #endif
 
+#define SECURE_BOARD_MAGIC	0x5ECB001
+
+void update_board_type(void)
+{
+	int ret;
+	uint8_t buf = 0;
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+
+	if(SMEM_BOOT_NO_FLASH == sfi->flash_type)
+		return;
+
+	ret = qca_scm_call(SCM_SVC_FUSE, QFPROM_IS_AUTHENTICATE_CMD, &buf,
+								sizeof(char));
+
+	if (ret) {
+		printf("%s: scm call failed. ret = %d\n", __func__, ret);
+		printf("%s: Failed\n", __func__);
+		gd->board_type = 0;
+		return;
+	}
+
+	gd->board_type = (buf == 1) ? SECURE_BOARD_MAGIC : 0;
+
+	return;
+}
+
 int board_init(void)
 {
 	int ret;
@@ -262,6 +288,9 @@ int board_init(void)
 	 * serial init after relocation
 	 */
 	uart_wait_tx_empty();
+
+	update_board_type();
+
 	return 0;
 }
 

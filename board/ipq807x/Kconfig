@@ -30,3 +30,7 @@ config QCA8081_PHY
 
 config QCA8075_PHY
 	bool "Enable QCA8075 PHY support for ipq807x"
+
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
