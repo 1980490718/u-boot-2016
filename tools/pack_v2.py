@@ -1426,7 +1426,7 @@ class Pack(object):
                     filename = section.get('filename_atf')
 
             # wififw images specific for RDP based on machid
-            if self.flash_type in [ "emmc" , "tiny-nor", "tiny-nor-debug", "nor" ] and section_conf == "wififw":
+            if self.flash_type in [ "emmc" , "norplusemmc" , "tiny-nor", "tiny-nor-debug", "nor" ] and section_conf == "wififw":
                 if ver_check:
                     for k, v in wifi_fws_avail.items():
                         self.__gen_script_append_images(k, soc_version, 1, images, flinfo, root, section_conf, partition)
