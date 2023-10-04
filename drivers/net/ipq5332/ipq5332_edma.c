@@ -26,6 +26,7 @@
 #include <miiphy.h>
 #include <memalign.h>
 #include <asm/arch-ipq5332/edma_regs.h>
+#include <asm/arch-qca-common/smem.h>
 #include <asm/global_data.h>
 #include <fdtdec.h>
 #include "ipq5332_edma.h"
@@ -50,6 +51,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define noncached_alloc(a, b) malloc_cache_aligned(a)
 #endif
 
+qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 static struct ipq5332_eth_dev *ipq5332_edma_dev[IPQ5332_EDMA_DEV];
 typedef struct {
 	phy_info_t *phy_info;
@@ -925,7 +927,8 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 	char *active_port = NULL;
 
 #ifndef CONFIG_SYS_NONCACHED_MEMORY
-	dcache_disable();
+	if(sfi->flash_type)
+		dcache_disable();
 #endif
 
 	active_port = getenv("active_port");
@@ -1244,7 +1247,8 @@ static void ipq5332_eth_halt(struct eth_device *dev)
 	pr_debug("GMAC1 RXBADBYTE_H(0x3a001290):%x\n", readl(0x3a001290));
 
 #ifndef CONFIG_SYS_NONCACHED_MEMORY
-	dcache_enable();
+	if(sfi->flash_type)
+		dcache_enable();
 #endif
 
 	pr_info("%s: done\n", __func__);
