@@ -215,6 +215,8 @@
 		qca808x_gpio = <51>;
 		qca808x_gpio_cnt = <1>;
 		qca8084_switch_enable = <1>;
+		sfp_gpio = <24>;
+		sfp_gpio_cnt = <1>;
 
 		mdio_gpio {
 			mdc1 {
