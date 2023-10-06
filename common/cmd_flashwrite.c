@@ -213,6 +213,12 @@ char * const argv[])
 	char* layout_linux[] = {"rootfs", "0:BOOTCONFIG", "0:BOOTCONFIG1"};
 	int len, i;
 #endif
+
+#ifdef CONFIG_IPQ_JFFS2_CLEANMARKER
+	int cleanmarker[3] = {0x20031985 , 0xc, 0xe41eb0b1}, j;
+	char runcmd[256];
+	bool write_cleanmarker = 0;
+#endif
 	offset = 0;
 	part_size = 0;
 	layout = "default";
@@ -401,6 +407,11 @@ char * const argv[])
 
 			offset = sfi->flash_block_size * start_block;
 			part_size = sfi->flash_block_size * size_block;
+
+#ifdef CONFIG_IPQ_JFFS2_CLEANMARKER
+			if (!strncmp(part_name, "rootfs", sizeof("rootfs")))
+				write_cleanmarker = 1;
+#endif
 		}
 	}
 
@@ -434,6 +445,24 @@ char * const argv[])
 
 		ret = write_to_flash(flash_type, load_addr, offset, part_size,
 							file_size, layout);
+#ifdef CONFIG_IPQ_JFFS2_CLEANMARKER
+		if (write_cleanmarker) {
+			file_size = ALIGN(file_size, sfi->flash_block_size);
+			printf("Adding clean markers in rootfs_data\n");
+			setenv("stdout", "nulldev");
+			for (j = 0; j < part_size - file_size;
+					j +=  sfi->flash_block_size) {
+				snprintf(runcmd, sizeof(runcmd),
+				"sf write 0x%x 0x%x 0x%x && ",
+				(uint32_t)cleanmarker, offset + file_size + j,
+							sizeof(cleanmarker));
+				ret = run_command(runcmd, 0);
+				if (ret != CMD_RET_SUCCESS)
+					break;
+			}
+			setenv("stdout", "serial");
+		}
+#endif
 	} else
 		ret = fl_erase(flash_type, offset, part_size, layout);
 exit:
