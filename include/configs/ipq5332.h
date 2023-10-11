@@ -222,10 +222,6 @@ extern loff_t board_env_size;
 /* Mii command support */
 #define CONFIG_CMD_MII
 
-/* compress crash dump support */
-#define CONFIG_CMD_ZIP
-#define CONFIG_GZIP_COMPRESSED
-
 /*
 * Ethernet Configs
 */
@@ -458,9 +454,20 @@ extern loff_t board_env_size;
 #define CONFIG_CMD_DISABLE_EXECTZT
 #define CONFIG_DISABLE_RAMDISK
 #define	CONFIG_IPQ_JFFS2_CLEANMARKER
+#undef CONFIG_GZIP
+#undef CONFIG_ZLIB
 #else
 #define CONFIG_IPQ_ELF_AUTH
 #define CONFIG_IPQ_FDT_FIXUP
+
+/* compress crash dump support */
+#define CONFIG_CMD_ZIP
+#define CONFIG_GZIP_COMPRESSED
+
+/* Enable DTB compress */
+#define CONFIG_COMPRESSED_DTB_MAX_SIZE		0x40000
+#define CONFIG_COMPRESSED_DTB_BASE		CONFIG_SYS_TEXT_BASE -\
+						CONFIG_COMPRESSED_DTB_MAX_SIZE
 #endif
 
 /*
@@ -475,10 +482,6 @@ extern loff_t board_env_size;
 
 #define CONFIG_CMD_IPQ_FLASH_INIT
 
-/* Enable DTB compress */
-#define CONFIG_COMPRESSED_DTB_MAX_SIZE		0x40000
-#define CONFIG_COMPRESSED_DTB_BASE		CONFIG_SYS_TEXT_BASE -\
-						CONFIG_COMPRESSED_DTB_MAX_SIZE
 /* Flash Protect */
 #define CONFIG_FLASH_PROTECT
 
