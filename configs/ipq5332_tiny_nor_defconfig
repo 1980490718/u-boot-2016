@@ -343,6 +343,11 @@ CONFIG_SYS_THUMB_BUILD=y
 CONFIG_HAS_THUMB2=y
 
 #
+# ART uncompression support
+#
+CONFIG_ART_COMPRESSED=y
+
+#
 # DPR support
 #
 CONFIG_DPR_EXECUTE=y

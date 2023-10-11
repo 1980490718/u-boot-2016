@@ -26,6 +26,16 @@
 #include <ipq5332.h>
 #include <spi.h>
 #include <spi_flash.h>
+
+#if defined(CONFIG_ART_COMPRESSED) &&   \
+        (defined(CONFIG_GZIP) || defined(CONFIG_LZMA))
+#ifndef CONFIG_COMPRESSED_LOAD_ADDR
+#define CONFIG_COMPRESSED_LOAD_ADDR CONFIG_SYS_LOAD_ADDR
+#endif
+#include <mapmem.h>
+#include <lzma/LzmaTools.h>
+#endif
+
 #ifdef CONFIG_QPIC_NAND
 #include <asm/arch-qca-common/qpic_nand.h>
 #include <nand.h>
