@@ -45,6 +45,7 @@ extern struct sdhci_host mmc_host;
 #define HEADER_VERSION 4
 
 #define SHA1_SIG_LEN 41
+#define SZ_1M 0x00100000
 
 struct header {
 	unsigned magic[2];
@@ -448,6 +449,12 @@ char * const argv[])
 #ifdef CONFIG_IPQ_JFFS2_CLEANMARKER
 		if (write_cleanmarker) {
 			file_size = ALIGN(file_size, sfi->flash_block_size);
+			if ( part_size - file_size < SZ_1M) {
+				printf("Skipping clean marker as space is less 0x%x \n",
+							part_size - file_size);
+				goto exit;
+			}
+
 			printf("Adding clean markers in rootfs_data\n");
 			setenv("stdout", "nulldev");
 			for (j = 0; j < part_size - file_size;
