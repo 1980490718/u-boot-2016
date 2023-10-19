@@ -16,7 +16,7 @@
 #include "ipq9574-al02-c4.dts"
 / {
 	machid = <0x8050701>;
-	config_name = "config@al02-c8", "config@rdp453", "config-rdp453";
+	config_name = "config@al02-c8", "config-al02-c8", "config@rdp453", "config-rdp453";
 
 	ess-switch {
 		/* Overriding config to support QCA8084 PHY instead of

@@ -17,7 +17,7 @@
 #include "ipq5332-mi01.2.dts"
 / {
 	machid = <0x8060101>;
-	config_name = "config@mi01.2-qcn9160-c1", "config@rdp472", "config-rdp472";
+	config_name = "config@mi01.2-qcn9160-c1", "config-mi01.2-qcn9160-c1", "config@rdp472", "config-rdp472";
 
 	aliases {
 		/delete-property/pci0;

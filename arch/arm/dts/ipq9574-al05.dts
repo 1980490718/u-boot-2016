@@ -16,5 +16,5 @@
 #include "ipq9574-al02-c4.dts"
 / {
 	machid = <0x8050003>;
-	config_name = "config@al05";
+	config_name = "config@al05", "config-al05";
 };

@@ -17,7 +17,7 @@
 #include "ipq5332-soc.dtsi"
 / {
 	machid = <0x8060006>;
-	config_name = "config@mi01.9", "config@rdp474", "config-rdp474";
+	config_name = "config@mi01.9", "config-mi01.9", "config@rdp474", "config-rdp474";
 
 	aliases {
 		console = "/serial@78AF000";

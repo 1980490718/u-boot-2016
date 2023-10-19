@@ -16,7 +16,7 @@
 #include "ipq9574-al01-c1.dts"
 / {
 	machid = <0x8050002>;
-	config_name = "config@al03-c1";
+	config_name = "config@al03-c1", "config-al03-c1";
 
 	aliases {
 		pci0 = "/pci@28000000";

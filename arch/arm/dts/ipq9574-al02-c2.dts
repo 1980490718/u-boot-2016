@@ -17,7 +17,7 @@
 #include "ipq9574-al02-c1.dts"
 / {
 	machid = <0x8050101>;
-	config_name = "config@al02-c2", "config@rdp418", "config-rdp418";
+	config_name = "config@al02-c2", "config-al02-c2", "config@rdp418", "config-rdp418";
 
 	aliases {
 		mmc = "/sdhci@7804000";
