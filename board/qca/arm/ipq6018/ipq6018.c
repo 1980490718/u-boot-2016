@@ -1286,6 +1286,12 @@ void fdt_fixup_for_atf(void *blob)
 		parse_fdt_fixup("/soc/qcom_q6v5_wcss@CD00000%qcom,nosecure%1", blob);
 		parse_fdt_fixup("/soc/qcom_q6v5_wcss@CD00000%qca,wcss-aon-reset-seq%1", blob);
 	}
+	if (fdt_path_offset(blob, "/soc/dma@704000") >= 0) {
+		parse_fdt_fixup("/soc/dma@704000%qcom,controlled-remotely%0",
+				blob);
+		parse_fdt_fixup("/soc/dma@704000%qti,config-pipe-trust-reg%2",
+				blob);
+	}
 }
 
 int get_soc_hw_version(void)
