@@ -15,7 +15,7 @@
 #include "ipq9574-al02-c4.dts"
 / {
 	machid = <0x8051101>;
-	config_name = "config@al02-c18";
+	config_name = "config@al02-c18", "config-al02-c18";
 
 	ess-switch {
 		switch_mac_mode0 = <PORT_WRAPPER_10GBASE_R>;

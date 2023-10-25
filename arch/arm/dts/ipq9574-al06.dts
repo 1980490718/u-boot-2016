@@ -16,7 +16,7 @@
 #include "ipq9574-al02-c4.dts"
 / {
 	machid = <0x8050004>;
-	config_name = "config@al06";
+	config_name = "config@al06", "config-al06";
 
 	ess-switch {
 		/* Overriding config to support QCA8084 PHY instead of

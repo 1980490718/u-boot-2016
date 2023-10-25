@@ -16,7 +16,7 @@
 #include "ipq9574-al01-c1.dts"
 / {
 	machid = <0x8050801>;
-	config_name = "config@al02-c9", "config@rdp454", "config-rdp454";
+	config_name = "config@al02-c9", "config-al02-c9", "config@rdp454", "config-rdp454";
 
 	aliases {
 		pci0 = "/pci@28000000";

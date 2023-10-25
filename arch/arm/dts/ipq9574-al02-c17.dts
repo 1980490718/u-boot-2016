@@ -16,7 +16,7 @@
 #include "ipq9574-soc.dtsi"
 / {
 	machid = <0x8051001>;
-	config_name = "config@al02-c17", "config@rdp469", "config-rdp469";
+	config_name = "config@al02-c17", "config-al02-c17", "config@rdp469", "config-rdp469";
 
 	aliases {
 		console = "/serial@78B1000";

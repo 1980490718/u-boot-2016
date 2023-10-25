@@ -16,7 +16,7 @@
 #include "ipq9574-al02-c8.dts"
 / {
 	machid = <0x8050901>;
-	config_name = "config@al02-c10", "config@rdp433-mht-switch", "config-rdp433-mht-switch";
+	config_name = "config@al02-c10", "config-al02-c10", "config@rdp433-mht-switch", "config-rdp433-mht-switch";
 
 	ess-switch {
 		/* Overriding config to support QCA8084 Switch instead of
