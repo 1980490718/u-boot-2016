@@ -458,7 +458,6 @@ extern loff_t board_env_size;
 #undef CONFIG_ZLIB
 #else
 #define CONFIG_IPQ_ELF_AUTH
-#define CONFIG_IPQ_FDT_FIXUP
 
 /* compress crash dump support */
 #define CONFIG_CMD_ZIP
@@ -469,6 +468,8 @@ extern loff_t board_env_size;
 #define CONFIG_COMPRESSED_DTB_BASE		CONFIG_SYS_TEXT_BASE -\
 						CONFIG_COMPRESSED_DTB_MAX_SIZE
 #endif
+
+#define CONFIG_IPQ_FDT_FIXUP
 
 /*
  * ELF authentication
