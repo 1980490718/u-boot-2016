@@ -249,7 +249,7 @@ static int initr_unlock_ram_in_cache(void)
 #ifdef CONFIG_PCI
 static int initr_pci(void)
 {
-#ifndef CONFIG_DM_PCI
+#if !defined(CONFIG_DM_PCI) && !defined(CONFIG_IPQ9574)
 	pci_init();
 #endif
 

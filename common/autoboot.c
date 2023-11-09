@@ -429,4 +429,7 @@ void autoboot_command(const char *s)
 	puts("\nNet:   ");
 	eth_initialize();
 #endif
+#if defined(CONFIG_IPQ9574)
+	pci_init();
+#endif
 }
