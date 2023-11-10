@@ -1100,7 +1100,8 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			clk[3] = 0x0;
 			if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
 				(phy_info->phy_type == QCA8084_PHY_TYPE) ||
-				(phy_info->phy_type == QCA8033_PHY_TYPE)) {
+				(phy_info->phy_type == QCA8033_PHY_TYPE) ||
+				(sfp_mode == EPORT_WRAPPER_SGMII_FIBER)) {
 				clk[0] = 0x301;
 				clk[2] = 0x401;
 			}
