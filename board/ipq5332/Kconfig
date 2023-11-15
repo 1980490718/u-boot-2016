@@ -56,4 +56,8 @@ config QCA8081_PHY
 
 config DPR_EXECUTE
 	bool "Enable DPR support"
+
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
 endif

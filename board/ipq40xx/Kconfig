@@ -20,4 +20,8 @@ config USB_XHCI_IPQ
 
 config PCI_IPQ
 	bool "ipq40xx pci"
+
+config BOARD_TYPES
+	bool "Support board_type member in global data"
+	default y
 endif
