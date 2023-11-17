@@ -153,7 +153,7 @@ void __udelay(unsigned long usec)
 	if (usec == 0)
 		return;
 
-	val = (usec * GPT_FREQ_KHZ) / 1000;
+	val = ((unsigned long long)usec * GPT_FREQ_KHZ) / 1000;
 	if (val == 0 )
 		val = 1; /* Wait for atleast 1 tick */
 
