@@ -409,6 +409,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define QCN_VENDOR_ID				0x17CB
 #define QCN9224_DEVICE_ID			0x1109
 #define QCN9000_DEVICE_ID 			0x1104
+#define QCN6432_DEVICE_ID			0x110c
 #define MAX_UNWINDOWED_ADDRESS                  0x80000
 #define WINDOW_ENABLE_BIT                       0x40000000
 #define WINDOW_SHIFT                            19
@@ -1996,7 +1997,7 @@ pci_dev_t pci_find_ipq_devices(struct pci_device_id *ids, int device_id)
 		hose = hose->next;
 		device_id--;
 	}
-	for (;hose; hose = hose->next) {
+	if (hose) {
 		for (bus = hose->first_busno; bus <= hose->last_busno; bus++) {
 			bdf = pci_hose_find_devices(hose, bus, ids, &index);
 			if (bdf != -1)
@@ -2195,6 +2196,7 @@ U_BOOT_CMD(fuse_qcn9224, 2, 1, do_fuse_qcn9224,
 static struct pci_device_id pci_device[] = {
 	{QCN_VENDOR_ID, QCN9224_DEVICE_ID},
 	{QCN_VENDOR_ID, QCN9000_DEVICE_ID},
+	{QCN_VENDOR_ID, QCN6432_DEVICE_ID},
 	{}
 };
 
