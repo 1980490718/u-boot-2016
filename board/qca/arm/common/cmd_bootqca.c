@@ -486,20 +486,17 @@ static int authenticate_rootfs_elf(unsigned int rootfs_hdr)
 		unsigned long addr;
 	} rootfs_img_info;
 
-	request = CONFIG_ROOTFS_LOAD_ADDR;
-	rootfs_img_info.addr = request;
-	rootfs_img_info.type = SEC_AUTH_SW_ID;
-
 	if (parse_elf_image_phdr(&img_info, rootfs_hdr))
 		return CMD_RET_FAILURE;
 
+	request = img_info.img_load_addr;
 	memcpy((void*)request, (void*)rootfs_hdr, img_info.img_offset);
 
-	request += img_info.img_offset;
-
 	/* copy rootfs from the boot device */
-	copy_rootfs(request, img_info.img_size);
+	copy_rootfs(request + img_info.img_offset, img_info.img_size);
 
+	rootfs_img_info.addr = request;
+	rootfs_img_info.type = SEC_AUTH_SW_ID;
 	rootfs_img_info.size = img_info.img_offset + img_info.img_size;
 	ret = qca_scm_secure_authenticate(&rootfs_img_info, sizeof(rootfs_img_info));
 	memset((void *)rootfs_hdr, 0, img_info.img_offset);
