@@ -16,5 +16,5 @@
 	model ="QCA, IPQ5018-TB-MP04";
 	compatible = "qca,ipq5018", "qca,ipq5018-tb-mp04";
 	machid = <0x1040006>;
-	config_name = "config@tb-mp04";
+	config_name = "config@tb-mp04", "config-tb-mp04";
 };

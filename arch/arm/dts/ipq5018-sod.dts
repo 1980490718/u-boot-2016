@@ -18,7 +18,7 @@
 	model ="QCA, IPQ5018-MP03.1";
 	compatible = "qca,ipq5018", "qca,ipq5018-mp03.1";
 	machid = <0x8040001>;
-	config_name = "config@mp03.1";
+	config_name = "config@mp03.1", "config-mp03.1";
 
 	serial@78AF000 {
 		compatible = "qca,ipq-uartdm";

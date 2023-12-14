@@ -16,7 +16,7 @@
 #include <dt-bindings/qcom/gpio-ipq807x.h>
 / {
 	machid = <0x08010100>;
-	config_name = "config@hk01.c2";
+	config_name = "config@hk01.c2", "config-hk01.c2";
 
 	aliases {
 		console = "/serial@78B3000";

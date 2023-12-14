@@ -16,7 +16,7 @@
 	model ="QCA, IPQ5018/DB-MP03.3-C2";
 	compatible = "qca,ipq5018", "qca,ipq5018-db-mp03.3-c2";
 	machid = <0x1040105>;
-	config_name = "config@db-mp03.3-c2";
+	config_name = "config@db-mp03.3-c2", "config-db-mp03.3-c2";
 
 	mmc: sdhci@7804000 {
 		compatible = "qcom,sdhci-msm";
