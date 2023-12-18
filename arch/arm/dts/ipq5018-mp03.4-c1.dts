@@ -16,5 +16,5 @@
 	model ="QCA, IPQ5018-MP03.4-C1";
 	compatible = "qca,ipq5018", "qca,ipq5018-mp03.4-c1";
 	machid = <0x8040005>;
-	config_name = "config@mp03.4-c1";
+	config_name = "config@mp03.4-c1", "config-mp03.4-c1";
 };

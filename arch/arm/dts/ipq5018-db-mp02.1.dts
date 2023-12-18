@@ -17,7 +17,7 @@
 	model ="QCA, IPQ5018/DB-MP02.1";
 	compatible = "qca,ipq5018", "qca,ipq5018-db-mp02.1";
 	machid = <0x1040003>;
-	config_name = "config@db-mp02.1";
+	config_name = "config@db-mp02.1", "config-db-mp02.1";
 
 	aliases {
 		console = "/serial@78AF000";

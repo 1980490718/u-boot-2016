@@ -17,7 +17,7 @@
 	model ="QCA, IPQ5018-EMULATION";
 	compatible = "qca,ipq5018", "qca,ipq5018-emulation";
 	machid = <0x0F040000>;
-	config_name = "config@emulation-c2";
+	config_name = "config@emulation-c2", "config-emulation-c2";
 
 	aliases {
 		console = "/serial@78AF000";

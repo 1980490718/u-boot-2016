@@ -15,7 +15,7 @@
 #include "ipq6018-soc.dtsi"
 / {
 	machid = <0x1030100>;
-	config_name = "config@db-cp02";
+	config_name = "config@db-cp02", "config-db-cp02";
 
 	aliases {
 		console = "/serial@78B1000";

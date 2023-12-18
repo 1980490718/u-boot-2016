@@ -15,7 +15,7 @@
 	model ="QCA, IPQ5018-MP03.5-C2";
 	compatible = "qca,ipq5018", "qca,ipq5018-mp03.5-c2";
 	machid = <0x8040104>;
-	config_name = "config@mp03.5-c2";
+	config_name = "config@mp03.5-c2", "config-mp03.5-c2";
 
 	mmc: sdhci@7804000 {
 		compatible = "qcom,sdhci-msm";

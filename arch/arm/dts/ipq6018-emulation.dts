@@ -17,7 +17,7 @@
 	model ="QCA, IPQ6018-EMULATION-C1";
 	compatible = "qca,ipq6018", "qca,ipq6018-emulation-c1";
 	machid = <0xF030000>;
-	config_name = "config@emulation-c3";
+	config_name = "config@emulation-c3", "config-emulation-c3";
 	spi_nand_available = <1>;
 
 	aliases {
