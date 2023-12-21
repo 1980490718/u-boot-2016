@@ -1410,45 +1410,55 @@ void ipq_uboot_fdt_fixup(void)
 	{
 		case MACH_TYPE_IPQ9574_EMULATION:
 			config_list[config_nos++] = "config@emulation-fbc";
+			config_list[config_nos++] = "config-emulation-fbc";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C5:
 			config_list[config_nos++] = "config@al02-c5";
+			config_list[config_nos++] = "config-al02-c5";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C6:
 			config_list[config_nos++] = "config@al02-c6";
+			config_list[config_nos++] = "config-al02-c6";
 			config_list[config_nos++] = "config@rdp449";
 			config_list[config_nos++] = "config-rdp449";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C11:
 			config_list[config_nos++] = "config@al02-c11";
+			config_list[config_nos++] = "config-al02-c11";
 			config_list[config_nos++] = "config@rdp455";
 			config_list[config_nos++] = "config-rdp455";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C12:
 			config_list[config_nos++] = "config@al02-c12";
+			config_list[config_nos++] = "config-al02-c12";
 			config_list[config_nos++] = "config@rdp455";
 			config_list[config_nos++] = "config-rdp455";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C14:
+			config_list[config_nos++] = "config-al02-c14";
 			config_list[config_nos++] = "config@al02-c14";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C15:
 			config_list[config_nos++] = "config@al02-c15";
+			config_list[config_nos++] = "config-al02-c15";
 			config_list[config_nos++] = "config@rdp457";
 			config_list[config_nos++] = "config-rdp457";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C16:
 			config_list[config_nos++] = "config@al02-c16";
+			config_list[config_nos++] = "config-al02-c16";
 			config_list[config_nos++] = "config@rdp456";
 			config_list[config_nos++] = "config-rdp456";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL02_C20:
 			config_list[config_nos++] = "config@al02-c20";
+			config_list[config_nos++] = "config-al02-c20";
 			config_list[config_nos++] = "config@rdp467";
 			config_list[config_nos++] = "config-rdp467";
 			break;
 		case MACH_TYPE_IPQ9574_AP_AL03_C2:
 			config_list[config_nos++] = "config@al03-c2";
+			config_list[config_nos++] = "config-al03-c2";
 			config_list[config_nos++] = "config@rdp458";
 			config_list[config_nos++] = "config-rdp458";
 			break;

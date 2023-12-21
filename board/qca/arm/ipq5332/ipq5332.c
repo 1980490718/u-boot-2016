@@ -873,27 +873,32 @@ void ipq_uboot_fdt_fixup(void)
 	{
 		case MACH_TYPE_IPQ5332_AP_MI01_2_C2:
 			config_list[config_nos++] = "config@mi01.2-c2";
+			config_list[config_nos++] = "config-mi01.2-c2";
 			config_list[config_nos++] = "config@rdp484";
 			config_list[config_nos++] = "config-rdp484";
 			break;
 		case MACH_TYPE_IPQ5332_AP_MI01_3_C2:
 			config_list[config_nos++] = "config@mi01.3-c2";
+			config_list[config_nos++] = "config-mi01.3-c2";
 			config_list[config_nos++] = "config@rdp477";
 			config_list[config_nos++] = "config-rdp477";
 			break;
 		case MACH_TYPE_IPQ5332_AP_MI01_7:
 			config_list[config_nos++] = "config@mi01.7";
+			config_list[config_nos++] = "config-mi01.7";
 			config_list[config_nos++] = "config@rdp473";
 			config_list[config_nos++] = "config-rdp473";
 			break;
 		case MACH_TYPE_IPQ5332_AP_MI04_1_C2:
 			config_list[config_nos++] = "config@mi04.1-c2";
+			config_list[config_nos++] = "config-mi04.1-c2";
 			config_list[config_nos++] = "config@rdp478";
 			config_list[config_nos++] = "config-rdp478";
 			config_list[config_nos++] = "config@1";
 			break;
 		case MACH_TYPE_IPQ5332_AP_MI01_14:
 			config_list[config_nos++] = "config@mi01.14";
+			config_list[config_nos++] = "config-mi01.14";
 			config_list[config_nos++] = "config@rdp481";
 			config_list[config_nos++] = "config-rdp481";
 			break;
