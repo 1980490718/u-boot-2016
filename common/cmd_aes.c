@@ -22,7 +22,7 @@ DECLARE_GLOBAL_DATA_PTR;
 enum tz_crypto_service_aes_cmd_t {
 	TZ_CRYPTO_SERVICE_AES_ENC_ID = 0x7,
 	TZ_CRYPTO_SERVICE_AES_DEC_ID = 0x8,
-#ifdef CONFIG_IPQ9574
+#ifdef CONFIG_IPQ_DERIVE_KEY
 	TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID = 0x9,
 #endif
 };
@@ -40,7 +40,7 @@ enum tz_crypto_service_aes_mode_t {
 	TZ_CRYPTO_SERVICE_AES_MODE_MAX,
 };
 
-#ifndef CONFIG_IPQ9574
+#ifndef CONFIG_IPQ_DERIVE_KEY
 struct crypto_aes_req_data_t {
 	uint64_t type;
 	uint64_t mode;
@@ -192,7 +192,7 @@ static int do_aes_256(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	int cmd_id = -1;
 	int ret = CMD_RET_USAGE;
 
-#ifndef CONFIG_IPQ9574
+#ifndef CONFIG_IPQ_DERIVE_KEY
 	if (argc != 10)
 		return ret;
 #else
@@ -248,7 +248,7 @@ static int do_aes_256(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return -ENOMEM;
 	}
 
-#ifdef CONFIG_IPQ9574
+#ifdef CONFIG_IPQ_DERIVE_KEY
 	req_ptr->key_handle = simple_strtoul(argv[10], NULL, 16);
 #endif
 	req_ptr->type = type;
@@ -277,12 +277,12 @@ U_BOOT_CMD(
 	"AES 256 CBC/ECB encryption/decryption",
 	"Encryption: aes_256 enc <type> <mode> <plain data address> <plain data len>"
 	"<iv data address> <iv len> <response buf address> <response buf len>"
-#ifdef CONFIG_IPQ9574
+#ifdef CONFIG_IPQ_DERIVE_KEY
 	"<key_handle>"
 #endif
 	"Decryption: echo dec <type> <mode> <Encrypted buf address> <encrypted"
 	"buf len> <iv data address> <iv len> <response buf address> <response buf len>"
-#ifdef CONFIG_IPQ9574
+#ifdef CONFIG_IPQ_DERIVE_KEY
 	"<key_handle>"
 #endif
 );
