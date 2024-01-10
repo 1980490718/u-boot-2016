@@ -351,6 +351,7 @@ extern loff_t board_env_size;
 #define CONFIG_PCI
 #define CONFIG_CMD_PCI
 #define CONFIG_PCI_SCAN_SHOW
+#define CONFIG_IPQ_PCI_INIT_DEFER
 #endif
 
 /*
