@@ -105,6 +105,8 @@ typedef struct {
 	uint32_t  RESERVED_9;
 } Sbl_Hdr;
 
+size_t strlcpy(char *, const char *, size_t);
+size_t strlcat(char *, const char *, size_t);
 int get_sections(void);
 int is_authentication_check_enabled(void);
 int get_local_image_version(struct image_section *);

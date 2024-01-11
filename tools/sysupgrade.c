@@ -783,7 +783,15 @@ int get_ubi_volume_id(char *vol_name)
 	FILE *fp;
 
 	fp = fopen(ubi_vol_count, "r");
-	fgets(current_ubi_volumes_count, sizeof(current_ubi_volumes_count), fp);
+	if (fp == NULL) {
+		printf("Error finding volumes count\n");
+		return 0;
+	}
+
+	if (fgets(current_ubi_volumes_count, sizeof(current_ubi_volumes_count), fp) == NULL) {
+		printf(" Failed to get ubi volumes count \n");
+		return 0;
+	}
 	number_of_ubi_volumes = atoi(current_ubi_volumes_count);
 	printf("number of ubi volumes = %d\n", number_of_ubi_volumes);
 
@@ -791,7 +799,14 @@ int get_ubi_volume_id(char *vol_name)
 	{
 		snprintf(ubi_vol, sizeof(ubi_vol), "%s%d%s", prefix, i, suffix);
 		fp = fopen(ubi_vol, "r");
-		fgets(ubi_vol_name, sizeof(ubi_vol_name), fp);
+		if (fp == NULL) {
+			printf("Error opening ubi volumes count\n");
+			return 0;
+		}
+		if (fgets(ubi_vol_name, sizeof(ubi_vol_name), fp) == NULL) {
+			printf(" Failed to get ubi volume name \n");
+			return 0;
+		}
 		if (strstr(ubi_vol_name, vol_name)) {
 			printf("%s volume id = %d\n", vol_name, i);
 			fclose(fp);
@@ -1019,7 +1034,7 @@ int extract_rootfs_binary(char *filename)
 	}
 
 	int offset = 0,dead_off = sb.st_size;
-	while ( offset <= sb.st_size)
+	while (offset <= (sb.st_size - 3))
 	{
 		if ((fp[offset] == 0xde) && (fp[offset+1] == 0xad) && (fp[offset+2] == 0xc0) && (fp[offset+3] == 0xde)) {
 			dead_off=offset;
@@ -1035,7 +1050,10 @@ int extract_rootfs_binary(char *filename)
 	}
 
 	close(ifd);
-	truncate(filename, dead_off);
+	if (!truncate(filename, dead_off)) {
+		printf(" Failed to extract rootfs \n");
+		return 0;
+	}
 	return 1;
 }
 
@@ -1046,8 +1064,8 @@ int extract_rootfs_binary(char *filename)
 int compute_sha_hash(struct image_section *section)
 {
 	char sha_hash[] = TEMP_SHA_KEY_PATH;
-	char command[300];
-	int retval;
+	char command[300] = {0};
+	int retval = 0;
 
 #ifdef USE_SHA384
 	retval = snprintf(command, sizeof(command),
@@ -1486,7 +1504,12 @@ char *create_xor_ipad_opad(char *f_xor, unsigned long long *xor_buffer)
 	char *file;
 	unsigned long long sw_id, sw_id_be;
 
-	file = mktemp(f_xor);
+	file = mkdtemp(f_xor);
+	if (file == NULL) {
+		printf("Error creating directory\n");
+		return 0;
+	}
+
 	fd = open(file, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 	if (fd == -1) {
 		perror(file);
@@ -1495,7 +1518,10 @@ char *create_xor_ipad_opad(char *f_xor, unsigned long long *xor_buffer)
 
 	sw_id = *xor_buffer;
 	sw_id_be = htobe64(sw_id);
-	write(fd, &sw_id_be, sizeof(sw_id_be));
+	if (!write(fd, &sw_id_be, sizeof(sw_id_be))) {
+		printf(" Write Failed \n");
+		return NULL;
+	}
 	close(fd);
 	return file;
 }
@@ -1514,7 +1540,7 @@ char *read_file(char *file_name, size_t *file_size)
 
 	memset(&st, 0, sizeof(struct stat));
 	fstat(fd, &st);
-	buffer = malloc(st.st_size * sizeof(buffer));
+	buffer = malloc(st.st_size * sizeof(char));
 	if (buffer == NULL) {
 		close(fd);
 		return NULL;
@@ -1559,6 +1585,7 @@ int generate_hash(char *cert, char *sw_file, char *hw_file)
 	printf("sw_id=%s\thw_id=%s\t", sw_id_str, hw_id_str);
 	printf("oem_id=%s\toem_model_id=%s\n", oem_id_str, oem_model_id_str);
 
+	sw_id_str[16] = '\0';
 	generate_swid_ipad(sw_id_str, &swid_xor_ipad);
 	tmp = create_xor_ipad_opad(f_sw_xor, &swid_xor_ipad);
 	if (tmp == NULL) {
@@ -1570,6 +1597,7 @@ int generate_hash(char *cert, char *sw_file, char *hw_file)
 	}
 	strlcpy(sw_file, tmp, 32);
 
+	hw_id_str[16] = '\0';
 	generate_hwid_opad(hw_id_str, oem_id_str, oem_model_id_str, &hwid_xor_opad);
 	tmp = create_xor_ipad_opad(f_hw_xor, &hwid_xor_opad);
 	if (tmp == NULL) {
@@ -1627,7 +1655,12 @@ int is_component_authenticated(char *src, char *sig, char *cert)
 		return 0;
 	}
 
-	pub_file = mktemp(pub_key);
+	pub_file = mkdtemp(pub_key);
+	if (pub_file == NULL) {
+		printf("Error getting public key\n");
+		return 0;
+	}
+
 	snprintf(command, sizeof(command),
 		"openssl x509 -in cert -pubkey -inform DER -noout > %s", pub_file);
 	retval = system(command);
@@ -1644,7 +1677,7 @@ int is_component_authenticated(char *src, char *sig, char *cert)
 		return 0;
 	}
 
-	code_file = mktemp(code_hash);
+	code_file = mkdtemp(code_hash);
 	snprintf(command, sizeof(command),
 		"openssl dgst -sha256 -binary -out %s src", code_file);
 	retval = system(command);
@@ -1654,7 +1687,7 @@ int is_component_authenticated(char *src, char *sig, char *cert)
 		return 0;
 	}
 
-	tmp_file = mktemp(tmp_hash);
+	tmp_file = mkdtemp(tmp_hash);
 	snprintf(command, sizeof(command),
 		"cat %s %s | openssl dgst -sha256 -binary -out %s",
 						sw_file, code_file, tmp_file);
@@ -1666,7 +1699,7 @@ int is_component_authenticated(char *src, char *sig, char *cert)
 		return 0;
 	}
 
-	computed_file = mktemp(f_computed_hash);
+	computed_file = mkdtemp(f_computed_hash);
 	snprintf(command, sizeof(command),
 		"cat %s %s | openssl dgst -sha256 -binary -out %s",
 						hw_file, tmp_file, computed_file);
@@ -1679,7 +1712,7 @@ int is_component_authenticated(char *src, char *sig, char *cert)
 		return 0;
 	}
 
-	reference_file = mktemp(f_reference_hash);
+	reference_file = mkdtemp(f_reference_hash);
 	snprintf(command, sizeof(command),
 		"openssl rsautl -in sig -pubin -inkey %s -verify > %s",
 						pub_file, reference_file);
