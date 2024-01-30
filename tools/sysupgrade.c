@@ -728,7 +728,7 @@ int find_mtd_part_size(char *mtdname)
 	int flag = 0;
 	char mtd_part[256];
 	FILE *fp = fopen("/proc/mtd", "r");
-	mtd_info_t mtd_dev_info;
+	mtd_info_t mtd_dev_info = {0};
 
 	if (fp == NULL) {
 		printf("Error finding mtd part\n");
