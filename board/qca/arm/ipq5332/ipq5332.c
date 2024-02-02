@@ -1205,10 +1205,11 @@ void aquantia_phy_reset_init_done(void)
 
 	aquantia_gpio_cnt = get_aquantia_gpio(aquantia_gpio);
 	if (aquantia_gpio_cnt >= 1) {
-		for (i = 0; i < aquantia_gpio_cnt; i++)
+		for (i = 0; i < aquantia_gpio_cnt; i++) {
 			gpio_set_value(aquantia_gpio[i], 0x1);
 			writel(0x3, GPIO_IN_OUT_ADDR(aquantia_gpio[i]));
 			mdelay(500);
+		}
 	}
 }
 
