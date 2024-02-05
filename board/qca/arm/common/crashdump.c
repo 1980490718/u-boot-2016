@@ -47,6 +47,11 @@
 #define CONFIG_SYS_MMC_CRASHDUMP_DEV	0
 #endif
 
+#define MINIDUMP_MAGIC1_COOKIE				0x4D494E49
+#define MINIDUMP_MAGIC2_COOKIE				0x44554D50
+#define DEFAULT_MINIDUMP_LIST_ENTRY_MAX			256
+#define MINIDUMP_LIST_ENTRY_INC_ORDER			128
+
 #define CONFIG_TZ_SIZE			0x400000
 DECLARE_GLOBAL_DATA_PTR;
 static qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
@@ -121,6 +126,21 @@ struct crashdump_flash_emmc_cxt {
 };
 #endif
 
+struct memdumps_list_info {
+	char name[20];
+	uint64_t offset;
+	uint64_t size;
+};
+
+struct memdump_hdr {
+	uint32_t magic1;
+	uint32_t magic2;
+	uint32_t nos_dumps;
+	uint32_t total_dump_sz;
+	uint64_t dumps_list_info_offset;
+	uint32_t reserved[2];
+};
+
 #ifdef CONFIG_MTD_DEVICE
 static struct crashdump_flash_nand_cxt crashdump_nand_cnxt;
 #endif
@@ -134,6 +154,12 @@ static struct crashdump_flash_emmc_cxt crashdump_emmc_cnxt;
 #endif
 static struct qca_wdt_crashdump_data g_crashdump_data;
 struct qca_wdt_scm_tlv_msg tlv_msg ;
+
+static ulong dump2mem_addr_curr = 0, dump2mem_addr = 0;
+static uint32_t dumplist_entrymax = DEFAULT_MINIDUMP_LIST_ENTRY_MAX;
+static struct memdump_hdr dump2mem_hdr;
+static struct memdumps_list_info *dumps_list = NULL;
+
 __weak int scm_set_boot_addr(bool enable_sec_core)
 {
 	return -1;
@@ -168,13 +194,15 @@ static int krait_release_secondary(void)
 	return 0;
 }
 
-static int dump_to_dst (int is_aligned_access, uint32_t memaddr, uint32_t size, char *name)
+static int dump_to_dst (int is_aligned_access, uint32_t memaddr, uint32_t size, char *name,
+		unsigned int dump_level)
 {
 	char runcmd[256];
-	char *usb_dump = NULL;
+	char *usb_dump = NULL, *dump2mem = NULL;
 	ulong is_usb_dump = 0;
 	int ret = 0;
 
+	dump2mem = getenv("dump_to_mem");
 	usb_dump = getenv("dump_to_usb");
 	if (usb_dump) {
 		ret = str2long(usb_dump, &is_usb_dump);
@@ -201,7 +229,28 @@ static int dump_to_dst (int is_aligned_access, uint32_t memaddr, uint32_t size, 
 	if (is_usb_dump == 1)
 		snprintf(runcmd, sizeof(runcmd), "fatwrite usb %x:%x 0x%x %s 0x%x",
 					usb_dev_indx, usb_dev_part, memaddr, name, size);
-	else {
+	else if (dump2mem && (dump_level == MINIMAL_DUMP)) {
+		int idx = dump2mem_hdr.nos_dumps++;
+
+		if (idx >= dumplist_entrymax) {
+			dumplist_entrymax += MINIDUMP_LIST_ENTRY_INC_ORDER;
+			dumps_list = realloc(dumps_list,
+					dumplist_entrymax * sizeof(struct memdumps_list_info));
+			if (!dumps_list) {
+				printf("failed to do realloc the minidumps list entry table\n");
+				return CMD_RET_FAILURE;
+			}
+		}
+
+		strlcpy(dumps_list[idx].name, name, sizeof(dumps_list[idx].name));
+		dumps_list[idx].offset = dump2mem_addr_curr - dump2mem_addr;
+		dumps_list[idx].size = size;
+		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
+				memaddr, dump2mem_addr_curr, size);
+
+		printf("Dumping %s @ 0x%lX \n", dumps_list[idx].name, dump2mem_addr_curr);
+		dump2mem_addr_curr = roundup(dump2mem_addr_curr + size, ARCH_DMA_MINALIGN);
+	} else {
 		char *dumpdir;
 		dumpdir = getenv("dumpdir");
 		if (dumpdir != NULL) {
@@ -422,7 +471,7 @@ static int dump_wlan_segments(struct dumpinfo_t *dumpinfo, int indx)
 			}
 
 			ret_val = dump_to_dst (dumpinfo[indx].is_aligned_access,memaddr,
-						wlan_tlv_size, wlan_segment_name);
+						wlan_tlv_size, wlan_segment_name, dumpinfo[indx].dump_level);
 			crashdump_tlv_count++;
 			udelay(10000); /* give some delay for server */
 			if (ret_val == CMD_RET_FAILURE)
@@ -478,8 +527,45 @@ static int do_dumpqca_data(unsigned int dump_level)
 	int dump_entries = dump_entries_n;
 	char wlan_segment_name[32], runcmd[128], *s;
 	char *usb_dump = NULL, *compress = NULL;
-	ulong is_usb_dump = 0, is_compress = 0;
+	char *dump2mem = NULL, *dump2mem_addr_s = NULL, *dump2mem_sz_s = NULL;
+	ulong is_usb_dump = 0, is_compress = 0, dump2mem_sz = 0;
 	char temp[256];
+
+	dump2mem = getenv("dump_to_mem");
+	if (dump2mem && (dump_level == MINIMAL_DUMP)) {
+		dump2mem_addr_s = strsep(&dump2mem, " ");
+		if (!dump2mem_addr_s ||
+				!str2long(dump2mem_addr_s, &dump2mem_addr)) {
+			printf("\nError: Failed to decode dump_to_mem addr\n");
+			return -EINVAL;
+		}
+
+		dump2mem_sz_s = strsep(&dump2mem, " ");
+		if (!dump2mem_sz_s ||
+				!str2long(dump2mem_sz_s, &dump2mem_sz)) {
+			printf("\nError: Failed to decode dump_to_mem size\n");
+			return -EINVAL;
+		}
+
+		/* range check for the dump2mem_addr */
+		if ((dump2mem_addr < CONFIG_SYS_SDRAM_BASE) ||
+			(dump2mem_addr > CONFIG_SYS_SDRAM_BASE
+			 + gd->ram_size - dump2mem_sz)) {
+			printf("\nError: Invalid dump_to_mem param\n");
+			return -EINVAL;
+		}
+
+		dump2mem_addr_curr = dump2mem_addr;
+		dump2mem_hdr.magic1 = MINIDUMP_MAGIC1_COOKIE;
+		dump2mem_hdr.magic2 = MINIDUMP_MAGIC2_COOKIE;
+		dump2mem_hdr.nos_dumps = 0;
+		dump2mem_hdr.total_dump_sz = 0;
+		dump2mem_hdr.dumps_list_info_offset = 0;
+		dumps_list = malloc(dumplist_entrymax *	sizeof(struct memdumps_list_info));
+
+		dump2mem_addr_curr = roundup(dump2mem_addr_curr +
+				sizeof(struct memdump_hdr), ARCH_DMA_MINALIGN);
+	}
 
 	usb_dump = getenv("dump_to_usb");
 	if (usb_dump) {
@@ -661,7 +747,7 @@ static int do_dumpqca_data(unsigned int dump_level)
 
 			if (is_usb_dump == 1 || is_compress == 1) {
 				printf("\nProcessing %s:\n", dumpinfo[indx].name);
-				ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name);
+				ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name, dumpinfo[indx].dump_level);
 				if (ret == CMD_RET_FAILURE) {
 					goto stop_dump;
 				}
@@ -679,7 +765,7 @@ static int do_dumpqca_data(unsigned int dump_level)
 					}
 
 					printf("\nProcessing %s:\n", dumpinfo[indx].name);
-					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name);
+					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name, dumpinfo[indx].dump_level);
 					if (ret == CMD_RET_FAILURE)
 						goto stop_dump;
 
@@ -697,12 +783,12 @@ static int do_dumpqca_data(unsigned int dump_level)
 			if (dumpinfo[indx].size && memaddr) {
 				if(dumpinfo[indx].dump_level == MINIMAL_DUMP){
 					snprintf(wlan_segment_name, sizeof(wlan_segment_name), "%lx.BIN",(long unsigned int)memaddr);
-					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, wlan_segment_name);
+					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, wlan_segment_name, dumpinfo[indx].dump_level);
 					if (ret == CMD_RET_FAILURE)
 						goto stop_dump;
 				}
 				else {
-					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name);
+					ret = dump_to_dst (dumpinfo[indx].is_aligned_access, memaddr, dumpinfo[indx].size, dumpinfo[indx].name, dumpinfo[indx].dump_level);
 					if (ret == CMD_RET_FAILURE)
 						goto stop_dump;
 				}
@@ -716,6 +802,28 @@ static int do_dumpqca_data(unsigned int dump_level)
 	}
 
 stop_dump:
+	if (getenv("dump_to_mem") && (dump_level == MINIMAL_DUMP)) {
+		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
+				(unsigned int)dumps_list, dump2mem_addr_curr,
+				dump2mem_hdr.nos_dumps * sizeof(struct memdumps_list_info));
+		if (run_command(runcmd, 0) != CMD_RET_SUCCESS) {
+			printf("failed to dump at the addr 0x%lx\n", dump2mem_addr_curr);
+			return -EINVAL;
+		}
+
+		free(dumps_list);
+
+		dump2mem_hdr.total_dump_sz = dump2mem_addr_curr +
+			(dump2mem_hdr.nos_dumps * sizeof(struct memdumps_list_info)) - dump2mem_addr;
+		dump2mem_hdr.dumps_list_info_offset = dump2mem_addr_curr - dump2mem_addr;
+		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
+				(unsigned int)&dump2mem_hdr, dump2mem_addr, sizeof(struct memdump_hdr));
+		if (run_command(runcmd, 0) != CMD_RET_SUCCESS) {
+			printf("failed to dump at the addr 0x%lx\n", dump2mem_addr);
+			return -EINVAL;
+		}
+	}
+
 #if defined(CONFIG_USB_STORAGE) && defined(CONFIG_FS_FAT)
 	if (is_usb_dump == 1) {
 		mdelay(2000);
@@ -774,7 +882,7 @@ void dump_func(unsigned int dump_level)
 		printf("\nHit any key within 10s to stop dump activity...");
 		while (!tstc()) {       /* while no incoming data */
 			if (get_timer_masked() >= etime) {
-				if (getenv("dump_minimal_and_full")) { 
+				if (getenv("dump_minimal_and_full")) {
 					/* dump minidump and full dump*/
 					if (do_dumpqca_data(MINIMAL_DUMP) == CMD_RET_FAILURE)
 						printf("Minidump saving failed!\n");
