@@ -109,6 +109,7 @@ void set_flash_secondary_type(qca_smem_flash_info_t *);
 void dump_func(unsigned int dump_level);
 int do_dumpqca_flash_data(const char *);
 int do_dumpqca_usb_data(unsigned int dump_level);
+void crashdump_exit(void);
 int apps_iscrashed(void);
 int ipq_read_tcsr_boot_misc(void);
 int set_uuid_bootargs(char *boot_args, char *part_name, int buflen, bool gpt_flag);

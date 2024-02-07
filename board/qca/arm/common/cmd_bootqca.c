@@ -757,6 +757,12 @@ static int do_boot_signedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const a
 		}
 #endif
 	}
+
+#ifdef CONFIG_SKIP_RESET
+	if (apps_iscrashed())
+		return 1;
+#endif
+
 	/*
 	* This sys call will switch the CE1 channel to ADM usage
 	* so that HLOS can use it.
@@ -939,6 +945,11 @@ static int do_boot_unsignedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const
 			return CMD_RET_FAILURE;
 		}
 	}
+
+#ifdef CONFIG_SKIP_RESET
+	if (apps_iscrashed())
+		return 1;
+#endif
 
 	if (ret < 0 || boot_os(1, arg) != CMD_RET_SUCCESS) {
 #ifdef CONFIG_USB_XHCI_IPQ
