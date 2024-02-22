@@ -202,6 +202,11 @@ static int dump_to_dst (int is_aligned_access, uint32_t memaddr, uint32_t size, 
 	ulong is_usb_dump = 0;
 	int ret = 0;
 
+	if (!size) {
+		printf("Skipping %s dump, due to size zero\n", name);
+		return CMD_RET_SUCCESS;
+	}
+
 	dump2mem = getenv("dump_to_mem");
 	usb_dump = getenv("dump_to_usb");
 	if (usb_dump) {
