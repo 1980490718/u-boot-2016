@@ -906,6 +906,36 @@ int qca_scm_crypto(int cmd_id, void *req_ptr, uint32_t req_size)
         return ret;
 }
 
+/**
+ * qca_scm_is_feature_available() - Check if a given feature is enabled by TZ,
+ *                   and its version if enabled.
+ * @feature_id: ID of the feature to check in TZ for availablilty/version.
+ *
+ * Return: 0 on success and the version of the feature in result.
+ *
+ * TZ returns 0xFFFFFFFF if this smc call is not supported or
+ * if smc call supported but feature ID not supported
+ */
+long qca_scm_is_feature_available(uint32_t feature_id)
+{
+        int ret;
+	__le32 scm_ret;
+	if (is_scm_armv8()) {
+		struct qca_scm_desc desc = {0};
+		desc.arginfo = QCA_SCM_ARGS(1, SCM_VAL);
+		desc.args[0] = feature_id;
+		ret = scm_call_64(SCM_SVC_INFO, SCM_SVC_UTIL, &desc);
+		scm_ret = desc.ret[0];
+	}
+	else {
+		ret = scm_call(SCM_SVC_INFO, SCM_SVC_UTIL, &feature_id,
+					sizeof(feature_id), &scm_ret, sizeof(scm_ret));
+	}
+	if (!ret)
+		return le32_to_cpu(scm_ret);
+	return ret;
+}
+
 int qca_scm_dload(unsigned int magic_cookie)
 {
 	int ret;

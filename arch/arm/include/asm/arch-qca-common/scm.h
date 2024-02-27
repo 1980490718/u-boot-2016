@@ -134,6 +134,7 @@ int qca_scm_dpr(u32, u32, void *, size_t);
 int qca_scm_usb_mode_write(u32, u32);
 int qca_scm_call_write(u32, u32, u32 *, u32);
 int qca_scm_call_read(u32, u32, u32 *, u32*);
+long qca_scm_is_feature_available(u32);
 int qca_scm_crypto(int, void *, u32);
 int qca_scm_sdi(void);
 int qca_scm_dload(u32);
