@@ -18,6 +18,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#define SCM_SW_CONTEXT_FEATURE_ID	0x5
 #ifdef CONFIG_CMD_AES_256
 enum tz_crypto_service_aes_cmd_t {
 	TZ_CRYPTO_SERVICE_AES_ENC_ID = 0x7,
@@ -52,7 +53,8 @@ struct crypto_aes_req_data_t {
         uint64_t resp_len;
 };
 #else
-#define MAX_CONTEXT_BUFFER_LEN		64
+#define MAX_CONTEXT_BUFFER_LEN_V1	64
+#define MAX_CONTEXT_BUFFER_LEN_V2	128
 #define DEFAULT_POLICY_DESTINATION	0
 #define DEFAULT_KEY_TYPE		2
 struct crypto_aes_operation_policy {
@@ -68,15 +70,29 @@ struct crypto_aes_hwkey_policy  {
 	uint32_t destination;
 };
 
-struct crypto_aes_hwkey_bindings {
+struct crypto_aes_hwkey_bindings_v1 {
 	uint32_t bindings;
 	uint32_t context_len;
-	uint8_t context[MAX_CONTEXT_BUFFER_LEN];
+	uint8_t context[MAX_CONTEXT_BUFFER_LEN_V1];
 };
 
-struct crypto_aes_derive_key_cmd_t {
+struct crypto_aes_derive_key_cmd_t_v1 {
 	struct crypto_aes_hwkey_policy policy;
-	struct crypto_aes_hwkey_bindings hw_key_bindings;
+	struct crypto_aes_hwkey_bindings_v1 hw_key_bindings;
+	uint32_t source;
+	uint64_t mixing_key;
+	uint64_t key;
+};
+
+struct crypto_aes_hwkey_bindings_v2 {
+	uint32_t bindings;
+	uint32_t context_len;
+	uint8_t context[MAX_CONTEXT_BUFFER_LEN_V2];
+};
+
+struct crypto_aes_derive_key_cmd_t_v2 {
+	struct crypto_aes_hwkey_policy policy;
+	struct crypto_aes_hwkey_bindings_v2 hw_key_bindings;
 	uint32_t source;
 	uint64_t mixing_key;
 	uint64_t key;
@@ -101,7 +117,7 @@ unsigned char toBinary(char c)
 
 	return (c - 'a') + 10;
 }
-
+static uint32_t max_context_len = MAX_CONTEXT_BUFFER_LEN_V1;
 /**
  * do_derive_aes_256_key() - Handle the "derive_key" command-line command
  * @cmdtp:	Command data struct pointer
@@ -115,7 +131,8 @@ unsigned char toBinary(char c)
 static int do_derive_aes_256_key(cmd_tbl_t *cmdtp, int flag,
 				 int argc, char *const argv[])
 {
-	struct crypto_aes_derive_key_cmd_t *req_ptr = NULL;
+	struct crypto_aes_derive_key_cmd_t_v1 *v1_req_ptr = NULL;
+	struct crypto_aes_derive_key_cmd_t_v2 *v2_req_ptr = NULL;
 	int ret = CMD_RET_USAGE;
 	uintptr_t *key_handle = NULL;
 	uint8_t *context_buf = NULL;
@@ -124,33 +141,65 @@ static int do_derive_aes_256_key(cmd_tbl_t *cmdtp, int flag,
 
 	if (argc != 5)
 		return ret;
+	ret = qca_scm_is_feature_available(SCM_SW_CONTEXT_FEATURE_ID);
+	if (ret > 0) {
+		max_context_len = 128;
+	}
+	else {
+		max_context_len = 64;
+	}
 	context_buf = (uint8_t *)simple_strtoul(argv[3], NULL, 16);;
 	context_len = simple_strtoul(argv[4], NULL, 16);
-	if (context_len > 64) {
-		printf("Error: context length should be less than 64\n");
+	if (context_len > max_context_len) {
+		printf("Error: context length should be less than %d\n",
+					max_context_len);
 		return ret;
 	}
-	req_ptr = (struct crypto_aes_derive_key_cmd_t *)memalign(ARCH_DMA_MINALIGN,
-					sizeof(struct crypto_aes_derive_key_cmd_t));
-	if (!req_ptr) {
-		printf("Error allocating memory for key handle request buf");
-		return -ENOMEM;
-	}
+	key_handle = (uintptr_t *)memalign(ARCH_DMA_MINALIGN, sizeof(uint64_t));
+	if (max_context_len == MAX_CONTEXT_BUFFER_LEN_V1) {
+		v1_req_ptr = (struct crypto_aes_derive_key_cmd_t_v1 *)memalign(
+			ARCH_DMA_MINALIGN, sizeof(struct crypto_aes_derive_key_cmd_t_v1));
+		if (!v1_req_ptr) {
+			printf("Error allocating memory for key handle request buf");
+			return -ENOMEM;
+		}
 
-	req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
-	req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
-	req_ptr->source = simple_strtoul(argv[1], NULL, 16);
-	req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2], NULL, 16);
-	key_handle = (uintptr_t *)memalign(ARCH_DMA_MINALIGN,
-					sizeof(uint64_t));
-	req_ptr->key = (uintptr_t) key_handle;
-	req_ptr->mixing_key = 0;
-	req_ptr->hw_key_bindings.context_len = context_len;
-	while (i < context_len) {
-		req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
+		v1_req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
+		v1_req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
+		v1_req_ptr->source = simple_strtoul(argv[1], NULL, 16);
+		v1_req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2],
+												NULL, 16);
+		v1_req_ptr->key = (uintptr_t) key_handle;
+		v1_req_ptr->mixing_key = 0;
+		v1_req_ptr->hw_key_bindings.context_len = context_len;
+		while (i < context_len) {
+			v1_req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
+		}
+		ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID,
+			(void *)v1_req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v1));
 	}
-	ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID, (void *)req_ptr,
-					sizeof(struct crypto_aes_derive_key_cmd_t));
+	else if (max_context_len == MAX_CONTEXT_BUFFER_LEN_V2) {
+		v2_req_ptr = (struct crypto_aes_derive_key_cmd_t_v2 *)memalign(
+			ARCH_DMA_MINALIGN, sizeof(struct crypto_aes_derive_key_cmd_t_v2));
+		if (!v2_req_ptr) {
+			printf("Error allocating memory for key handle request buf");
+			return -ENOMEM;
+		}
+
+		v2_req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
+		v2_req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
+		v2_req_ptr->source = simple_strtoul(argv[1], NULL, 16);
+		v2_req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2],
+												NULL, 16);
+		v2_req_ptr->key = (uintptr_t) key_handle;
+		v2_req_ptr->mixing_key = 0;
+		v2_req_ptr->hw_key_bindings.context_len = context_len;
+		while (i < context_len) {
+			v2_req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
+		}
+		ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID,
+			(void *)v2_req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v2));
+	}
 	if (ret)
 		printf("Scm call failed with error code: %d\n", ret);
 	else {
@@ -159,8 +208,10 @@ static int do_derive_aes_256_key(cmd_tbl_t *cmdtp, int flag,
 
 	if (key_handle)
 		free(key_handle);
-	if (req_ptr)
-		free(req_ptr);
+	if (v1_req_ptr)
+		free(v1_req_ptr);
+	if (v2_req_ptr)
+		free(v2_req_ptr);
 
 	return ret;
 }
