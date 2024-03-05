@@ -51,6 +51,7 @@ static qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 int ipq_fs_on_nand ;
 extern int nand_env_device;
 extern qca_mmc mmc_host;
+extern void set_minidump_bootargs(void);
 
 #ifdef CONFIG_QCA_MMC
 static qca_mmc *host = &mmc_host;
@@ -112,7 +113,7 @@ void __stack_chk_fail(void)
 
 static int update_bootargs(void *addr)
 {
-	char *fit_bootargs, *strings = getenv("bootargs");
+	char *fit_bootargs, *strings;
 	int len, ret = CMD_RET_SUCCESS;
 	char * cmd_line = malloc(CONFIG_SYS_CBSIZE);
 	if (!cmd_line) {
@@ -120,6 +121,12 @@ static int update_bootargs(void *addr)
 		return CMD_RET_FAILURE;
 	}
 
+#ifdef CONFIG_QCA_APPSBL_DLOAD
+	if (getenv("dump_to_nvmem"))
+		set_minidump_bootargs();
+#endif
+
+       	strings = getenv("bootargs");
 	memset(cmd_line, 0, CONFIG_SYS_CBSIZE);
 	fit_bootargs = (char *)fdt_getprop(addr, 0, FIT_BOOTARGS_PROP, &len);
 	if ((fit_bootargs != NULL) && len) {
