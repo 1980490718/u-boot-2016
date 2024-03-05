@@ -433,4 +433,11 @@ extern loff_t board_env_size;
 
 /*#define CONFIG_IPQ_BT_SUPPORT*/
 
+#define CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+#define CONFIG_NAME_MAX_ENTRIES	2
+#define CONFIG_NAME_MAX_LEN	32
+#endif
+
 #endif /* _IPQ5018_H */

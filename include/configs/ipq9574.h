@@ -410,4 +410,10 @@ extern loff_t board_env_size;
 #define CONFIG_BITBANGMII_MULTI
 #endif
 
+#define CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+#define CONFIG_NAME_MAX_ENTRIES	4
+#define CONFIG_NAME_MAX_LEN	32
+#endif
 #endif /* _IPQ9574_H */

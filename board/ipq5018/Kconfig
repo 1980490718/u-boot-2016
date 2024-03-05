@@ -54,4 +54,7 @@ config ART_COMPRESSED
 config BOARD_TYPES
 	bool "Support board_type member in global data"
 	default y
+
+config LIST_OF_CONFIG_NAMES_SUPPORT
+	bool "List of config names support"
 endif

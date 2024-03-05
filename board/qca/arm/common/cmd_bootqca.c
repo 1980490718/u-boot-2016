@@ -87,6 +87,9 @@ typedef struct {
 #endif
 
 extern bootm_headers_t images;		/* pointers to os/initrd/fdt images */
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+extern struct config_list config_entries;
+#endif
 
 static int boot_os(int argc, char *const argv[])
 {
@@ -284,7 +287,12 @@ int config_select(unsigned int addr, char *rcmd, int rcmd_size)
 			return 0;
 		}
 	} else {
-		strings_count = fdt_count_strings(gd->fdt_blob, 0, "config_name");
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+		strings_count = config_entries.no_of_entries;
+#else
+		strings_count = fdt_count_strings(gd->fdt_blob, 0,
+							"config_name");
+#endif
 
 		if (!strings_count) {
 			printf("Failed to get config_name\n");
@@ -292,9 +300,12 @@ int config_select(unsigned int addr, char *rcmd, int rcmd_size)
 		}
 
 		for (i = 0; i < strings_count; i++) {
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+			config = config_entries.entry[i];
+#else
 			fdt_get_string_index(gd->fdt_blob, 0, "config_name",
 					   i, &config);
-
+#endif
 			snprintf((char *)dtb_config_name,
 				 sizeof(dtb_config_name), "%s", config);
 

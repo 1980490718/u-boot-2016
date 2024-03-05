@@ -155,4 +155,15 @@ extern int dump_entries_s;
 #define SPI_MAX_ADDR_LEN	4
 
 #define MAX_BOOT_ARGS_SIZE 	64
+
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+struct config_list {
+	char entry[CONFIG_NAME_MAX_ENTRIES][CONFIG_NAME_MAX_LEN];
+	uint32_t no_of_entries;
+} __attribute__ ((__packed__));
+
+void init_config_list(void);
+void add_config_entry(const char *config);
+void add_config_list_from_fdt(void);
+#endif
 #endif  /*  __QCA_COMMON_H_ */

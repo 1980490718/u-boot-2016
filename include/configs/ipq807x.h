@@ -355,5 +355,10 @@ extern loff_t board_env_size;
 #undef CONFIG_IPQ_ROOTFS_AUTH
 #define CONFIG_SILENT_CONSOLE
 
-#endif /* _IPQCDP_H */
+#define CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
 
+#ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+#define CONFIG_NAME_MAX_ENTRIES	4
+#define CONFIG_NAME_MAX_LEN	32
+#endif
+#endif /* _IPQCDP_H */
