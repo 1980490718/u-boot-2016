@@ -120,17 +120,23 @@ static int update_bootargs(void *addr)
 	memset(cmd_line, 0, CONFIG_SYS_CBSIZE);
 	fit_bootargs = (char *)fdt_getprop(addr, 0, FIT_BOOTARGS_PROP, &len);
 	if ((fit_bootargs != NULL) && len) {
-		if ((strlen(strings) + len) > CONFIG_SYS_CBSIZE) {
+		if (strings && ((strlen(strings) + len) > CONFIG_SYS_CBSIZE)) {
 			ret = CMD_RET_FAILURE;
 		} else {
-			memcpy(cmd_line, strings, strlen(strings));
-			snprintf(cmd_line + strlen(strings), CONFIG_SYS_CBSIZE,
+			if(strings)
+				memcpy(cmd_line, strings, strlen(strings));
+
+			snprintf(cmd_line + (strings? strlen(strings) : 0),
+					CONFIG_SYS_CBSIZE,
 					" %s rootwait", fit_bootargs);
 		}
 	} else {
-		memcpy(cmd_line, strings, strlen(strings));
-		len = snprintf(cmd_line + strlen(strings), CONFIG_SYS_CBSIZE,
-			" %s rootwait", getenv("fsbootargs"));
+		if(strings)
+			memcpy(cmd_line, strings, strlen(strings));
+
+		len = snprintf(cmd_line + (strings? strlen(strings) : 0),
+				CONFIG_SYS_CBSIZE,
+				" %s rootwait", getenv("fsbootargs"));
 		if (len >= CONFIG_SYS_CBSIZE)
 			ret = CMD_RET_FAILURE;
 	}
