@@ -369,7 +369,7 @@ static int qca_wdt_extract_crashdump_data(
 			scm_tlv_msg->cur_msg_buffer_pos += tlv_size;
 			break;
 		default:
-			printf("%s: invalid dump type\n", __func__);
+			printf("%s: No valid dump found\n", __func__);
 			ret_val = -EINVAL;
 			goto err;
 		}
