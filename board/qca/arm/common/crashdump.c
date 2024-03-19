@@ -168,7 +168,7 @@ static struct crashdump_flash_emmc_cxt crashdump_emmc_cnxt;
 static struct qca_wdt_crashdump_data g_crashdump_data;
 struct qca_wdt_scm_tlv_msg tlv_msg ;
 
-static ulong dump2mem_addr_curr = 0, dump2mem_addr = 0;
+static ulong dump2mem_addr_curr = 0, dump2mem_addr = 0, dump2mem_addr_limit =0;
 static uint32_t dumplist_entrymax = DEFAULT_MINIDUMP_LIST_ENTRY_MAX;
 static struct memdump_hdr dump2mem_hdr;
 static struct dump2nvmem_config dump2nvmem_info;
@@ -267,6 +267,11 @@ static int dump_to_dst (int is_aligned_access, uint32_t memaddr, uint32_t size, 
 		dumps_list[idx].size = size;
 		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
 				memaddr, dump2mem_addr_curr, size);
+
+		if (roundup(dump2mem_addr_curr + size, ARCH_DMA_MINALIGN) > dump2mem_addr_limit) {
+			printf("Error: Not enough memory in rsvd mem to save dumps\n");
+			return CMD_RET_FAILURE;
+		}
 
 		printf("Dumping %s @ 0x%lX \n", dumps_list[idx].name, dump2mem_addr_curr);
 		dump2mem_addr_curr = roundup(dump2mem_addr_curr + size, ARCH_DMA_MINALIGN);
@@ -615,6 +620,7 @@ static int do_dumpqca_data(unsigned int dump_level)
 		dump2mem_hdr.total_dump_sz = 0;
 		dump2mem_hdr.dumps_list_info_offset = 0;
 		dumps_list = malloc(dumplist_entrymax *	sizeof(struct memdumps_list_info));
+		dump2mem_addr_limit = dump2mem_addr + dump2mem_sz;
 
 		dump2mem_addr_curr = roundup(dump2mem_addr_curr +
 				sizeof(struct memdump_hdr), ARCH_DMA_MINALIGN);
@@ -891,6 +897,13 @@ stop_dump:
 		dump2mem_hdr.total_dump_sz = dump2mem_addr_curr +
 			(dump2mem_hdr.nos_dumps * sizeof(struct memdumps_list_info)) - dump2mem_addr;
 		dump2mem_hdr.dumps_list_info_offset = dump2mem_addr_curr - dump2mem_addr;
+
+		if ((dump2mem_addr + dump2mem_hdr.total_dump_sz)
+				> dump2mem_addr_limit) {
+			printf("Error: Not enough memory in rsvd mem to save dumps\n");
+			return CMD_RET_FAILURE;
+		}
+
 		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
 				(unsigned int)&dump2mem_hdr, dump2mem_addr, sizeof(struct memdump_hdr));
 		if (run_command(runcmd, 0) != CMD_RET_SUCCESS) {
