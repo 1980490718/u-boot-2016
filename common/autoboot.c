@@ -386,13 +386,13 @@ void autoboot_command(const char *s)
 			if (s) {
 				if (strncmp(s, "1", sizeof("1"))) {
 					printf("\nError: Invalid variable dump_minimal \n");
-					reset_board();
+					crashdump_exit();
 				}
 			}
 		}
 		if (s) {
 			do_dumpqca_minimal_data(s);
-			reset_board();
+			crashdump_exit();
 		}
 		else
 			dump_func(FULL_DUMP);

@@ -179,6 +179,15 @@ __weak int scm_set_boot_addr(bool enable_sec_core)
 	return -1;
 }
 
+__weak void crashdump_exit(void)
+{
+#ifdef CONFIG_SKIP_RESET
+	run_command("bootipq", 0);
+#else
+	reset_board();
+#endif
+}
+
 static int krait_release_secondary(void)
 {
 	writel(0xa4, CPU1_APCS_SAW2_VCTL);
@@ -971,7 +980,7 @@ void dump_func(unsigned int dump_level)
 			printf("Using serverip from env %s\n", serverip);
 		} else {
 			printf("\nServer ip not found, run dhcp or configure\n");
-			goto reset;
+			goto exit;
 		}
 		printf("Trying to ping server.....\n");
 		snprintf(runcmd, sizeof(runcmd), "ping %s", serverip);
@@ -985,11 +994,11 @@ void dump_func(unsigned int dump_level)
 		}
 		if (ping_status != 1) {
 			printf("Ping failed\n");
-			goto reset;
+			goto exit;
 		}
 		if (do_dumpqca_data(dump_level) == CMD_RET_FAILURE)
 			printf("Crashdump saving failed!\n");
-		goto reset;
+		goto exit;
 	} else {
 		etime = get_timer_masked() + (10 * CONFIG_SYS_HZ);
 		printf("\nHit any key within 10s to stop dump activity...");
@@ -1012,8 +1021,8 @@ void dump_func(unsigned int dump_level)
 	/* reset the system, some images might not be loaded
 	 * when crashmagic is found
 	 */
-reset:
-	reset_board();
+exit:
+	crashdump_exit();
 }
 #ifdef CONFIG_MTD_DEVICE
 
