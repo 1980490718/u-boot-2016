@@ -945,6 +945,13 @@ class Pack(object):
         wifi_fw_list = []
         no_fw_mach_ids = []
         for segment in entries:
+            if (memory_size != "default"):
+                profiles = segment.find('.//profiles')
+                if (profiles == None):
+                    continue
+                if memory_size not in profiles.text:
+                    continue
+
             wififw_type = segment.find('.//wififw_name')
             if wififw_type == None:
                 machid = int(segment.find(".//machid").text, 0)
@@ -1155,8 +1162,9 @@ class Pack(object):
                             wifi_fw_type = ""
 
                     if filename != "":
-                        wifi_fw_list.append(filename)
-                        filename = ""
+                        if filename not in wifi_fw_list:
+                            wifi_fw_list.append(filename)
+                            filename = ""
                     continue
 
                 if section != None and filename != "" and section.get('filename_mem' + memory_size) != None:
@@ -1313,7 +1321,7 @@ class Pack(object):
                     if (2 == len(possible_fw_vers)):
                         temp_name = filename
                         temp_name = temp_name.replace(possible_fw_vers[0][0][0], a)
-                        temp_name = temp_name.replace(possible_fw_vers[0][1][0], b)
+                        temp_name = temp_name.replace(possible_fw_vers[1][0][0], b)
 
                         if os.path.exists(os.path.join(self.images_dname, temp_name)):
                             if wifi_fws_combs.get(temp_name) == None:
@@ -1324,8 +1332,8 @@ class Pack(object):
                             if (3 == len(possible_fw_vers)):
                                 temp_name = filename
                                 temp_name = temp_name.replace(possible_fw_vers[0][0][0], a)
-                                temp_name = temp_name.replace(possible_fw_vers[0][1][0], b)
-                                temp_name = temp_name.replace(possible_fw_vers[0][2][0], c)
+                                temp_name = temp_name.replace(possible_fw_vers[1][0][0], b)
+                                temp_name = temp_name.replace(possible_fw_vers[2][0][0], c)
 
                                 if os.path.exists(os.path.join(self.images_dname, temp_name)):
                                     if wifi_fws_combs.get(temp_name) == None:
@@ -1336,9 +1344,9 @@ class Pack(object):
                                     if (4 == len(possible_fw_vers)):
                                         temp_name = filename
                                         temp_name = temp_name.replace(possible_fw_vers[0][0][0], a)
-                                        temp_name = temp_name.replace(possible_fw_vers[0][1][0], b)
-                                        temp_name = temp_name.replace(possible_fw_vers[0][2][0], c)
-                                        temp_name = temp_name.replace(possible_fw_vers[0][3][0], d)
+                                        temp_name = temp_name.replace(possible_fw_vers[1][0][0], b)
+                                        temp_name = temp_name.replace(possible_fw_vers[2][0][0], c)
+                                        temp_name = temp_name.replace(possible_fw_vers[3][0][0], d)
 
                                         if os.path.exists(os.path.join(self.images_dname, temp_name)):
                                             if wifi_fws_combs.get(temp_name) == None:
