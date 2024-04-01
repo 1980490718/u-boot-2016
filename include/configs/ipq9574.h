@@ -395,6 +395,10 @@ extern loff_t board_env_size;
 #define CONFIG_ARMV7_PSCI
 #define CONFIG_VERSION_ROLLBACK_PARTITION_INFO
 
+/* compress crash dump support */
+#define CONFIG_CMD_ZIP
+#define CONFIG_GZIP_COMPRESSED
+
 /*
  * Undefine configs not needed
  */
