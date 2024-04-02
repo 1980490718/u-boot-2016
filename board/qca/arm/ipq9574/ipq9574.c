@@ -40,6 +40,31 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+unsigned long fuse_addr[FUSE_CNT] = {
+		0x000A00C0,
+		0x000A00C4,
+		0x000A00D8,
+		0x000A00DC,
+		0x000A00E0,
+		0x000A00E4,
+		0x000A00E8,
+		0x000A00EC,
+		0x000A00F0,
+		0x000A00F4,
+		0x000A00F8,
+		0x000A00FC,
+		0x000A0100,
+		0x000A0104,
+		0x000A0108,
+		0x000A010C,
+		0x000A0110,
+		0x000A0114,
+		0x000A0118,
+		0x000A011C,
+		0x000A0120,
+		0x000A0124,
+};
+
 struct sdhci_host mmc_host;
 extern int ipq9574_edma_init(void *cfg);
 extern int ipq_spi_init(u16);

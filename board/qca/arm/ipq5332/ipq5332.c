@@ -62,6 +62,17 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+unsigned long fuse_addr[FUSE_CNT] = {
+		0x000A00D0,
+		0x000A00E8,
+		0x000A00F0,
+		0x000A00F8,
+		0x000A0100,
+		0x000A0108,
+		0x000A0110,
+		0x000A0118,
+};
+
 static int aq_phy_initialised = 0;
 extern int ipq5332_edma_init(void *cfg);
 extern int ipq_spi_init(u16);

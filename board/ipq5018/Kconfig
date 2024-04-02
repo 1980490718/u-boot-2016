@@ -57,4 +57,8 @@ config BOARD_TYPES
 
 config LIST_OF_CONFIG_NAMES_SUPPORT
 	bool "List of config names support"
+
+config LIST_FUSE
+	bool "Enable fuse list command"
+	default n
 endif
