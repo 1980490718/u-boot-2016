@@ -1492,7 +1492,7 @@ class Pack(object):
                         except KeyError as e:
                             if tiny_16m == "true":
                                 pass
-                            elif "bootconfig_type_max" in section.attrib:
+                            elif "bootconfig_type_max" in section.attrib and image_type == "all":
                                 partition = section.attrib['label']
                             else:
                                 try:
