@@ -38,6 +38,7 @@ extern int ipq_mdio_read(int mii_id,
 		int regnum, ushort *data);
 extern void ipq9574_qca8075_phy_serdes_reset(u32 phy_id);
 extern void qca8084_phy_interface_mode_set(void);
+int uniphy_cur_mode[PPE_MAX_UNIPHY_INSTANCE] = {-1, -1, -1};
 
 void csr1_write(int phy_id, int addr, int  value)
 {
@@ -636,6 +637,9 @@ void ppe_uniphy_mode_set(uint32_t uniphy_index, uint32_t mode)
 		return;
 	}
 
+	if (uniphy_cur_mode[uniphy_index] == mode)
+		return;
+
 	switch(mode) {
 		case EPORT_WRAPPER_PSGMII:
 			ppe_uniphy_psgmii_mode_set(uniphy_index);
@@ -661,8 +665,10 @@ void ppe_uniphy_mode_set(uint32_t uniphy_index, uint32_t mode)
 			ppe_uniphy_uqxgmii_mode_set(uniphy_index);
 			break;
 		default:
-			break;
+			return;
 	}
+
+	uniphy_cur_mode[uniphy_index] = mode;
 }
 
 void ppe_uniphy_usxgmii_autoneg_completed(uint32_t uniphy_index)
