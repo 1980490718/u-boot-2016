@@ -1102,7 +1102,7 @@ class Pack(object):
                     ret = self.__gen_flash_script_bootconfig(entries, partition, flinfo, script, section)
                     if ret == 1:
                         continue
-                except KeyError, e:
+                except KeyError as e:
                     continue
 
             # Get machID
@@ -1536,7 +1536,7 @@ class Pack(object):
                         ret = self.__gen_script_bootconfig(images, flinfo, part_info, section)
                         if ret == 1:
                             continue
-                except KeyError, e:
+                except KeyError as e:
                     continue
 
             if section_conf == "cdt" or section_conf == "ddrconfig":
