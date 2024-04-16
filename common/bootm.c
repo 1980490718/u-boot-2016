@@ -40,6 +40,7 @@
 #ifndef USE_HOSTCC
 
 extern void board_usb_deinit(int id);
+extern void eth_cleanup(void);
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -726,6 +727,11 @@ int do_bootm_states(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		for (i = 0; i < CONFIG_USB_MAX_CONTROLLER_COUNT; i++)
 			board_usb_deinit(i);
 #endif
+		/*
+		 * Edma cleanup
+		 */
+		eth_cleanup();
+
 		ret = boot_selected_os(argc, argv, BOOTM_STATE_OS_GO,
 				images, boot_fn);
 	}

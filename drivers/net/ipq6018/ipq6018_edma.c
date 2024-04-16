@@ -1916,3 +1916,18 @@ init_failed:
 
 	return -1;
 }
+
+void ipq_eth_cleanup(struct eth_device *dev)
+{
+	struct ipq6018_eth_dev *priv = dev->priv;
+	struct ipq6018_edma_common_info *c_info = priv->c_info;
+	struct ipq6018_edma_hw *ehw = &c_info->hw;
+
+	ipq6018_edma_disable_intr(ehw);
+
+	ipq6018_edma_disable_rings(ehw);
+
+	ipq6018_edma_reg_write(IPQ6018_EDMA_REG_PORT_CTRL, 0);
+
+	return;
+}
