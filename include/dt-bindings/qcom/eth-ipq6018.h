@@ -28,4 +28,9 @@
 #define MALIBU_PHY_TYPE 0x1
 #define QCA8081_PHY_TYPE 0x2
 #define AQ_PHY_TYPE 0x3
+#define QCA8084_PHY_TYPE 0x6
+#define UNUSED_PHY_TYPE 0xFF
+
+/* QCA8x8x internal PHY mode type */
+#define EPORT_WRAPPER_SGMII_PLUS	0xc
 #endif

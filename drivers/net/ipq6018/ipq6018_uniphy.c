@@ -131,8 +131,15 @@ static void ppe_uniphy_qsgmii_mode_set(uint32_t uniphy_index)
 
 static void ppe_uniphy_sgmii_mode_set(uint32_t uniphy_index, uint32_t mode)
 {
-	writel(UNIPHY_MISC2_REG_SGMII_MODE, PPE_UNIPHY_BASE +
-		(uniphy_index * PPE_UNIPHY_REG_INC) + UNIPHY_MISC2_REG_OFFSET);
+	if (mode == PORT_WRAPPER_SGMII_PLUS) {
+		writel(UNIPHY_MISC2_REG_SGMII_PLUS_MODE, PPE_UNIPHY_BASE +
+			(uniphy_index * PPE_UNIPHY_REG_INC) +
+			UNIPHY_MISC2_REG_OFFSET);
+	} else {
+		writel(UNIPHY_MISC2_REG_SGMII_MODE, PPE_UNIPHY_BASE +
+			(uniphy_index * PPE_UNIPHY_REG_INC) +
+			UNIPHY_MISC2_REG_OFFSET);
+	}
 
 	writel(UNIPHY_PLL_RESET_REG_VALUE, PPE_UNIPHY_BASE +
 		(uniphy_index * PPE_UNIPHY_REG_INC) + UNIPHY_PLL_RESET_REG_OFFSET);
