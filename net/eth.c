@@ -668,6 +668,19 @@ static unsigned int eth_rcv_current, eth_rcv_last;
 static struct eth_device *eth_devices;
 struct eth_device *eth_current;
 
+__weak void ipq_eth_cleanup(struct eth_device *dev)
+{
+	return;
+}
+
+void eth_cleanup(void)
+{
+	if (!eth_current)
+		return;
+
+	ipq_eth_cleanup(eth_current);
+}
+
 static void eth_set_current_to_next(void)
 {
 	eth_current = eth_current->next;
