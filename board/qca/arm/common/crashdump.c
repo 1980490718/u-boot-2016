@@ -622,6 +622,13 @@ static int do_dumpqca_data(unsigned int dump_level)
 			return -EINVAL;
 		}
 
+		snprintf(runcmd, sizeof(runcmd), "mw 0x%lx 0xffffffff 0x8",
+				dump2mem_addr);
+		if (run_command(runcmd, 0) != CMD_RET_SUCCESS) {
+			printf("\nError: failed to access memory region\n");
+			return -EIO;
+		}
+
 		dump2mem_addr_curr = dump2mem_addr;
 		dump2mem_hdr.magic1 = MINIDUMP_MAGIC1_COOKIE;
 		dump2mem_hdr.magic2 = MINIDUMP_MAGIC2_COOKIE;
@@ -633,6 +640,7 @@ static int do_dumpqca_data(unsigned int dump_level)
 
 		dump2mem_addr_curr = roundup(dump2mem_addr_curr +
 				sizeof(struct memdump_hdr), ARCH_DMA_MINALIGN);
+
 	}
 
 	dump2nvmem = getenv("dump_to_nvmem");
@@ -893,6 +901,9 @@ static int do_dumpqca_data(unsigned int dump_level)
 
 stop_dump:
 	if (getenv("dump_to_mem") && (dump_level == MINIMAL_DUMP)) {
+		if (ret != CMD_RET_SUCCESS)
+			return ret;
+
 		snprintf(runcmd, sizeof(runcmd), "cp.l 0x%x 0x%lx 0x%x",
 				(unsigned int)dumps_list, dump2mem_addr_curr,
 				dump2mem_hdr.nos_dumps * sizeof(struct memdumps_list_info));
