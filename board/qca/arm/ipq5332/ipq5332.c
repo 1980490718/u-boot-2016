@@ -899,6 +899,7 @@ void ipq_uboot_fdt_fixup(void)
 			add_config_entry("config@rdp478");
 			add_config_entry("config-rdp478");
 			add_config_entry("config@1");
+			add_config_entry("config-1");
 			break;
 		case MACH_TYPE_IPQ5332_AP_MI01_14:
 			add_config_entry("config@mi01.14");
