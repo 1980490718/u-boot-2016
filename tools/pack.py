@@ -2115,7 +2115,10 @@ class Pack(object):
                 # system-partition specific for HK+PINE
                 if section_conf == "mibib" and QCN9000:
                     img = section.find('img_name')
-                    filename_qcn9000 = img.text[:-4] + "-qcn9000.bin"
+                    if flash_size == "":
+                        filename_qcn9000 = img.text[:-4] + "-qcn9000.bin"
+                    else:
+                        filename_qcn9000 = img.text[:-9] + "-qcn9000"+ flash_size+ ".bin"
                     section_conf_qcn9000 = section_conf + "_qcn9000"
                     self.__gen_script_append_images(filename_qcn9000, soc_version, wifi_fw_type, images, flinfo, root, section_conf_qcn9000, partition)
                 # system-partition specific for AL+WAIKIKI
@@ -2292,7 +2295,10 @@ class Pack(object):
             # system-partition specific for HK+PINE
             if QCN9000:
                 IF_QCN9000 = True
-                part_fname_qcn9000 = part_fname[:-4] + "-qcn9000.bin"
+                if flash_size == "":
+                    part_fname_qcn9000 = part_fname[:-4] + "-qcn9000.bin"
+                else:
+                    part_fname_qcn9000 = part_fname[:-9] + "-qcn9000"+ flash_size +".bin"
                 mibib_qcn9000 = MIBIB(part_fname_qcn9000, flinfo.pagesize, flinfo.blocksize,
                                    flinfo.chipsize, blocksize, chipsize)
                 self.partitions = mibib_qcn9000.get_parts()
