@@ -246,7 +246,7 @@ class MIBIB(object):
                         " attr1 attr2 attr3 which_flash")
     ENTRY_FMT = "<16sLLBBBB"
 
-    def __init__(self, filename, flinfo, nand_blocksize, nand_chipsize, root_part):
+    def __init__(self, filename, flinfo, nand_blocksize, nand_chipsize):
         self.filename = filename
         self.pagesize = flinfo.pagesize
         self.blocksize = flinfo.blocksize
@@ -945,6 +945,12 @@ class Pack(object):
         wifi_fw_list = []
         no_fw_mach_ids = []
         for segment in entries:
+            machid = int(segment.find(".//machid").text, 0)
+            machid = "%x" % machid
+            if flash_size == "" and self.flash_type in ['nand', 'norplusnand']:
+                if str(machid) in ['8060008', '8060402']:
+                    print("skipped wifi fw of " + str(machid))
+                    continue;
             if (memory_size != "default"):
                 profiles = segment.find('.//profiles')
                 if (profiles == None):
@@ -954,9 +960,6 @@ class Pack(object):
 
             wififw_type = segment.find('.//wififw_name')
             if wififw_type == None:
-                machid = int(segment.find(".//machid").text, 0)
-                machid = "%x" % machid
-
                 no_fw_mach_ids.append(machid)
                 continue
             wififw_type = str(segment.find(".//wififw_name").text)
@@ -1689,10 +1692,7 @@ class Pack(object):
             blocks_per_chip = int(flash_param.find(".//total_block").text)
             chipsize = blocks_per_chip * blocksize
 
-            srcDir_part = SRC_DIR + "/" + ARCH_NAME + "/flash_partition/" + flinfo.type + "-partition"+ flash_size +".xml"
-            root_part = ET.parse(srcDir_part)
-
-            mibib = MIBIB(part_fname, flinfo, blocksize, chipsize, root_part)
+            mibib = MIBIB(part_fname, flinfo, blocksize, chipsize)
             self.partitions = mibib.get_parts()
 
         else:
@@ -2078,7 +2078,7 @@ def main():
                 parser.flash_type = parser.flash_type + ",nand-4k"
 
         # Add norplusnand-4k flash type, if norplusnand flash type is specified
-        if "norplusnand" in parser.flash_type.split(","):
+        if "norplusnand" in parser.flash_type.split(",") and flash_size == "":
             if root.find(".//data[@type='NAND_PARAMETER']/entry") != None:
                 parser.flash_type = parser.flash_type + ",norplusnand-4k"
 
