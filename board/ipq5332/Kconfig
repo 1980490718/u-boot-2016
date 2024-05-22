@@ -63,4 +63,8 @@ config BOARD_TYPES
 
 config LIST_OF_CONFIG_NAMES_SUPPORT
 	bool "List of config names support"
+
+config IPQ_TINY2
+	select IPQ_TINY
+	bool "Enable tiny2 profile"
 endif
