@@ -112,7 +112,8 @@ ifneq ($(CONFIG_IPQ_TINY_SPI_NOR),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-mi01.3.dtb \
 				ipq5332-mi04.3.dtb \
 				ipq5332-mi04.1.dtb \
-				ipq5332-db-mi02.1.dtb
+				ipq5332-db-mi02.1.dtb \
+				ipq5332-mi01.2.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-mi04.1.dtb
 endif
