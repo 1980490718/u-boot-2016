@@ -945,12 +945,6 @@ class Pack(object):
         wifi_fw_list = []
         no_fw_mach_ids = []
         for segment in entries:
-            machid = int(segment.find(".//machid").text, 0)
-            machid = "%x" % machid
-            if flash_size == "" and self.flash_type in ['nand', 'norplusnand']:
-                if str(machid) in ['8060008', '8060402']:
-                    print("skipped wifi fw of " + str(machid))
-                    continue;
             if (memory_size != "default"):
                 profiles = segment.find('.//profiles')
                 if (profiles == None):
@@ -960,6 +954,9 @@ class Pack(object):
 
             wififw_type = segment.find('.//wififw_name')
             if wififw_type == None:
+                machid = int(segment.find(".//machid").text, 0)
+                machid = "%x" % machid
+
                 no_fw_mach_ids.append(machid)
                 continue
             wififw_type = str(segment.find(".//wififw_name").text)
