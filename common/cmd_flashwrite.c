@@ -205,7 +205,7 @@ char * const argv[])
 	uint32_t offset, part_size, adj_size;
 	uint32_t load_addr = 0;
 	uint32_t file_size = 0;
-	uint32_t size_block, start_block, file_size_cpy;
+	uint32_t size_block, start_block, file_size_cpy = 0;
 	char *part_name = NULL, *filesize, *loadaddr;
 	int flash_type, ret;
 	unsigned int active_part = 0;

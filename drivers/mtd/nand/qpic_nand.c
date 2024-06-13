@@ -2510,7 +2510,7 @@ static const struct nand_flash_dev *flash_get_dev(uint8_t dev_id)
 {
 	int i;
 
-	for (i = 0; nand_flash_ids[i].id; i++) {
+	for (i = 0; nand_flash_ids[i].name != NULL; i++) {
 		if (nand_flash_ids[i].dev_id == dev_id)
 			return &nand_flash_ids[i];
 	}
@@ -2849,7 +2849,7 @@ qpic_nand_read_page(struct mtd_info *mtd, uint32_t page,
 	uint32_t i;
 	int nand_ret = NANDC_RESULT_SUCCESS;
 	uint8_t flags = 0;
-	uint32_t *cmd_list_temp = NULL;
+	struct cmd_element *cmd_list_temp = NULL;
 	uint16_t data_bytes;
 	uint16_t ud_bytes_in_last_cw;
 	uint16_t oob_bytes;
@@ -3026,7 +3026,7 @@ qpic_nand_read_page(struct mtd_info *mtd, uint32_t page,
 				   (uint32_t)((addr_t)&(stats[i].flash_sts)),
 				   CE_READ_TYPE);
 
-		cmd_list_temp = (uint32_t *)cmd_list_ptr;
+		cmd_list_temp = cmd_list_ptr;
 
 		cmd_list_ptr++;
 
