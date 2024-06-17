@@ -25,6 +25,7 @@ enum tz_crypto_service_aes_cmd_t {
 #ifdef CONFIG_IPQ_DERIVE_KEY
 	TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID = 0x9,
 	TZ_CRYPTO_SERVICE_AES_DERIVE_128_KEY_ID = 0xE,
+	TZ_CRYPTO_SERVICE_AES_CLEAR_KEY_ID = 0xA,
 #endif
 };
 
@@ -266,6 +267,45 @@ U_BOOT_CMD(
 	"encrypt/decrypt in TME-L based systems",
         "Key Derivation: derive_aes_256_max_ctxt_key <source_data>"
         "<bindings_data> <context_data address> <context data len>"
+);
+
+/**
+ * do_clear_aes_key() - Handle the "clear_key" command-line command
+ *
+ * @cmdtp:      Command data struct pointer
+ * @flag:       Command flag
+ * @argc:       Command-line argument count
+ * @argv:       Array of command-line arguments
+ *
+ * Returns zero on success, CMD_RET_USAGE in case of misuse and negative
+ * on error.
+ */
+
+static int do_clear_aes_key(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int ret;
+	uint32_t key_handle;
+
+	if (argc != 2) {
+		return CMD_RET_USAGE;
+	}
+
+	key_handle = simple_strtoul(argv[1], NULL, 10);
+
+	ret = qca_scm_clear_key(key_handle, TZ_CRYPTO_SERVICE_AES_CLEAR_KEY_ID);
+	if (!ret)
+          	printf("AES key = %u cleared successfully\n",key_handle);
+	else
+          	printf("AES key clear failed with err %d\n",ret);
+
+	return ret ? CMD_RET_FAILURE:CMD_RET_SUCCESS;
+}
+
+/***************************************************/
+U_BOOT_CMD(
+        clear_aes_key, 2, 0, do_clear_aes_key,
+	"Clear AES 256 key in TME-L based systems",
+	"Clear key: clear_aes_key <key_handle>"
 );
 
 #endif

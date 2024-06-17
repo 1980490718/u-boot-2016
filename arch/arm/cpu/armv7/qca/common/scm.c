@@ -817,6 +817,25 @@ int qca_scm_call_crypto_v8(u32 svc_id, u32 cmd_id, u32 *addr, u32 val)
         return ret;
 }
 
+int qca_scm_call_clear_key(u32 svc_id, u32 cmd_id, u32 key_handle)
+{
+	int ret = 0;
+	__le32 scm_ret;
+	struct qca_scm_desc desc = {0};
+
+	desc.arginfo = QCA_SCM_ARGS(1, SCM_VAL);
+
+	desc.args[0] = key_handle;
+
+	ret = scm_call_64(svc_id, cmd_id, &desc);
+	scm_ret = desc.ret[0];
+
+	if (!ret)
+		return le32_to_cpu(scm_ret);
+
+	return ret;
+}
+
 int qca_scm_call_write(u32 svc_id, u32 cmd_id, u32 *addr, u32 val)
 {
 	int ret = 0;
@@ -904,6 +923,18 @@ int qca_scm_crypto(int cmd_id, void *req_ptr, uint32_t req_size)
 		ret = -ENOTSUPP;
 
         return ret;
+}
+
+int qca_scm_clear_key(uint32_t key_handle, u32 cmd_id)
+{
+	int ret;
+
+	if (is_scm_armv8())
+		ret = qca_scm_call_clear_key(SCM_SVC_CRYPTO, cmd_id, key_handle);
+	else
+		ret = -ENOTSUPP;
+
+	return ret;
 }
 
 /**
