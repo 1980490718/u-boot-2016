@@ -110,6 +110,7 @@ struct dumpinfo_t dumpinfo_n[] = {
 	{ "EBICS0.BIN", 0x40000000, CONFIG_QCA_UBOOT_OFFSET, 0, 0, 0, 0, 1 },
 #endif
 	{ "IMEM.BIN", 0x08600000, 0x00001000, 0 },
+	{ "IMEM2.BIN", 0x860F000, 0x00001000, 0 },
 	{ "UNAME.BIN", 0, 0, 0, 0, 0, MINIMAL_DUMP },
 	{ "CPU_INFO.BIN", 0, 0, 0, 0, 0, MINIMAL_DUMP },
 	{ "DMESG.BIN", 0, 0, 0, 0, 0, MINIMAL_DUMP },
