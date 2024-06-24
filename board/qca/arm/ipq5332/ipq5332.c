@@ -921,8 +921,32 @@ __weak int ipq_get_tz_version(char *version_name, int buf_size)
 
 int ipq_read_tcsr_boot_misc(void)
 {
-	u32 *dmagic = TCSR_BOOT_MISC_REG;
-	return *dmagic;
+	u32 dmagic;
+	int ret;
+	long feat_avail;
+
+	/* The TCSR dload register is protected in latest TZ.
+	 * Old TZ will allow direct read.
+	 * Use the qca_scm_is_feature_available() call to know
+	 * if TZ supports direct or scm read. Based on return
+	 * value, read the TCSR dload register appropriately.
+	 */
+	feat_avail = qca_scm_is_feature_available(0x6);
+	if (feat_avail == 0x401000) {
+		if (is_scm_armv8()) {
+			ret = qca_scm_call_read(SCM_SVC_IO, SCM_IO_READ,
+					TCSR_BOOT_MISC_REG, &dmagic);
+			if (ret)
+				return 0;
+		}
+		else
+			return 0;
+	}
+	else {
+		dmagic = *(TCSR_BOOT_MISC_REG);
+	}
+
+	return dmagic;
 }
 
 int apps_iscrashed_crashdump_disabled(void)
