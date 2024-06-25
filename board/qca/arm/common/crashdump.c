@@ -762,6 +762,14 @@ static int do_dumpqca_data(unsigned int dump_level)
 	}
 
 	for (indx = 0; indx < dump_entries; indx++) {
+
+#ifdef DUMP_TME_LOG
+		if(!strncmp(dumpinfo[indx].name, "IMEM2.BIN", 9) &&
+			qca_scm_is_feature_available(TME_LOG_DUMP_FEATURE_ID) \
+			!= TME_LOG_DUMP_FEATURE_VERSION)
+			continue;
+#endif
+
 		if (dump_level != dumpinfo[indx].dump_level)
 			continue;
 

@@ -43,6 +43,20 @@ extern const add_node_t add_fdt_node[];
 #define DLOAD_DISABLED				0x40
 #define DLOAD_BITS				0xFF
 
+/* TME  DUMP */
+
+#ifndef DUMP_TME_LOG
+#define DUMP_TME_LOG			1
+#endif
+
+#ifndef	TME_LOG_DUMP_FEATURE_ID
+#define TME_LOG_DUMP_FEATURE_ID		0x7
+#endif
+
+#ifndef TME_LOG_DUMP_FEATURE_VERSION
+#define TME_LOG_DUMP_FEATURE_VERSION	0x401000
+#endif
+
 /* USB Registers */
 #define TCSR_USB_PCIE_SEL			0x01947540
 #define TCSR_USB_PCIE_SEL_USB			0x1
