@@ -315,6 +315,13 @@ typedef enum {
 	SMEM_MAX_SIZE = SMEM_RUNTIME_FAILSAFE_INFO + 1,
 } smem_mem_type_t;
 
+#define FUSE_CNT	8
+struct fuse_payload {
+	u32 fuse_addr;
+	u32 lsb_val;
+	u32 msb_val;
+};
+
 /*
  * function declaration
  */

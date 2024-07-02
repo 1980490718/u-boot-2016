@@ -67,4 +67,8 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config IPQ_TINY2
 	select IPQ_TINY
 	bool "Enable tiny2 profile"
+
+config LIST_FUSE
+	bool "Enable fuse list command"
+	default y
 endif

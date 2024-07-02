@@ -493,7 +493,8 @@ int qca_scm_fuseipq(u32 svc_id, u32 cmd_id, void *buf, size_t len)
 	return ret;
 }
 
-int qca_scm_list_ipq5332_fuse(u32 svc_id, u32 cmd_id,
+#ifdef CONFIG_LIST_FUSE
+int qca_scm_list_fuse(u32 svc_id, u32 cmd_id,
 		struct fuse_payload *fuse, size_t len)
 {
 	int ret = 0;
@@ -515,6 +516,7 @@ int qca_scm_list_ipq5332_fuse(u32 svc_id, u32 cmd_id,
 	}
 	return ret;
 }
+#endif
 
 int qca_scm_part_info(void *cmd_buf,
 			size_t cmd_len)
@@ -777,7 +779,7 @@ int qca_scm_fuseipq(u32 svc_id, u32 cmd_id, void *buf, size_t len)
 {
 	return 0;
 }
-int qca_scm_list_ipq5332_fuse(u32 svc_id, u32 cmd_id, void *buf, size_t len)
+int qca_scm_list_fuse(u32 svc_id, u32 cmd_id, void *buf, size_t len)
 {
 	return 0;
 }
