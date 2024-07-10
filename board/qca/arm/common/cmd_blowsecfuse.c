@@ -95,7 +95,7 @@ int do_list_fuse(cmd_tbl_t *cmdtp, int flag, int argc,
 
 #ifdef CONFIG_ARCH_IPQ9574
 	printf("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
-			fuse[0].val & 0x41);
+			fuse[0].val & 0x80);
 	printf("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].val & 0xFFFF0000);
 	printf("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[1].fuse_addr,

@@ -57,12 +57,6 @@ unsigned long fuse_addr[FUSE_CNT] = {
 		0x000A0104,
 		0x000A0108,
 		0x000A010C,
-		0x000A0110,
-		0x000A0114,
-		0x000A0118,
-		0x000A011C,
-		0x000A0120,
-		0x000A0124,
 };
 
 struct sdhci_host mmc_host;

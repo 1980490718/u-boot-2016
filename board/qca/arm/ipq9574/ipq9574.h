@@ -379,7 +379,7 @@ typedef enum {
 #define MSM_SDC1_BASE           0x7800000
 #define MSM_SDC1_SDHCI_BASE     0x7804000
 
-#define FUSE_CNT		22
+#define FUSE_CNT		0x10
 struct fuse_payload {
 	u32 fuse_addr;
 	u32 val;
