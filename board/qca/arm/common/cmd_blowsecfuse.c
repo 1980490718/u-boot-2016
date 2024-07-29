@@ -50,18 +50,18 @@ int do_fuseipq(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	ret = qca_scm_fuseipq(SCM_SVC_FUSE, TZ_BLOW_FUSE_SECDAT,
 			&fuseip, sizeof(fuseip));
 
-	if (ret || fuse_status)
-		printf("%s: Error in QFPROM write (%d, %d)\n",
-			__func__, ret, fuse_status);
+	if (ret)
+		printf("%s: Error in QFPROM write (%d)\n",
+			__func__, ret);
 
 	if (fuse_status == FUSEPROV_SECDAT_LOCK_BLOWN)
 		printf("Fuse already blown\n");
 	else if (fuse_status == FUSEPROV_INVALID_HASH)
 		printf("Invalid sec.dat\n");
-	else if (fuse_status  != FUSEPROV_SUCCESS)
-		printf("Failed to Blow fuses");
+	else if (fuse_status == FUSEPROV_SUCCESS)
+		printf("Fuse Blow Success\n");
 	else
-		printf("Blow Success\n");
+		printf("Fuse blow failed with err code : 0x%x\n", fuse_status);
 
 	return 0;
 }
