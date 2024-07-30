@@ -935,6 +935,15 @@ int ipq_read_tcsr_boot_misc(void)
 	u32 dmagic;
 	int ret;
 	long feat_avail;
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+
+	/* In recovery path, we dont have TZ. So, perform
+	 * ioread to read the dload magic
+	 */
+	if (sfi->flash_type == SMEM_BOOT_NO_FLASH) {
+		dmagic = *(TCSR_BOOT_MISC_REG);
+		return dmagic;
+	}
 
 	/* The TCSR dload register is protected in latest TZ.
 	 * Old TZ will allow direct read.
