@@ -158,16 +158,20 @@ static int do_derive_aes_256_key(cmd_tbl_t *cmdtp, int flag,
 	req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
 	req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
 	req_ptr->source = simple_strtoul(argv[1], NULL, 16);
-	req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2],
-											NULL, 16);
+	req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2], NULL, 16);
 	req_ptr->key = (uintptr_t) key_handle;
 	req_ptr->mixing_key = 0;
 	req_ptr->hw_key_bindings.context_len = context_len;
+
 	while (i < context_len) {
 		req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
 	}
 	ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_KEY_ID,
-			(void *)req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v1));
+		(void *)req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v1));
+	if (ret)
+		printf("Scm call failed with error code: %d\n", ret);
+	else
+		printf("Key handle is %u\n", (unsigned int)*key_handle);
 
 	if (key_handle)
 		free(key_handle);
@@ -197,66 +201,66 @@ U_BOOT_CMD(
  * on error.
  */
 static int do_derive_aes_256_max_ctxt_key(cmd_tbl_t *cmdtp, int flag,
-                                 int argc, char *const argv[])
+					  int argc, char *const argv[])
 {
-        struct crypto_aes_derive_key_cmd_t_v2 *req_ptr = NULL;
-        int ret = CMD_RET_USAGE;
-        uintptr_t *key_handle = NULL;
-        uint8_t *context_buf = NULL;
-        int context_len = 0;
-        int i = 0, j = 0;
+	struct crypto_aes_derive_key_cmd_t_v2 *req_ptr = NULL;
+	int ret = CMD_RET_USAGE;
+	uintptr_t *key_handle = NULL;
+	uint8_t *context_buf = NULL;
+	int context_len = 0;
+	int i = 0, j = 0;
 
-        if (argc != 5)
-                return ret;
+	if (argc != 5)
+		return ret;
 
-        ret = is_scm_sec_auth_available(SCM_SVC_CRYPTO,
-                        TZ_CRYPTO_SERVICE_AES_DERIVE_128_KEY_ID);
-        if (ret <= 0) {
-                printf("Aes 256 Max context key derivation"
-                        "scm call is not supported. ret = %d\n", ret);
-                return CMD_RET_SUCCESS;
-        }
+	ret = is_scm_sec_auth_available(SCM_SVC_CRYPTO,
+			TZ_CRYPTO_SERVICE_AES_DERIVE_128_KEY_ID);
+	if (ret <= 0) {
+		printf("Aes 256 Max context key derivation"
+			"scm call is not supported. ret = %d\n", ret);
+		return CMD_RET_SUCCESS;
+	}
 
-        context_buf = (uint8_t *)simple_strtoul(argv[3], NULL, 16);
-        context_len = simple_strtoul(argv[4], NULL, 16);
-        if (context_len > MAX_CONTEXT_BUFFER_LEN_V2) {
-                printf("Error: context length should be less than %d\n",
-                                        MAX_CONTEXT_BUFFER_LEN_V2);
-                return ret;
-        }
-        key_handle = (uintptr_t *)memalign(ARCH_DMA_MINALIGN,
-                        sizeof(uint64_t));
-        req_ptr = (struct crypto_aes_derive_key_cmd_t_v2 *)memalign(ARCH_DMA_MINALIGN,
-                        sizeof(struct crypto_aes_derive_key_cmd_t_v2));
-        if (!req_ptr) {
-                printf("Error allocating memory for key handle request buf");
-                return -ENOMEM;
-        }
+	context_buf = (uint8_t *)simple_strtoul(argv[3], NULL, 16);
+	context_len = simple_strtoul(argv[4], NULL, 16);
+	if (context_len > MAX_CONTEXT_BUFFER_LEN_V2) {
+		printf("Error: context length should be less than %d\n",
+			MAX_CONTEXT_BUFFER_LEN_V2);
+		return ret;
+	}
+	key_handle = (uintptr_t *)memalign(ARCH_DMA_MINALIGN, sizeof(uint64_t));
+	req_ptr = (struct crypto_aes_derive_key_cmd_t_v2 *)memalign(ARCH_DMA_MINALIGN,
+				sizeof(struct crypto_aes_derive_key_cmd_t_v2));
+	if (!req_ptr) {
+		printf("Error allocating memory for key handle request buf");
+		return -ENOMEM;
+	}
 
-        req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
-        req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
-        req_ptr->source = simple_strtoul(argv[1], NULL, 16);
-        req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2], NULL, 16);
-        req_ptr->key = (uintptr_t) key_handle;
-        req_ptr->mixing_key = 0;
-        req_ptr->hw_key_bindings.context_len = context_len;
-        while (i < context_len) {
-                req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
-        }
-        ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_128_KEY_ID,
-                (void *)req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v2));
-        if (ret)
-                printf("Scm call failed with error code: %d\n", ret);
-        else {
-                printf("Key handle is %u\n", (unsigned int)*key_handle);
-        }
+	req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
+	req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
+	req_ptr->source = simple_strtoul(argv[1], NULL, 16);
+	req_ptr->hw_key_bindings.bindings = simple_strtoul(argv[2], NULL, 16);
+	req_ptr->key = (uintptr_t) key_handle;
+	req_ptr->mixing_key = 0;
+	req_ptr->hw_key_bindings.context_len = context_len;
 
-        if (key_handle)
-                free(key_handle);
-        if (req_ptr)
-                free(req_ptr);
+	while (i < context_len) {
+		req_ptr->hw_key_bindings.context[j++] = context_buf[i++];
+	}
 
-        return ret;
+	ret = qca_scm_crypto(TZ_CRYPTO_SERVICE_AES_DERIVE_128_KEY_ID,
+		(void *)req_ptr, sizeof(struct crypto_aes_derive_key_cmd_t_v2));
+	if (ret)
+		printf("Scm call failed with error code: %d\n", ret);
+	else
+		printf("Key handle is %u\n", (unsigned int)*key_handle);
+
+	if (key_handle)
+		free(key_handle);
+	if (req_ptr)
+		free(req_ptr);
+
+	return ret;
 }
 
 
