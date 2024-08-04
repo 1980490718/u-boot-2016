@@ -45,11 +45,6 @@ asmlinkage void secondary_core_entry(char *argv, int *cmd_complete,
 {
 	unsigned int state = 0;
 
-	if (!mmu_enabled()) {
-		mmu_setup();
-		cp_delay();
-	}
-
 	/* Update here as ncessary - secondary entry point */
 	*cmd_result = cli_simple_run_command(argv, CMD_FLAG_SEC_CORE);
 	*cmd_complete = 1;
@@ -108,11 +103,6 @@ int do_runmulticore(cmd_tbl_t *cmdtp,
 		core[i - 1].cmd_result = -1;
 		core[i - 1].gd_ptr = gd;
 		core[i - 1].arg_ptr = argv[i];
-	}
-
-	if (!mmu_enabled()) {
-		mmu_setup();
-		cp_delay();
 	}
 
 	/* Bringing up the secondary cores */
