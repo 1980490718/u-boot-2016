@@ -103,10 +103,11 @@ struct ipo_action {
 	uint32_t  _reserved2:32;
 	uint32_t  _reserved3:32;
 	uint32_t  _reserved4:32;
+	uint32_t  _reserved5:32;
 };
 
 union ipo_action_u {
-        uint32_t val[5];
+        uint32_t val[6];
         struct ipo_action bf;
 };
 

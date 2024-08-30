@@ -74,7 +74,7 @@ void ppe_ipo_action_set(union ipo_action_u *hw_act, int rule_id)
 {
 	int i;
 
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < 6; i++) {
 		ipq5332_ppe_reg_write((IPE_L2_BASE_ADDR + IPO_ACTION_ADDRESS +
 			(rule_id * IPO_ACTION_INC) + (i * 4)), hw_act->val[i]);
 	}
