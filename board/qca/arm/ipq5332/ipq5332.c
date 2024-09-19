@@ -1279,22 +1279,43 @@ void sfp_reset_init(void)
 	}
 }
 
-void qca8081_napa_reset(void)
+int get_napa_gpio(int napa_gpio[2])
 {
-	unsigned int *napa_gpio_base;
-	int node, gpio;
-	uint32_t cfg;
+	int napa_gpio_cnt = -1, node;
+	int res = -1;
 
 	node = fdt_path_offset(gd->fdt_blob, "/ess-switch");
 	if (node >= 0) {
-		gpio = fdtdec_get_uint(gd->fdt_blob, node , "napa_gpio", -1);
-		if (gpio != -1) {
-			napa_gpio_base =
-				(unsigned int *)GPIO_CONFIG_ADDR(gpio);
-			cfg = GPIO_OE | GPIO_DRV_8_MA | GPIO_PULL_UP;
-			writel(cfg, napa_gpio_base);
-			mdelay(100);
-			gpio_set_value(gpio, 0x1);
+		napa_gpio_cnt = fdtdec_get_uint(gd->fdt_blob, node, "napa_gpio_cnt", -1);
+		if (napa_gpio_cnt >= 1) {
+			res = fdtdec_get_int_array(gd->fdt_blob, node, "napa_gpio",
+						  (u32 *)napa_gpio, napa_gpio_cnt);
+			if (res >= 0)
+				return napa_gpio_cnt;
+		}
+	}
+
+	return res;
+}
+
+void qca8081_napa_reset(void)
+{
+	int napa_gpio[2] = {-1, -1}, napa_gpio_cnt, i;
+	unsigned int *napa_gpio_base;
+	uint32_t cfg;
+
+	napa_gpio_cnt = get_napa_gpio(napa_gpio);
+	if (napa_gpio_cnt >= 1) {
+		for (i = 0; i < napa_gpio_cnt; i++) {
+			if (napa_gpio[i] >= 0) {
+				napa_gpio_base =
+					(unsigned int *)GPIO_CONFIG_ADDR(
+								napa_gpio[i]);
+				cfg = GPIO_OE | GPIO_DRV_8_MA | GPIO_PULL_UP;
+				writel(cfg, napa_gpio_base);
+				mdelay(100);
+				gpio_set_value(napa_gpio[i], 0x1);
+			}
 		}
 	}
 }

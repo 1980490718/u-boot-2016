@@ -172,6 +172,7 @@
 		qca808x_gpio = <51>;
 		qca808x_gpio_cnt = <1>;
 		napa_gpio = <22>;
+		napa_gpio_cnt = <1>;
 		qca8084_switch_enable = <1>;
 
 		mdio_gpio {
