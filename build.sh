@@ -1,15 +1,31 @@
 #!/bin/bash
 
+# Set cross-compile toolchain path (one level up from staging_dir)
+export ARCH=arm
+export PATH=$(realpath .)/../staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin:$PATH
+export CROSS_COMPILE=arm-openwrt-linux-
+export STAGING_DIR=$(realpath .)/../staging_dir/
+export HOSTLDFLAGS=-L$STAGING_DIR/usr/lib\ -znow\ -zrelro\ -pie
+export TARGETCC=arm-openwrt-linux-gcc
+
+# Create bin directory if it doesn't exist
+ensure_bin_directory() {
+    if [ ! -d "bin" ]; then
+        echo "Creating bin directory..."
+        mkdir -p bin
+    fi
+}
+
 # Clean function
 if [ "$1" = "clean_all" ]; then
     echo "Delete old u-boot files"
     # Remove all possible output files
-    rm -f openwrt-ipq*
+    rm -f bin/openwrt-ipq*
     exit 0
 elif [ "$1" = "clean" ]; then
     echo "Delete old u-boot files"
     # Remove all possible output files
-    rm -f openwrt-ipq*
+    rm -f bin/openwrt-ipq*
     echo "Deep clean by .gitignore rules"
     find . -type f \
         \( \
@@ -47,6 +63,7 @@ elif [ "$1" = "clean" ]; then
     rm -rf \
         .stgit-edit.txt \
         .gdb_history \
+        .u-boot.* \
         arch/arm/dts/dtbtable.S \
         httpd/fsdata.c \
         tools/mbn_tools.pyc \
@@ -74,13 +91,8 @@ if [ ! -f "configs/${DEFCONFIG}" ]; then
     exit 1
 fi
 
-# Set cross-compile toolchain path (one level up from staging_dir)
-export ARCH=arm
-export PATH=$(realpath .)/../staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin:$PATH
-export CROSS_COMPILE=arm-openwrt-linux-
-export STAGING_DIR=$(realpath .)/../staging_dir/
-export HOSTLDFLAGS=-L$STAGING_DIR/usr/lib\ -znow\ -zrelro\ -pie
-export TARGETCC=arm-openwrt-linux-gcc
+# Ensure bin directory exists and is empty
+ensure_bin_directory
 
 # Clean previous build artifacts
 make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE clean
@@ -103,8 +115,8 @@ case $IPQ_TYPE in
     ipq40xx|ipq5018|ipq806x)
         echo "IPQ type $IPQ_TYPE uses strip to generate elf file"
         # Use strip to generate elf file
-        ${CROSS_COMPILE}strip u-boot -o "openwrt-${IPQ_TYPE}-u-boot.elf"
-        OUTPUT_FILE="openwrt-${IPQ_TYPE}-u-boot.elf"
+        ${CROSS_COMPILE}strip u-boot -o "bin/openwrt-${IPQ_TYPE}-u-boot.elf"
+        OUTPUT_FILE="bin/openwrt-${IPQ_TYPE}-u-boot.elf"
         ;;
     ipq6018|ipq807x|ipq9574|ipq5332)
         echo "IPQ type $IPQ_TYPE uses strip to generate mbn file"
@@ -120,8 +132,8 @@ case $IPQ_TYPE in
         # Convert elf format to mbn format
         echo "Convert elf to mbn"
         if [ -f "tools/elftombn.py" ]; then
-            python2.7 tools/elftombn.py -f ./u-boot.strip -o "./openwrt-${IPQ_TYPE}-u-boot.mbn" -v 6
-            OUTPUT_FILE="openwrt-${IPQ_TYPE}-u-boot.mbn"
+            python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${IPQ_TYPE}-u-boot.mbn" -v 6
+            OUTPUT_FILE="bin/openwrt-${IPQ_TYPE}-u-boot.mbn"
         else
             echo "Error: tools/elftombn.py script not found"
             exit 1
