@@ -32,7 +32,8 @@
 
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ_RUMI) \
 	|| defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ5018) \
-	|| defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+	|| defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574) \
+	|| defined(CONFIG_IPQ806X)
 #define QPIC_EBI2ND_BASE		(0x079b0000)
 #else
 #error "QPIC NAND not supported"
@@ -222,6 +223,7 @@
  * |BRWD  |RSVD| BP2| BP1| BP0| INV | CMP |RSVD |
  * |      |    |    |    |    |     |     |	|
  * |______|____|____|____|____|_____|_____|_____|
+ *
  *
  * NOTE: RSVD = Reserved.
  *
