@@ -22,6 +22,7 @@
 #include <fdtdec.h>
 #include <mmc.h>
 #include <sdhci.h>
+#include <config.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -100,6 +101,7 @@ __weak void sdi_disable(void)
 }
 
 #ifdef CONFIG_SMP_CMD_SUPPORT
+#if defined(CONFIG_IPQ807x) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
 __weak int is_secondary_core_off(unsigned int cpuid)
 {
 	return __invoke_psci_fn_smc(ARM_PSCI_TZ_FN_AFFINITY_INFO, cpuid, 0, 0);
@@ -123,6 +125,24 @@ __weak int bring_sec_core_up(unsigned int cpuid, unsigned int entry, unsigned in
 	printf("Enabled CPU%d via psci successfully!\n", cpuid);
 	return CMD_RET_SUCCESS;
 }
+#else
+__weak int is_secondary_core_off(unsigned int cpuid)
+{
+	printf("PSCI not supported on this platform\n");
+	return -1;
+}
+
+__weak void bring_secondary_core_down(unsigned int state)
+{
+	printf("PSCI not supported on this platform\n");
+}
+
+__weak int bring_sec_core_up(unsigned int cpuid, unsigned int entry, unsigned int arg)
+{
+	printf("PSCI not supported on this platform\n");
+	return CMD_RET_FAILURE;
+}
+#endif
 #endif
 
 #define SECURE_BOARD_MAGIC	0x5ECB001

@@ -1154,10 +1154,12 @@ int ft_board_setup(void *blob, bd_t *bd)
 		if (ret)
 			printf("%s: cannot set flash type %d\n", __func__, ret);
 	}
+#if defined(CONFIG_IPQ807x) || defined(CONFIG_IPQ6018)
 	if (is_atf_enabled()) {
 		fdt_fixup_set_qca_cold_reboot_enable(blob);
 		fdt_fixup_for_atf(blob);
 	}
+#endif
 
 	dcache_disable();
 	ipq_fdt_fixup_socinfo(blob);
