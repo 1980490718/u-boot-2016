@@ -60,7 +60,7 @@ if [ $# -eq 0 ]; then
     echo "       $0 clean      # Clean build files and output files"
     echo "       $0 clean_all  # Clean only output files"
     echo "Example: $0 ipq807x"
-    echo "Supported IPQ types: ipq40xx, ipq5018, ipq6018, ipq806x, ipq807x"
+    echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x"
     exit 1
 fi
 
@@ -110,14 +110,14 @@ case $IPQ_TYPE in
         echo "IPQ type $IPQ_TYPE uses strip to generate mbn file"
         # Use strip to generate elf file
         ${CROSS_COMPILE}strip u-boot -o u-boot.strip
-        
+
         # Check if strip was successful
         if [ ! -f "u-boot.strip" ]; then
             echo "Error: strip processing failed"
             exit 1
         fi
-        
-        # 转换为mbn格式
+
+        # Convert elf format to mbn format
         echo "Convert elf to mbn"
         if [ -f "tools/elftombn.py" ]; then
             python2.7 tools/elftombn.py -f ./u-boot.strip -o "./openwrt-${IPQ_TYPE}-u-boot.mbn" -v 6
