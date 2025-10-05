@@ -37,6 +37,11 @@
 /boards.cfg
 
 #
+# bin folder
+#
+/bin/
+
+#
 # git files that we don't want to ignore even it they are dot-files
 #
 !.gitignore
@@ -85,5 +90,6 @@ GTAGS
 *~
 \#*#
 
-# Exclude dtbtable.S file
+# Exclude file
 arch/arm/dts/dtbtable.S
+tools/mbn_tools.pyc
