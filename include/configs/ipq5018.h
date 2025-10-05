@@ -345,9 +345,11 @@ extern loff_t board_env_size;
 #define CONFIG_GZIP_COMPRESSED
 
 /* Enable DTB compress */
+/*
 #define CONFIG_COMPRESSED_DTB_MAX_SIZE		0x40000
 #define CONFIG_COMPRESSED_DTB_BASE		CONFIG_SYS_TEXT_BASE -\
 						CONFIG_COMPRESSED_DTB_MAX_SIZE
+*/
 #endif
 
 #define CONFIG_FDT_FIXUP_PARTITIONS
