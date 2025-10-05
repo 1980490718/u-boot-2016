@@ -10,149 +10,283 @@ export TARGETCC=arm-openwrt-linux-gcc
 
 # Create bin directory if it doesn't exist
 ensure_bin_directory() {
-    if [ ! -d "bin" ]; then
-        echo "Creating bin directory..."
-        mkdir -p bin
-    fi
+	if [ ! -d "bin" ]; then
+		echo "Creating bin directory..."
+		mkdir -p bin
+	fi
 }
 
 # Clean function
 if [ "$1" = "clean_all" ]; then
-    echo "Delete old u-boot files"
-    # Remove all possible output files
-    rm -f bin/openwrt-ipq*
-    exit 0
+	echo "Delete old u-boot files"
+	# Remove all possible output files
+	rm -f bin/openwrt-ipq*
+	exit 0
 elif [ "$1" = "clean" ]; then
-    echo "Delete old u-boot files"
-    # Remove all possible output files
-    rm -f bin/openwrt-ipq*
-    echo "Deep clean by .gitignore rules"
-    find . -type f \
-        \( \
-            -name '*.o' -o \
-            -name '*.o.*' -o \
-            -name '*.a' -o \
-            -name '*.s' -o \
-            -name '*.su' -o \
-            -name '*.mod.c' -o \
-            -name '*.i' -o \
-            -name '*.lst' -o \
-            -name '*.order' -o \
-            -name '*.elf' -o \
-            -name '*.swp' -o \
-            -name '*.bin' -o \
-            -name '*.patch' -o \
-            -name '*.cfgtmp' -o \
-            -name '*.exe' -o \
-            -name 'MLO*' -o \
-            -name 'SPL' -o \
-            -name 'System.map' -o \
-            -name 'LOG' -o \
-            -name '*.orig' -o \
-            -name '*~' -o \
-            -name '#*#' -o \
-            -name 'cscope.*' -o \
-            -name 'tags' -o \
-            -name 'ctags' -o \
-            -name 'etags' -o \
-            -name 'GPATH' -o \
-            -name 'GRTAGS' -o \
-            -name 'GSYMS' -o \
-            -name 'GTAGS' \
-        \) -delete
-    rm -rf \
-        .stgit-edit.txt \
-        .gdb_history \
-        .u-boot.* \
-        arch/arm/dts/dtbtable.S \
-        httpd/fsdata.c \
-        tools/mbn_tools.pyc \
-        u-boot*
-    exit 0
+	echo "Delete old u-boot files"
+	# Remove all possible output files
+	rm -f bin/openwrt-ipq*
+	echo "Deep clean by .gitignore rules"
+	find . -type f \
+		\( \
+			-name '*.o' -o \
+			-name '*.o.*' -o \
+			-name '*.a' -o \
+			-name '*.s' -o \
+			-name '*.su' -o \
+			-name '*.mod.c' -o \
+			-name '*.i' -o \
+			-name '*.lst' -o \
+			-name '*.order' -o \
+			-name '*.elf' -o \
+			-name '*.swp' -o \
+			-name '*.bin' -o \
+			-name '*.patch' -o \
+			-name '*.cfgtmp' -o \
+			-name '*.exe' -o \
+			-name 'MLO*' -o \
+			-name 'SPL' -o \
+			-name 'System.map' -o \
+			-name 'LOG' -o \
+			-name '*.orig' -o \
+			-name '*~' -o \
+			-name '#*#' -o \
+			-name 'cscope.*' -o \
+			-name 'tags' -o \
+			-name 'ctags' -o \
+			-name 'etags' -o \
+			-name 'GPATH' -o \
+			-name 'GRTAGS' -o \
+			-name 'GSYMS' -o \
+			-name 'GTAGS' \
+		\) -delete
+	rm -rf \
+		.stgit-edit.txt \
+		.gdb_history \
+		.u-boot.* \
+		arch/arm/dts/dtbtable.S \
+		httpd/fsdata.c \
+		tools/mbn_tools.pyc \
+		u-boot*
+	exit 0
 fi
 
 # Check if IPQ type parameter is provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <ipq_type>"
-    echo "       $0 clean      # Clean build files and output files"
-    echo "       $0 clean_all  # Clean only output files"
-    echo "Example: $0 ipq807x"
-    echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x"
-    exit 1
+	echo "Usage: $0 <ipq_type>                 # Build all boards for the IPQ type"
+	echo "       $0 <board_name>               # Build single specified board"
+	echo "       $0 clean                      # Clean build files and output files"
+	echo "       $0 clean_all                  # Clean only output files"
+	echo ""
+	echo "Examples:"
+	echo "  $0 ipq6018                         # Build all ipq6018 boards"
+	echo "  $0 ipq6018_tiny                    # Build only ipq6018_tiny board"
+	echo "  $0 ipq6018_m2                      # Build only ipq6018_m2 board"
+	echo "  $0 ipq807x                         # Build all ipq807x boards"
+	echo ""
+	echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x"
+	exit 1
 fi
 
-IPQ_TYPE=$1
-DEFCONFIG="${IPQ_TYPE}_defconfig"
+TARGET=$1
 
-# Check if corresponding defconfig file exists
-if [ ! -f "configs/${DEFCONFIG}" ]; then
-    echo "Error: Config file configs/${DEFCONFIG} not found"
-    echo "Please check if the IPQ type is correct and the corresponding defconfig file exists"
-    exit 1
-fi
+# Function to get IPQ type from board name
+get_ipq_type() {
+	local board_name=$1
+	# Remove everything after the first underscore to get base IPQ type
+	echo "${board_name%%_*}"
+}
 
-# Ensure bin directory exists and is empty
+# Function to build a single board
+build_single_board() {
+	local DEFCONFIG=$1
+	local CONFIG_NAME="${DEFCONFIG%_defconfig}"
+	local IPQ_TYPE=$(get_ipq_type "$CONFIG_NAME")
+
+	echo "================================================"
+	echo "Building single board: $DEFCONFIG"
+	echo "================================================"
+
+	# Clean previous build artifacts
+	make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE clean
+
+	# Configure U-Boot
+	echo "Using config file: $DEFCONFIG"
+	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $DEFCONFIG; then
+		echo "Error: Config failed for $DEFCONFIG"
+		return 1
+	fi
+
+	# Compile U-Boot
+	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j$(nproc); then
+		echo "Error: Compilation failed for $DEFCONFIG"
+		return 1
+	fi
+
+	# Check if compilation was successful
+	if [ ! -f "u-boot" ]; then
+		echo "Error: u-boot file not generated for $DEFCONFIG"
+		return 1
+	fi
+
+	# Handle different IPQ types
+	case $IPQ_TYPE in
+		ipq40xx|ipq5018|ipq806x)
+			echo "IPQ type $IPQ_TYPE uses strip to generate elf file"
+			# Use strip to generate elf file
+			${CROSS_COMPILE}strip u-boot -o "bin/openwrt-${CONFIG_NAME}-u-boot.elf"
+			OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.elf"
+			;;
+		ipq6018|ipq807x|ipq9574|ipq5332)
+			echo "IPQ type $IPQ_TYPE uses strip to generate mbn file"
+			# Use strip to generate elf file
+			${CROSS_COMPILE}strip u-boot -o u-boot.strip
+
+			# Check if strip was successful
+			if [ ! -f "u-boot.strip" ]; then
+				echo "Error: strip processing failed for $DEFCONFIG"
+				return 1
+			fi
+
+			# Convert elf format to mbn format
+			echo "Convert elf to mbn"
+			if [ -f "tools/elftombn.py" ]; then
+				# Generate the mbn file
+				python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6
+				OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
+
+				# Clean up additional files generated by elftombn.py
+				echo "Cleaning up additional files generated by elftombn.py..."
+				rm -f "bin/openwrt-${CONFIG_NAME}-u-boot_combined_hash.mbn" \
+					  "bin/openwrt-${CONFIG_NAME}-u-boot.hash" \
+					  "bin/openwrt-${CONFIG_NAME}-u-boot_hash.hd" \
+					  "bin/openwrt-${CONFIG_NAME}-u-boot_phdr.pbn"
+			else
+				echo "Error: tools/elftombn.py script not found"
+				return 1
+			fi
+			;;
+		*)
+			echo "Error: unsupported IPQ type: $IPQ_TYPE"
+			return 1
+			;;
+	esac
+
+	# Clean up intermediate files
+	rm -f u-boot.strip
+
+	# Check if the final output file exists
+	if [ -f "$OUTPUT_FILE" ]; then
+		echo "U-Boot compilation successful: $OUTPUT_FILE"
+		return 0
+	else
+		echo "Error: final output file generation failed: $OUTPUT_FILE"
+		return 1
+	fi
+}
+
+# Ensure bin directory exists
 ensure_bin_directory
 
-# Clean previous build artifacts
-make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE clean
+# Determine build mode
+if [ -f "configs/${TARGET}_defconfig" ]; then
+	# Single board build mode
+	echo "Single board build mode: $TARGET"
+	DEFCONFIG="${TARGET}_defconfig"
 
-# Configure U-Boot
-echo "Using config file: $DEFCONFIG"
-make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $DEFCONFIG
+	# Clean existing output files for this specific board before starting
+	CONFIG_NAME="${DEFCONFIG%_defconfig}"
+	echo "Cleaning existing output files for $CONFIG_NAME..."
+	rm -f "bin/openwrt-${CONFIG_NAME}"*
 
-# Compile U-Boot (-j option can be adjusted based on CPU cores)
-make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j$(nproc)
+	# Build single board
+	if build_single_board "$DEFCONFIG"; then
+		echo "Build completed successfully: bin/openwrt-${CONFIG_NAME}-u-boot.*"
+	else
+		echo "Build failed for $DEFCONFIG"
+		exit 1
+	fi
 
-# Check if compilation was successful
-if [ ! -f "u-boot" ]; then
-    echo "Error: u-boot compilation failed"
-    exit 1
-fi
+elif [ -n "$(find configs -name "${TARGET}*_defconfig" -print -quit)" ]; then
+	# All boards build mode
+	echo "All boards build mode for IPQ type: $TARGET"
 
-# Handle different IPQ types
-case $IPQ_TYPE in
-    ipq40xx|ipq5018|ipq806x)
-        echo "IPQ type $IPQ_TYPE uses strip to generate elf file"
-        # Use strip to generate elf file
-        ${CROSS_COMPILE}strip u-boot -o "bin/openwrt-${IPQ_TYPE}-u-boot.elf"
-        OUTPUT_FILE="bin/openwrt-${IPQ_TYPE}-u-boot.elf"
-        ;;
-    ipq6018|ipq807x|ipq9574|ipq5332)
-        echo "IPQ type $IPQ_TYPE uses strip to generate mbn file"
-        # Use strip to generate elf file
-        ${CROSS_COMPILE}strip u-boot -o u-boot.strip
+	# Find all related defconfig files for the given IPQ type
+	DEFCONFIGS=()
+	echo "Searching for defconfig files matching: configs/${TARGET}*_defconfig"
+	for config in configs/${TARGET}*_defconfig; do
+		if [ -f "$config" ]; then
+			DEFCONFIGS+=("$(basename $config)")
+			echo "  Found: $(basename $config)"
+		fi
+	done
 
-        # Check if strip was successful
-        if [ ! -f "u-boot.strip" ]; then
-            echo "Error: strip processing failed"
-            exit 1
-        fi
+	# Check if any defconfig files were found
+	if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
+		echo "Error: No defconfig files found for IPQ type: $TARGET"
+		echo "Please check if the IPQ type is correct and corresponding defconfig files exist"
+		exit 1
+	fi
 
-        # Convert elf format to mbn format
-        echo "Convert elf to mbn"
-        if [ -f "tools/elftombn.py" ]; then
-            python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${IPQ_TYPE}-u-boot.mbn" -v 6
-            OUTPUT_FILE="bin/openwrt-${IPQ_TYPE}-u-boot.mbn"
-        else
-            echo "Error: tools/elftombn.py script not found"
-            exit 1
-        fi
-        ;;
-    *)
-        echo "Error: unsupported IPQ type: $IPQ_TYPE"
-        exit 1
-        ;;
-esac
+	echo ""
+	echo "Found ${#DEFCONFIGS[@]} defconfig files for $TARGET:"
+	printf '  - %s\n' "${DEFCONFIGS[@]}"
+	echo ""
 
-# Clean up intermediate files
-rm -f u-boot.strip
+	# Clean existing output files for this IPQ type before starting
+	echo "Cleaning existing output files for $TARGET..."
+	rm -f bin/openwrt-${TARGET}*
 
-# Check if the final output file exists
-if [ -f "$OUTPUT_FILE" ]; then
-    echo "U-Boot compilation successful: $OUTPUT_FILE"
-    echo "Build completed! Output file: $OUTPUT_FILE"
+	# Track build results
+	BUILD_SUCCESS=()
+	BUILD_FAILED=()
+
+	# Build each defconfig
+	for DEFCONFIG in "${DEFCONFIGS[@]}"; do
+		CONFIG_NAME="${DEFCONFIG%_defconfig}"
+
+		if build_single_board "$DEFCONFIG"; then
+			BUILD_SUCCESS+=("$DEFCONFIG")
+		else
+			BUILD_FAILED+=("$DEFCONFIG")
+		fi
+		echo ""
+	done
+
+	# Print build summary
+	echo "================================================"
+	echo "Build Summary"
+	echo "================================================"
+	echo "Successful builds:"
+	if [ ${#BUILD_SUCCESS[@]} -gt 0 ]; then
+		printf '  - %s\n' "${BUILD_SUCCESS[@]}"
+	else
+		echo "  None"
+	fi
+
+	echo ""
+	echo "Failed builds:"
+	if [ ${#BUILD_FAILED[@]} -gt 0 ]; then
+		printf '  - %s\n' "${BUILD_FAILED[@]}"
+	else
+		echo "  None"
+	fi
+
+	echo ""
+	# List all files in bin directory after build
+	echo "Files in bin directory:"
+	ls -la bin/ 2>/dev/null || echo "bin directory is empty"
+
+	echo ""
+	if [ ${#BUILD_FAILED[@]} -eq 0 ]; then
+		echo "All builds completed successfully!"
+		echo "Output files are in the 'bin' directory"
+	else
+		echo "Some builds failed. Check the logs above for details."
+		exit 1
+	fi
 else
-    echo "Error: final output file generation failed: $OUTPUT_FILE"
-    exit 1
+	echo "Error: No defconfig files found for: $TARGET"
+	echo "Please check if the board name or IPQ type is correct"
+	exit 1
 fi
