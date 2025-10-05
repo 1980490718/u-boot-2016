@@ -79,7 +79,11 @@ PLATFORM_LIBS := arch/arm/lib/eabi_compat.o \
 endif
 
 # needed for relocation
+ifdef CONFIG_ARCH_IPQ40xx
+LDFLAGS_u-boot += -pie -z max-page-size=0x400 --gc-sections -s -x
+else
 LDFLAGS_u-boot += -pie
+endif
 
 #
 # FIXME: binutils versions < 2.22 have a bug in the assembler where
