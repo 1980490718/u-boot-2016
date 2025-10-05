@@ -16,59 +16,70 @@ ensure_bin_directory() {
 	fi
 }
 
-# Clean function
-if [ "$1" = "clean_all" ]; then
-	echo "Delete old u-boot files"
-	# Remove all possible output files
-	rm -f bin/openwrt-ipq*
+# Command validation and cleanup functions
+if [ $# -gt 0 ]; then
+	# First check for possible typos in cleanup commands
+	if [[ "$1" == *clean* && "$1" != "clean" && "$1" != "clean_all" ]]; then
+		echo "Error: Invalid cleanup command '$1'"
+		echo "Did you mean one of these? clean, clean_all"
+		exit 1
+	fi
+
+	# Then check for valid cleanup commands
+	if [ "$1" = "clean_all" ]; then
+		echo "Delete old u-boot files"
+		# Remove all possible output files
+		rm -f bin/openwrt-ipq*
 exit 0
-elif [ "$1" = "clean" ]; then
-	echo "Delete old u-boot files"
-	# Remove all possible output files
-	rm -f bin/openwrt-ipq*
+	elif [ "$1" = "clean" ]; then
+		echo "Delete old u-boot files"
+		# Remove all possible output files
+		rm -f bin/openwrt-ipq*
 echo "Deep clean by .gitignore rules"
-	find . -type f \
-		\( \
-			-name '*.o' -o \
-			-name '*.o.*' -o \
-			-name '*.a' -o \
-			-name '*.s' -o \
-			-name '*.su' -o \
-			-name '*.mod.c' -o \
-			-name '*.i' -o \
-			-name '*.lst' -o \
-			-name '*.order' -o \
-			-name '*.elf' -o \
-			-name '*.swp' -o \
-			-name '*.bin' -o \
-			-name '*.patch' -o \
-			-name '*.cfgtmp' -o \
-			-name '*.exe' -o \
-			-name 'MLO*' -o \
-			-name 'SPL' -o \
-			-name 'System.map' -o \
-			-name 'LOG' -o \
-			-name '*.orig' -o \
-			-name '*~' -o \
-			-name '#*#' -o \
-			-name 'cscope.*' -o \
-			-name 'tags' -o \
-			-name 'ctags' -o \
-			-name 'etags' -o \
-			-name 'GPATH' -o \
-			-name 'GRTAGS' -o \
-			-name 'GSYMS' -o \
-			-name 'GTAGS' \
-		\) -delete
-	rm -rf \
-		.stgit-edit.txt \
-		.gdb_history \
-		.u-boot.* \
-		arch/arm/dts/dtbtable.S \
-		httpd/fsdata.c \
-		tools/mbn_tools.pyc \
-		u-boot*
+		find . -type f \
+			\( \
+				-name '.*.cmd' -o \
+				-name '*.o' -o \
+				-name '*.o.*' -o \
+				-name '*.a' -o \
+				-name '*.s' -o \
+				-name '*.su' -o \
+				-name '*.mod.c' -o \
+				-name '*.i' -o \
+				-name '*.lst' -o \
+				-name '*.order' -o \
+				-name '*.elf' -o \
+				-name '*.swp' -o \
+				-name '*.bin' -o \
+				-name '*.patch' -o \
+				-name '*.cfgtmp' -o \
+				-name '*.exe' -o \
+				-name 'MLO*' -o \
+				-name 'SPL' -o \
+				-name 'System.map' -o \
+				-name 'LOG' -o \
+				-name '*.orig' -o \
+				-name '*~' -o \
+				-name '#*#' -o \
+				-name 'cscope.*' -o \
+				-name 'tags' -o \
+				-name 'ctags' -o \
+				-name 'etags' -o \
+				-name 'GPATH' -o \
+				-name 'GRTAGS' -o \
+				-name 'GSYMS' -o \
+				-name 'GTAGS' \
+			\) -delete
+		rm -rf \
+			.stgit-edit.txt \
+			.gdb_history \
+			.u-boot.* \
+			arch/arm/dts/dtbtable.S \
+			httpd/fsdata.c \
+			tools/mbn_tools.pyc \
+			u-boot*
 exit 0
+	fi
 fi
 
 # Check if IPQ type parameter is provided
@@ -87,80 +98,80 @@ fi
 DEFCONFIG_NAME=""
 HAS_DEFCONFIG_SUFFIX=false
 if [[ "$1" == *_defconfig ]]; then
-    # If parameter ends with _defconfig, use it directly
-    DEFCONFIG_NAME="$1"
-    BOARD_NAME=${1%_defconfig} # Remove _defconfig suffix
-    IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
-    HAS_DEFCONFIG_SUFFIX=true
+	# If parameter ends with _defconfig, use it directly
+	DEFCONFIG_NAME="$1"
+	BOARD_NAME=${1%_defconfig} # Remove _defconfig suffix
+	IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
+	HAS_DEFCONFIG_SUFFIX=true
 else
-    BOARD_NAME=$1
-    IPQ_TYPE=$1
+	BOARD_NAME=$1
+	IPQ_TYPE=$1
 fi
 
 # Find all related defconfig files for the given board or IPQ type
 DEFCONFIGS=()
 
-# Modification: If defconfig file is provided, use it first
+# If defconfig file is provided, use it first
 if [ "$HAS_DEFCONFIG_SUFFIX" = "true" ]; then
-    if [ -f "configs/$DEFCONFIG_NAME" ]; then
-        DEFCONFIGS=($DEFCONFIG_NAME)
-    else
-        echo "Error: Defconfig file not found: configs/$DEFCONFIG_NAME"
+	if [ -f "configs/$DEFCONFIG_NAME" ]; then
+		DEFCONFIGS=($DEFCONFIG_NAME)
+	else
+		echo "Error: Defconfig file not found: configs/$DEFCONFIG_NAME"
 exit 1
-    fi
+	fi
 else
-    # List of supported full IPQ types
-    SUPPORTED_IPQ_TYPES=(ipq40xx ipq5018 ipq5332 ipq6018 ipq806x ipq807x ipq9574)
+	# List of supported full IPQ types
+	SUPPORTED_IPQ_TYPES=(ipq40xx ipq5018 ipq5332 ipq6018 ipq806x ipq807x ipq9574)
 
-    # Check if input is a full IPQ type
-    IS_FULL_IPQ_TYPE=false
-    for ipq_type in "${SUPPORTED_IPQ_TYPES[@]}"; do
-	    if [ "$BOARD_NAME" = "$ipq_type" ]; then
-		    IS_FULL_IPQ_TYPE=true
-		    break
-	    fi
-    done
+	# Check if input is a full IPQ type
+	IS_FULL_IPQ_TYPE=false
+	for ipq_type in "${SUPPORTED_IPQ_TYPES[@]}"; do
+		if [ "$BOARD_NAME" = "$ipq_type" ]; then
+			IS_FULL_IPQ_TYPE=true
+			break
+		fi
+	done
 
-    # Modification: If input is a full IPQ type, compile all related configs
-    if [ "$IS_FULL_IPQ_TYPE" = "true" ]; then
-	    # Compile all related configs for this IPQ type
-	    for config in configs/${IPQ_TYPE}_*_defconfig; do
-		    if [ -f "$config" ]; then
-			    DEFCONFIGS+=($(basename $config))
-		    fi
-	    done
-	    for config in configs/${IPQ_TYPE}*_defconfig; do
-		    if [ -f "$config" ]; then
-			    # Avoid adding board-specific defconfig if it's already added
-			    if [[ ! " ${DEFCONFIGS[*]} " =~ " $(basename $config) " ]]; then
-				    DEFCONFIGS+=($(basename $config))
-			    fi
-		    fi
-	    done
-    else
-	    # Modification: Check if it's a specific board
-	    if [ -f "configs/${BOARD_NAME}_defconfig" ]; then
-		    # This is a specific board
-		    DEFCONFIGS=(${BOARD_NAME}_defconfig)
-		    # Extract IPQ type from board name (first part before underscore)
-		    IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
-	    else
-		    # Try to find all defconfig files for the given IPQ type
-		    for config in configs/${IPQ_TYPE}_*_defconfig; do
-			    if [ -f "$config" ]; then
-				    DEFCONFIGS+=($(basename $config))
-			    fi
-		    done
-		    # If no specific board and no IPQ type matches, check if it's a known IPQ type
-		    if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
-			    for config in configs/${IPQ_TYPE}*_defconfig; do
-				    if [ -f "$config" ]; then
-					    DEFCONFIGS+=($(basename $config))
-				    fi
-			    done
-		    fi
-	    fi
-    fi
+	# If input is a full IPQ type, compile all related configs
+	if [ "$IS_FULL_IPQ_TYPE" = "true" ]; then
+		# Compile all related configs for this IPQ type
+		for config in configs/${IPQ_TYPE}_*_defconfig; do
+			if [ -f "$config" ]; then
+				DEFCONFIGS+=($(basename $config))
+			fi
+		done
+		for config in configs/${IPQ_TYPE}*_defconfig; do
+			if [ -f "$config" ]; then
+				# Avoid adding board-specific defconfig if it's already added
+				if [[ ! " ${DEFCONFIGS[*]} " =~ " $(basename $config) " ]]; then
+					DEFCONFIGS+=($(basename $config))
+				fi
+			fi
+		done
+	else
+		# Check if it's a specific board
+		if [ -f "configs/${BOARD_NAME}_defconfig" ]; then
+			# This is a specific board
+			DEFCONFIGS=(${BOARD_NAME}_defconfig)
+			# Extract IPQ type from board name (first part before underscore)
+			IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
+		else
+			# Try to find all defconfig files for the given IPQ type
+			for config in configs/${IPQ_TYPE}_*_defconfig; do
+				if [ -f "$config" ]; then
+					DEFCONFIGS+=($(basename $config))
+				fi
+			done
+			# If no specific board and no IPQ type matches, check if it's a known IPQ type
+			if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
+				for config in configs/${IPQ_TYPE}*_defconfig; do
+					if [ -f "$config" ]; then
+						DEFCONFIGS+=($(basename $config))
+					fi
+				done
+			fi
+		fi
+	fi
 fi
 
 # Check if any defconfig files were found
