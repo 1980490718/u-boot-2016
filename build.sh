@@ -21,12 +21,12 @@ if [ "$1" = "clean_all" ]; then
 	echo "Delete old u-boot files"
 	# Remove all possible output files
 	rm -f bin/openwrt-ipq*
-	exit 0
+exit 0
 elif [ "$1" = "clean" ]; then
 	echo "Delete old u-boot files"
 	# Remove all possible output files
 	rm -f bin/openwrt-ipq*
-	echo "Deep clean by .gitignore rules"
+echo "Deep clean by .gitignore rules"
 	find . -type f \
 		\( \
 			-name '*.o' -o \
@@ -68,43 +68,133 @@ elif [ "$1" = "clean" ]; then
 		httpd/fsdata.c \
 		tools/mbn_tools.pyc \
 		u-boot*
-	exit 0
+exit 0
 fi
 
 # Check if IPQ type parameter is provided
 if [ $# -eq 0 ]; then
-	echo "Usage: $0 <ipq_type>                 # Build all boards for the IPQ type"
-	echo "       $0 <board_name>               # Build single specified board"
-	echo "       $0 clean                      # Clean build files and output files"
-	echo "       $0 clean_all                  # Clean only output files"
-	echo ""
-	echo "Examples:"
-	echo "  $0 ipq6018                         # Build all ipq6018 boards"
-	echo "  $0 ipq6018_tiny                    # Build only ipq6018_tiny board"
-	echo "  $0 ipq6018_m2                      # Build only ipq6018_m2 board"
-	echo "  $0 ipq807x                         # Build all ipq807x boards"
-	echo ""
-	echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x"
-	exit 1
+	echo "Usage: $0 <ipq_type|board_name|defconfig_file>"
+	echo "       $0 clean      # Clean build files and output files"
+	echo "       $0 clean_all  # Clean only output files"
+	echo "Example: $0 ipq6018"               # Build all ipq6018 related boards
+	echo "Example: $0 ipq6018_tiny"          # Build specific board
+	echo "Example: $0 ipq40xx_defconfig"     # Build specific defconfig file
+	echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x, ipq9574"
+exit 1
 fi
 
-TARGET=$1
+# Handle defconfig files first
+DEFCONFIG_NAME=""
+HAS_DEFCONFIG_SUFFIX=false
+if [[ "$1" == *_defconfig ]]; then
+    # If parameter ends with _defconfig, use it directly
+    DEFCONFIG_NAME="$1"
+    BOARD_NAME=${1%_defconfig} # Remove _defconfig suffix
+    IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
+    HAS_DEFCONFIG_SUFFIX=true
+else
+    BOARD_NAME=$1
+    IPQ_TYPE=$1
+fi
 
-# Function to get IPQ type from board name
-get_ipq_type() {
-	local board_name=$1
-	# Remove everything after the first underscore to get base IPQ type
-	echo "${board_name%%_*}"
-}
+# Find all related defconfig files for the given board or IPQ type
+DEFCONFIGS=()
 
-# Function to build a single board
-build_single_board() {
-	local DEFCONFIG=$1
-	local CONFIG_NAME="${DEFCONFIG%_defconfig}"
-	local IPQ_TYPE=$(get_ipq_type "$CONFIG_NAME")
+# Modification: If defconfig file is provided, use it first
+if [ "$HAS_DEFCONFIG_SUFFIX" = "true" ]; then
+    if [ -f "configs/$DEFCONFIG_NAME" ]; then
+        DEFCONFIGS=($DEFCONFIG_NAME)
+    else
+        echo "Error: Defconfig file not found: configs/$DEFCONFIG_NAME"
+exit 1
+    fi
+else
+    # List of supported full IPQ types
+    SUPPORTED_IPQ_TYPES=(ipq40xx ipq5018 ipq5332 ipq6018 ipq806x ipq807x ipq9574)
 
+    # Check if input is a full IPQ type
+    IS_FULL_IPQ_TYPE=false
+    for ipq_type in "${SUPPORTED_IPQ_TYPES[@]}"; do
+	    if [ "$BOARD_NAME" = "$ipq_type" ]; then
+		    IS_FULL_IPQ_TYPE=true
+		    break
+	    fi
+    done
+
+    # Modification: If input is a full IPQ type, compile all related configs
+    if [ "$IS_FULL_IPQ_TYPE" = "true" ]; then
+	    # Compile all related configs for this IPQ type
+	    for config in configs/${IPQ_TYPE}_*_defconfig; do
+		    if [ -f "$config" ]; then
+			    DEFCONFIGS+=($(basename $config))
+		    fi
+	    done
+	    for config in configs/${IPQ_TYPE}*_defconfig; do
+		    if [ -f "$config" ]; then
+			    # Avoid adding board-specific defconfig if it's already added
+			    if [[ ! " ${DEFCONFIGS[*]} " =~ " $(basename $config) " ]]; then
+				    DEFCONFIGS+=($(basename $config))
+			    fi
+		    fi
+	    done
+    else
+	    # Modification: Check if it's a specific board
+	    if [ -f "configs/${BOARD_NAME}_defconfig" ]; then
+		    # This is a specific board
+		    DEFCONFIGS=(${BOARD_NAME}_defconfig)
+		    # Extract IPQ type from board name (first part before underscore)
+		    IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
+	    else
+		    # Try to find all defconfig files for the given IPQ type
+		    for config in configs/${IPQ_TYPE}_*_defconfig; do
+			    if [ -f "$config" ]; then
+				    DEFCONFIGS+=($(basename $config))
+			    fi
+		    done
+		    # If no specific board and no IPQ type matches, check if it's a known IPQ type
+		    if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
+			    for config in configs/${IPQ_TYPE}*_defconfig; do
+				    if [ -f "$config" ]; then
+					    DEFCONFIGS+=($(basename $config))
+				    fi
+			    done
+		    fi
+	    fi
+    fi
+fi
+
+# Check if any defconfig files were found
+if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
+	echo "Error: No defconfig files found for board or IPQ type: $BOARD_NAME"
+	echo "Please check if the board name or IPQ type is correct and corresponding defconfig files exist"
+exit 1
+fi
+
+echo "Found ${#DEFCONFIGS[@]} defconfig files for $BOARD_NAME (IPQ type: $IPQ_TYPE):"
+printf '  - %s\n' "${DEFCONFIGS[@]}"
+echo ""
+
+# Ensure bin directory exists
+ensure_bin_directory
+
+# Clean existing output files for this board or IPQ type before starting
+echo "Cleaning existing output files for $BOARD_NAME..."
+rm -f bin/openwrt-${BOARD_NAME}*
+
+# If it's a full IPQ type build, also clean all files for that IPQ type
+if [ "$BOARD_NAME" = "$IPQ_TYPE" ] && [ "$HAS_DEFCONFIG_SUFFIX" = "false" ]; then
+	rm -f bin/openwrt-${IPQ_TYPE}*
+fi
+
+# Track build results
+BUILD_SUCCESS=()
+BUILD_FAILED=()
+
+# Build each defconfig
+for DEFCONFIG in "${DEFCONFIGS[@]}"; do
+	CONFIG_NAME="${DEFCONFIG%_defconfig}"
 	echo "================================================"
-	echo "Building single board: $DEFCONFIG"
+	echo "Building: $DEFCONFIG"
 	echo "================================================"
 
 	# Clean previous build artifacts
@@ -114,19 +204,22 @@ build_single_board() {
 	echo "Using config file: $DEFCONFIG"
 	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $DEFCONFIG; then
 		echo "Error: Config failed for $DEFCONFIG"
-		return 1
+		BUILD_FAILED+=("$DEFCONFIG")
+		continue
 	fi
 
 	# Compile U-Boot
 	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j$(nproc); then
 		echo "Error: Compilation failed for $DEFCONFIG"
-		return 1
+		BUILD_FAILED+=($DEFCONFIG)
+		continue
 	fi
 
 	# Check if compilation was successful
 	if [ ! -f "u-boot" ]; then
 		echo "Error: u-boot file not generated for $DEFCONFIG"
-		return 1
+		BUILD_FAILED+=($DEFCONFIG)
+		continue
 	fi
 
 	# Handle different IPQ types
@@ -145,7 +238,8 @@ build_single_board() {
 			# Check if strip was successful
 			if [ ! -f "u-boot.strip" ]; then
 				echo "Error: strip processing failed for $DEFCONFIG"
-				return 1
+				BUILD_FAILED+=($DEFCONFIG)
+				continue
 			fi
 
 			# Convert elf format to mbn format
@@ -163,12 +257,14 @@ build_single_board() {
 					  "bin/openwrt-${CONFIG_NAME}-u-boot_phdr.pbn"
 			else
 				echo "Error: tools/elftombn.py script not found"
-				return 1
+				BUILD_FAILED+=($DEFCONFIG)
+				continue
 			fi
 			;;
 		*)
 			echo "Error: unsupported IPQ type: $IPQ_TYPE"
-			return 1
+			BUILD_FAILED+=($DEFCONFIG)
+			continue
 			;;
 	esac
 
@@ -178,115 +274,43 @@ build_single_board() {
 	# Check if the final output file exists
 	if [ -f "$OUTPUT_FILE" ]; then
 		echo "U-Boot compilation successful: $OUTPUT_FILE"
-		return 0
+		BUILD_SUCCESS+=("$DEFCONFIG -> $OUTPUT_FILE")
 	else
 		echo "Error: final output file generation failed: $OUTPUT_FILE"
-		return 1
+		BUILD_FAILED+=($DEFCONFIG)
 	fi
-}
-
-# Ensure bin directory exists
-ensure_bin_directory
-
-# Determine build mode
-if [ -f "configs/${TARGET}_defconfig" ]; then
-	# Single board build mode
-	echo "Single board build mode: $TARGET"
-	DEFCONFIG="${TARGET}_defconfig"
-
-	# Clean existing output files for this specific board before starting
-	CONFIG_NAME="${DEFCONFIG%_defconfig}"
-	echo "Cleaning existing output files for $CONFIG_NAME..."
-	rm -f "bin/openwrt-${CONFIG_NAME}"*
-
-	# Build single board
-	if build_single_board "$DEFCONFIG"; then
-		echo "Build completed successfully: bin/openwrt-${CONFIG_NAME}-u-boot.*"
-	else
-		echo "Build failed for $DEFCONFIG"
-		exit 1
-	fi
-
-elif [ -n "$(find configs -name "${TARGET}*_defconfig" -print -quit)" ]; then
-	# All boards build mode
-	echo "All boards build mode for IPQ type: $TARGET"
-
-	# Find all related defconfig files for the given IPQ type
-	DEFCONFIGS=()
-	echo "Searching for defconfig files matching: configs/${TARGET}*_defconfig"
-	for config in configs/${TARGET}*_defconfig; do
-		if [ -f "$config" ]; then
-			DEFCONFIGS+=("$(basename $config)")
-			echo "  Found: $(basename $config)"
-		fi
-	done
-
-	# Check if any defconfig files were found
-	if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
-		echo "Error: No defconfig files found for IPQ type: $TARGET"
-		echo "Please check if the IPQ type is correct and corresponding defconfig files exist"
-		exit 1
-	fi
-
 	echo ""
-	echo "Found ${#DEFCONFIGS[@]} defconfig files for $TARGET:"
-	printf '  - %s\n' "${DEFCONFIGS[@]}"
-	echo ""
+done
 
-	# Clean existing output files for this IPQ type before starting
-	echo "Cleaning existing output files for $TARGET..."
-	rm -f bin/openwrt-${TARGET}*
-
-	# Track build results
-	BUILD_SUCCESS=()
-	BUILD_FAILED=()
-
-	# Build each defconfig
-	for DEFCONFIG in "${DEFCONFIGS[@]}"; do
-		CONFIG_NAME="${DEFCONFIG%_defconfig}"
-
-		if build_single_board "$DEFCONFIG"; then
-			BUILD_SUCCESS+=("$DEFCONFIG")
-		else
-			BUILD_FAILED+=("$DEFCONFIG")
-		fi
-		echo ""
-	done
-
-	# Print build summary
-	echo "================================================"
-	echo "Build Summary"
-	echo "================================================"
-	echo "Successful builds:"
-	if [ ${#BUILD_SUCCESS[@]} -gt 0 ]; then
-		printf '  - %s\n' "${BUILD_SUCCESS[@]}"
-	else
-		echo "  None"
-	fi
-
-	echo ""
-	echo "Failed builds:"
-	if [ ${#BUILD_FAILED[@]} -gt 0 ]; then
-		printf '  - %s\n' "${BUILD_FAILED[@]}"
-	else
-		echo "  None"
-	fi
-
-	echo ""
-	# List all files in bin directory after build
-	echo "Files in bin directory:"
-	ls -la bin/ 2>/dev/null || echo "bin directory is empty"
-
-	echo ""
-	if [ ${#BUILD_FAILED[@]} -eq 0 ]; then
-		echo "All builds completed successfully!"
-		echo "Output files are in the 'bin' directory"
-	else
-		echo "Some builds failed. Check the logs above for details."
-		exit 1
-	fi
+# Print build summary
+echo "================================================"
+echo "Build Summary"
+echo "================================================"
+echo "Successful builds:"
+if [ ${#BUILD_SUCCESS[@]} -gt 0 ]; then
+	printf '  - %s\n' "${BUILD_SUCCESS[@]}"
 else
-	echo "Error: No defconfig files found for: $TARGET"
-	echo "Please check if the board name or IPQ type is correct"
-	exit 1
+	echo "  None"
+fi
+
+echo ""
+echo "Failed builds:"
+if [ ${#BUILD_FAILED[@]} -gt 0 ]; then
+	printf '  - %s\n' "${BUILD_FAILED[@]}"
+else
+	echo "  None"
+fi
+
+echo ""
+# List all files in bin directory after build
+echo "Files in bin directory:"
+ls -la bin/ 2>/dev/null || echo "bin directory is empty"
+
+echo ""
+if [ ${#BUILD_FAILED[@]} -eq 0 ]; then
+	echo "All builds completed successfully!"
+	echo "Output files are in the 'bin' directory"
+else
+	echo "Some builds failed. Check the logs above for details."
+exit 1
 fi
