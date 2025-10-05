@@ -84,3 +84,6 @@ GTAGS
 *.orig
 *~
 \#*#
+
+# Exclude dtbtable.S file
+arch/arm/dts/dtbtable.S
