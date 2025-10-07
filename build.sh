@@ -39,6 +39,7 @@ echo "Deep clean by .gitignore rules"
 		find . -type f \
 			\( \
 				-name '.*.cmd' -o \
+				-name '.*.tmp' -o \
 				-name '*.o' -o \
 				-name '*.o.*' -o \
 				-name '*.a' -o \
