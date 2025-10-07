@@ -779,7 +779,9 @@ int board_mmc_init(bd_t *bis)
 #endif
 
 	if (!ret && sfi->flash_type == SMEM_BOOT_MMC_FLASH) {
+#ifdef CONFIG_QCA_MMC
 		ret = board_mmc_env_init(mmc_host);
+#endif
 	}
 
 	return ret;
@@ -1764,6 +1766,7 @@ int apps_iscrashed(void)
  */
 int set_uuid_bootargs(char *boot_args, char *part_name, int buflen, bool gpt_flag)
 {
+#ifdef CONFIG_QCA_MMC
 	int ret, len;
 	block_dev_desc_t *blk_dev;
 	disk_partition_t disk_info;
@@ -1805,8 +1808,10 @@ int set_uuid_bootargs(char *boot_args, char *part_name, int buflen, bool gpt_fla
 
 	if (gpt_flag && strlcpy(boot_args, " gpt", buflen) >= buflen)
 		return -EINVAL;
-
 	return 0;
+#else
+	return 0;
+#endif
 }
 
 int is_secondary_core_off(unsigned int cpuid)

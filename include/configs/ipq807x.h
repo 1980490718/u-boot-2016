@@ -176,7 +176,7 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
-#define CONFIG_QCA_MMC
+/* #define CONFIG_QCA_MMC */
 
 #ifdef CONFIG_QCA_MMC
 #define CONFIG_MMC
