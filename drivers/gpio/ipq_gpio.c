@@ -165,6 +165,7 @@ int qca_gpio_deinit(int offset)
 	return 0;
 }
 
+#ifdef CONFIG_HTTPD
 void led_booting(void)
 {
 }
@@ -216,3 +217,4 @@ void btn_init(void)
 {
 	led_init_by_name("reset_key");
 }
+#endif
