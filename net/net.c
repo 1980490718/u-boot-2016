@@ -108,6 +108,39 @@
 #include "sntp.h"
 #endif
 
+#ifdef CONFIG_HTTPD
+#include "httpd.h"
+#include <ipq_api.h>
+#if defined(CONFIG_IPQ6018)
+#include <../drivers/net/ipq6018/ipq6018_ppe.h>
+#include <../drivers/net/ipq6018/ipq6018_edma.h>
+#elif defined(CONFIG_IPQ807x)
+#include <../drivers/net/ipq807x/ipq807x_ppe.h>
+#include <../drivers/net/ipq807x/ipq807x_edma.h>
+#elif defined(CONFIG_IPQ5332)
+#include <../drivers/net/ipq5332/ipq5332_ppe.h>
+#include <../drivers/net/ipq5332/ipq5332_edma.h>
+#elif defined(CONFIG_IPQ9574)
+#include <../drivers/net/ipq9574/ipq9574_ppe.h>
+#include <../drivers/net/ipq9574/ipq9574_edma.h>
+#endif
+
+#ifndef switch_to_bridge
+void switch_to_bridge(void)
+{
+#if defined(CONFIG_IPQ807x)
+	ipq807x_ppe_provision_init();
+#elif defined(CONFIG_IPQ6018)
+	ipq6018_ppe_provision_init();
+#elif defined(CONFIG_IPQ5332)
+	ipq5332_ppe_provision_init();
+#elif defined(CONFIG_IPQ9574)
+	ipq9574_ppe_provision_init();
+#endif
+}
+#endif
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /** BOOTP EXTENTIONS **/
@@ -203,6 +236,15 @@ static int net_check_prereq(enum proto_t protocol);
 static int net_try_count;
 
 int __maybe_unused net_busy_flag;
+#ifdef CONFIG_HTTPD
+unsigned char *webfailsafe_data_pointer = NULL;
+int webfailsafe_is_running = 0;
+int webfailsafe_ready_for_upgrade = 0;
+int webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
+extern int webfailsafe_post_done;
+extern int file_too_big;
+void NetReceiveHttpd(volatile uchar * inpkt, int len);
+#endif
 
 /**********************************************************************/
 
@@ -406,6 +448,12 @@ int net_loop(enum proto_t protocol)
 		eth_halt();
 		eth_set_current();
 		ret = eth_init();
+#if defined(CONFIG_HTTPD)
+		while(protocol==HTTPD && ret < 0){
+			ret = eth_init();
+			mdelay(1000);
+		}
+#endif
 		if (ret < 0) {
 			eth_halt();
 			return ret;
@@ -477,6 +525,12 @@ restart:
 #if defined(CONFIG_CMD_PING)
 		case PING:
 			ping_start();
+			break;
+#endif
+#if defined(CONFIG_HTTPD)
+		case HTTPD:
+			switch_to_bridge();
+			HttpdStart();
 			break;
 #endif
 #if defined(CONFIG_CMD_NFS)
@@ -551,7 +605,13 @@ restart:
 		 *	Most drivers return the most recent packet size, but not
 		 *	errors that may have happened.
 		 */
+
+#if defined(CONFIG_HTTPD)
+			if(protocol == HTTPD)
+			  HttpdHandler();
+#else
 		eth_rx();
+#endif
 
 		/*
 		 *	Abort if ctrl-c was pressed.
@@ -559,7 +619,10 @@ restart:
 		if (ctrlc()) {
 			/* cancel any ARP that may not have completed */
 			net_arp_wait_packet_ip.s_addr = 0;
-
+#if defined(CONFIG_HTTPD)
+			if(protocol == HTTPD)
+			  HttpdStop();
+#endif
 			net_cleanup_loop();
 			eth_halt();
 			/* Invalidate the last protocol */
@@ -572,6 +635,27 @@ restart:
 			ret = -EINTR;
 			goto done;
 		}
+#if defined(CONFIG_HTTPD)
+		if (protocol == HTTPD) {
+			if(!webfailsafe_ready_for_upgrade)
+				net_state = NETLOOP_CONTINUE;
+		else
+			net_state = NETLOOP_SUCCESS;
+#if 0
+			//workaround for some case we can't receive uip_acked
+			//just force upgrade
+			if(webfailsafe_post_done && !file_too_big && !webfailsafe_ready_for_upgrade){
+				if(wait_time == 0)
+					wait_time = get_timer(0);
+				if((get_timer(0) - wait_time) > 1000){
+					//force update
+					printf("ack timeout force upgrade cost time= %ld\n",(get_timer(0) - wait_time));
+					webfailsafe_ready_for_upgrade = 1;
+				}
+			}
+#endif
+		}
+#endif
 
 		/*
 		 *	Check for a timeout, and run the timeout handler
@@ -615,7 +699,23 @@ restart:
 				printf("Bytes transferred = %d (%x hex)\n",
 				       net_boot_file_size, net_boot_file_size);
 				setenv_hex("filesize", net_boot_file_size);
+#if defined(CONFIG_HTTPD)
+				setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);
+#endif
 				setenv_hex("fileaddr", load_addr);
+#if defined(CONFIG_HTTPD)
+				if(protocol == HTTPD){
+					if(do_http_upgrade(net_boot_file_size,webfailsafe_upgrade_type) < 0){
+						HttpdStop();
+						goto restart;
+					}
+					else{
+						HttpdDone();
+						do_reset( NULL,0,0,NULL );
+						printf("reboot fail\n");
+					}
+				}
+#endif
 			}
 			if (protocol != NETCONS)
 				eth_halt();
@@ -1054,6 +1154,12 @@ void net_process_received_packet(uchar *in_packet, int len)
 	if (len < ETHER_HDR_SIZE)
 		return;
 
+#if defined(CONFIG_HTTPD)
+	if(webfailsafe_is_running){
+		NetReceiveHttpd(in_packet,len);
+		return;
+	}
+#endif
 #ifdef CONFIG_API
 	if (push_packet) {
 		(*push_packet)(in_packet, len);
@@ -1297,6 +1403,14 @@ static int net_check_prereq(enum proto_t protocol)
 		}
 		goto common;
 #endif
+#if defined(CONFIG_HTTPD)
+	case HTTPD:
+		if (net_httpd_ip.s_addr == 0) {
+			puts("*** ERROR: httpd address not given\n");
+			return 1;
+		}
+		goto common;
+#endif
 #if defined(CONFIG_CMD_SNTP)
 	case SNTP:
 		if (net_ntp_server.s_addr == 0) {
@@ -1324,7 +1438,7 @@ static int net_check_prereq(enum proto_t protocol)
 			return 1;
 		}
 #if	defined(CONFIG_CMD_PING) || defined(CONFIG_CMD_SNTP) || \
-	defined(CONFIG_CMD_DNS)
+	defined(CONFIG_CMD_DNS) || defined(CONFIG_CMD_NET)
 common:
 #endif
 		/* Fall through */

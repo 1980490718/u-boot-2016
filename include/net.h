@@ -521,7 +521,11 @@ extern int		net_restart_wrap;	/* Tried all network devices */
 extern int 		tftp_our_port;
 enum proto_t {
 	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
+#ifdef CONFIG_HTTPD
+	TFTPSRV, TFTPPUT, LINKLOCAL, HTTPD
+#else
 	TFTPSRV, TFTPPUT, LINKLOCAL
+#endif
 };
 
 extern char	net_boot_file_name[1024];/* Boot File name */
@@ -530,6 +534,13 @@ extern u32	net_boot_file_size;
 /* Boot file size in blocks as reported by the DHCP server */
 extern u32	net_boot_file_expected_size_in_blocks;
 
+#ifdef CONFIG_HTTPD
+extern int webfailsafe_is_running;
+extern int webfailsafe_ready_for_upgrade;
+extern int webfailsafe_upgrade_type;
+extern unsigned char *webfailsafe_data_pointer;
+extern struct in_addr net_httpd_ip; /* the ip address to ping */
+#endif
 #if defined(CONFIG_CMD_DNS)
 extern char *net_dns_resolve;		/* The host to resolve  */
 extern char *net_dns_env_var;		/* the env var to put the ip into */

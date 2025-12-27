@@ -16,6 +16,9 @@
 #include <asm/types.h>
 #include <fdtdec.h>
 #include <asm/arch-qca-common/gpio.h>
+#ifdef CONFIG_HTTPD
+#include <ipq_api.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -59,15 +62,27 @@ void gpio_tlmm_config(struct qca_gpio_config *gpio_config)
 	return;
 }
 
+#ifdef CONFIG_HTTPD
+int gpio_set_value(unsigned gpio, int value)
+#else
 void gpio_set_value(unsigned int gpio, unsigned int out)
+#endif
 {
 	unsigned int *addr = (unsigned int *)GPIO_IN_OUT_ADDR(gpio);
 	unsigned int val = 0;
 
 	val = readl(addr);
 	val &= ~(0x2);
+
+#ifdef CONFIG_HTTPD
+	val |= value << 1;
+#else
 	val |= out << 1;
+#endif
 	writel(val, addr);
+#ifdef CONFIG_HTTPD
+	return 0;
+#endif
 }
 
 int gpio_get_value(unsigned int gpio)
@@ -78,15 +93,26 @@ int gpio_get_value(unsigned int gpio)
 	return (val & 1);
 }
 
+#ifdef CONFIG_HTTPD
+int gpio_direction_output(unsigned gpio, int value)
+#else
 void gpio_direction_output(unsigned int gpio, unsigned int out)
+#endif
 {
 	unsigned int *addr = (unsigned int *)GPIO_CONFIG_ADDR(gpio);
 	unsigned int val = 0;
 
+#ifdef CONFIG_HTTPD
+	gpio_set_value(gpio, value);
+#else
 	gpio_set_value(gpio, out);
+#endif
 	val = readl(addr);
 	val |= 1 << 9;
 	writel(val, addr);
+#ifdef CONFIG_HTTPD
+	return 0;
+#endif
 }
 
 int qca_gpio_init(int offset)
@@ -137,4 +163,56 @@ int qca_gpio_deinit(int offset)
 		writel(1, addr);
 	}
 	return 0;
+}
+
+void led_booting(void)
+{
+}
+
+void led_init_by_name(const char *gpio_name)
+{
+	int node;
+	struct qca_gpio_config gpio_config;
+
+	node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node < 0) {
+		printf("Could not find %s node\n", gpio_name);
+		return;
+	}
+
+	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "gpio", 0);
+	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "func", 0);
+	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "out", 0);
+	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "pull", 0);
+	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "drvstr", 0);
+	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "oe", 0);
+	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "vm", 0);
+	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "od_en", 0);
+	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "pu_res", 0);
+
+	gpio_tlmm_config(&gpio_config);
+}
+
+void led_init(void)
+{
+	led_init_by_name("power_led");
+	led_init_by_name("blink_led");
+	led_init_by_name("system_led");
+
+	led_on("power_led");
+	mdelay(500);
+}
+
+void btn_init(void)
+{
+	led_init_by_name("reset_key");
 }

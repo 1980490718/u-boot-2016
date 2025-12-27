@@ -253,3 +253,5 @@ union ipo_action_u {
 
 #define IPO_ACTION_ADDRESS 		0x8000
 #define IPO_ACTION_INC			0x20
+
+#define switch_to_bridge() ipq6018_ppe_provision_init()
