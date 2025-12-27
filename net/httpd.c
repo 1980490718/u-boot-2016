@@ -87,49 +87,28 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 			if (fw_type == FW_TYPE_NOR) {
 				printf("\n* Factory FIRMWARE UPGRADING *\n");
 				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:HLOS 0x%lx 0x600000 && flash rootfs 0x%lx 0x%lx && mmc read 0x%lx 0x622 0x200 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && flash 0:BOOTCONFIG 0x%lx 0x40000 && flash 0:BOOTCONFIG1 0x%lx 0x40000",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x600000,
-						(unsigned long)(size - 0x600000),
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x80,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x94,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0xA8,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x600000, (unsigned long)(size - 0x600000), WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
+						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x80, WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x94, WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0xA8, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 			} else if (fw_type == FW_TYPE_QSDK) {
 				printf("\n* Original FIRMWARE UPGRADING *\n");
 				sprintf(buf, "imxtract 0x%lx hlos-0cc33b23252699d495d79a843032498bfa593aba && mmc dev 0 && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx rootfs-f3c50b484767661151cfb641e2622703e45020fe && flash rootfs $fileaddr $filesize && imxtract 0x%lx wififw-45b62ade000c18bfeeb23ae30e5a6811eac05e2f && flash 0:WIFIFW $fileaddr $filesize && flasherase rootfs_data && mmc read 0x%lx 0x622 0x200 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && flash 0:BOOTCONFIG 0x%lx 0x40000 && flash 0:BOOTCONFIG1 0x%lx 0x40000",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x80,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x94,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0xA8,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x80,
+						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0x94, WEBFAILSAFE_UPLOAD_RAM_ADDRESS + 0xA8, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
 				return -1;
 			}
 		} else {
 			int fw_type = check_fw_type((void *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
-			if (fw_type == FW_TYPE_NOR) {
+			if (fw_type == FW_TYPE_NOR || fw_type == FW_TYPE_QSDK || fw_type == FW_TYPE_UBI) {
 				printf("\n* FIRMWARE UPGRADING *\n");
-				sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_FW_ADDRESS,
-						(unsigned long)size);
-			} else if (fw_type == FW_TYPE_QSDK) {
-				printf("\n* FIRMWARE UPGRADING *\n");
-				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
-			} else if (fw_type == FW_TYPE_UBI) {
-				printf("\n* FIRMWARE UPGRADING *\n");
-				sprintf(buf, "nand erase 0xa00000 0x7300000; nand write 0x%lx 0xa00000 0x%lx",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						(unsigned long)size);
+				if (fw_type == FW_TYPE_NOR) {
+					sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx", WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_FW_ADDRESS, (unsigned long)size);
+				} else if (fw_type == FW_TYPE_QSDK) {
+					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+				} else { // fw_type == FW_TYPE_UBI
+					sprintf(buf, "nand erase 0xa00000 0x7300000; nand write 0x%lx 0xa00000 0x%lx", WEBFAILSAFE_UPLOAD_RAM_ADDRESS, (unsigned long)size);
+				}
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
 				return -1;
@@ -140,25 +119,16 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		if (qca_smem_flash_info.flash_type == 5) {
 			if (check_fw_type((void *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS) == FW_TYPE_ELF) {
 				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 			} else {
 				printf("\n* Unsupported UBOOT ELF *\n");
 				return -1;
 			}
 		} else if (qca_smem_flash_info.flash_type == 2) {
 			sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx",
-					WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND,
-					WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES_NAND,
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-					WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND,
-					(unsigned long)((size / 131072 + (size % 131072 != 0)) * 131072));
+					WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES_NAND, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND, (unsigned long)((size / 131072 + (size % 131072 != 0)) * 131072));
 		} else if (qca_smem_flash_info.flash_type == 6) {
-			sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx",
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-					WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS,
-					(unsigned long)size);
+			sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx", WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS, (unsigned long)size);
 		} else {
 			printf("\n* Unsupported flash type for U-Boot *\n");
 			return -1;
@@ -166,21 +136,11 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ART) {
 		printf("\n* ART UPGRADING *\n");
 		if (qca_smem_flash_info.flash_type == 5) {
-			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:ART 0x%lx $filesize",
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size,
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:ART 0x%lx $filesize", WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size, WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 		} else if (qca_smem_flash_info.flash_type == 2) {
-			sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx",
-					WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND,
-					WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES_NAND,
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-					WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND,
-					(unsigned long)((size / 131072 + (size % 131072 != 0)) * 131072));
+			sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx", WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND, WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES_NAND, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND, (unsigned long)((size / 131072 + (size % 131072 != 0)) * 131072));
 		} else if (qca_smem_flash_info.flash_type == 6) {
-			sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx",
-					WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-					WEBFAILSAFE_UPLOAD_ART_ADDRESS,
-					(unsigned long)size);
+			sprintf(buf, "sf probe && sf update 0x%lx 0x%lx 0x%lx", WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_ART_ADDRESS, (unsigned long)size);
 		} else {
 			printf("\n* Unsupported flash type for ART *\n");
 			return -1;
@@ -189,10 +149,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		printf("\n* IMG UPGRADING *\n");
 		if (qca_smem_flash_info.flash_type == 5) {
 			if (check_fw_type((void *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS) == FW_TYPE_EMMC) {
-				sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx",
-						(unsigned long)((size - 1) / 512 + 1),
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						(unsigned long)((size - 1) / 512 + 1));
+				sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx", (unsigned long)((size - 1) / 512 + 1), WEBFAILSAFE_UPLOAD_RAM_ADDRESS, (unsigned long)((size - 1) / 512 + 1));
 			} else {
 				printf("\n* Unsupported IMG type *\n");
 				return -1;
@@ -205,10 +162,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		printf("\n* CDT UPGRADING *\n");
 		if (qca_smem_flash_info.flash_type == 5) {
 			if (check_fw_type((void *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS) == FW_TYPE_CDT) {
-				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:CDT 0x%lx $filesize && flash 0:CDT_1 0x%lx $filesize",
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-						WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:CDT 0x%lx $filesize && flash 0:CDT_1 0x%lx $filesize", WEBFAILSAFE_UPLOAD_RAM_ADDRESS + size, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 			} else {
 				printf("\n* Unsupported CDT type *\n");
 				return -1;
