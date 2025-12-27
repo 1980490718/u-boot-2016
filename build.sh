@@ -236,13 +236,13 @@ for DEFCONFIG in "${DEFCONFIGS[@]}"; do
 
 	# Handle different IPQ types
 	case $IPQ_TYPE in
-		ipq40xx|ipq5018|ipq806x)
+		ipq40xx|ipq806x)
 			echo "IPQ type $IPQ_TYPE uses strip to generate elf file"
 			# Use strip to generate elf file
 			${CROSS_COMPILE}strip u-boot -o "bin/openwrt-${CONFIG_NAME}-u-boot.elf"
 			OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.elf"
 			;;
-		ipq6018|ipq807x|ipq9574|ipq5332)
+		ipq5018|ipq6018|ipq807x|ipq9574|ipq5332)
 			echo "IPQ type $IPQ_TYPE uses strip to generate mbn file"
 			# Use strip to generate elf file
 			${CROSS_COMPILE}strip u-boot -o u-boot.strip
