@@ -79,8 +79,8 @@ PLATFORM_LIBS := arch/arm/lib/eabi_compat.o \
 endif
 
 # needed for relocation
-ifdef CONFIG_ARCH_IPQ40xx
-LDFLAGS_u-boot += -pie -z max-page-size=0x400 --gc-sections -s -x
+ifneq ($(CONFIG_ARCH_IPQ40xx)$(CONFIG_ARCH_IPQ5018)$(CONFIG_ARCH_IPQ5332)$(CONFIG_ARCH_IPQ6018)$(CONFIG_ARCH_IPQ806x)$(CONFIG_ARCH_IPQ807x)$(CONFIG_ARCH_IPQ9574),)
+LDFLAGS_u-boot += -pie --gc-sections -s -x --nmagic
 else
 LDFLAGS_u-boot += -pie
 endif
