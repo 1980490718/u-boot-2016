@@ -550,6 +550,10 @@ static int initr_ethaddr(void)
 {
 	bd_t *bd = gd->bd;
 
+#ifdef CONFIG_HTTPD
+	btn_init();
+	led_init();
+#endif
 	/* kept around for legacy kernels only ... ignore the next section */
 	eth_getenv_enetaddr("ethaddr", bd->bi_enetaddr);
 #ifdef CONFIG_HAS_ETH1

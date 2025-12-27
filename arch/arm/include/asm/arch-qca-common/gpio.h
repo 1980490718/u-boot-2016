@@ -48,13 +48,25 @@ struct qca_gpio_config {
 
 void gpio_tlmm_config(struct qca_gpio_config *gpio_config);
 
+#ifdef CONFIG_HTTPD
+void led_booting(void);
+void led_init(void);
+void btn_init(void);
+void led_toggle(const char *gpio_name);
+int gpio_set_value(unsigned gpio, int value);
+#else
 void gpio_set_value(unsigned int gpio, unsigned int out);
+#endif
 
 int gpio_get_value(unsigned int gpio);
 
 int qca_gpio_init(int offset);
 int qca_gpio_deinit(int offset);
+#ifdef CONFIG_HTTPD
+int gpio_direction_output(unsigned gpio, int value);
+#else
 void gpio_direction_output(unsigned int gpio, unsigned int out);
+#endif
 
 /* GPIO TLMM: Output value */
 #define GPIO_OUT_LOW	0
