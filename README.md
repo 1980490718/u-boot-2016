@@ -4,7 +4,8 @@
 
 本项目是基于U-Boot 2016版本的引导加载程序，专为高通IPQ系列芯片平台定制开发。
 项目源自开源的AU_LINUX_QSDK_NHSS.QSDK.12.5_TARGET_ALL.12.5.2783.2994项目，提供了简化的构建脚本，实现快速编译和部署。
-本项目不包含webfailsafe功能，如果需要支持，请自行移植。
+支持webfailsafe功能，但是未经过测试。
+注意：如果需要编译IPQ9574平台，需要替换可用的交叉编译工具链。默认的工具链可能不支持IPQ9574平台的编译。
 
 ## 环境准备 ##
 
@@ -76,11 +77,11 @@ cd u-boot-2016
 
 根据不同的IPQ类型，生成的输出文件格式有所不同：
 
-- **ipq40xx、ipq5018、ipq806x**：生成ELF格式文件
+- **ipq40xx、ipq806x**：生成ELF格式文件
   - 输出文件：`bin/openwrt-${CONFIG_NAME}-u-boot.elf`
   - 处理方式：使用strip工具生成
 
-- **ipq6018、ipq807x、ipq9574、ipq5332**：生成MBN格式文件
+- **ipq5018、ipq6018、ipq807x、ipq9574、ipq5332**：生成MBN格式文件
   - 输出文件：`bin/openwrt-${CONFIG_NAME}-u-boot.mbn`
   - 处理流程：先使用strip，再通过`tools/elftombn.py`转换为mbn格式
 
