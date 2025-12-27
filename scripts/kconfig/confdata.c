@@ -116,7 +116,7 @@ char *conf_get_default_confname(void)
 	name = conf_expand_value(conf_defname);
 	env = getenv(SRCTREE);
 	if (env) {
-		sprintf(fullname, "%s/%s", env, name);
+		snprintf(fullname, sizeof(fullname), "%s/%s", env, name);
 		if (!stat(fullname, &buf))
 			return fullname;
 	}
@@ -745,6 +745,7 @@ int conf_write(const char *name)
 	const char *str;
 	char dirname[PATH_MAX+1], tmpname[PATH_MAX+1], newname[PATH_MAX+1];
 	char *env;
+	size_t dir_len, base_len;
 
 	dirname[0] = 0;
 	if (name && name[0]) {
@@ -768,10 +769,29 @@ int conf_write(const char *name)
 	} else
 		basename = conf_get_configname();
 
-	sprintf(newname, "%s%s", dirname, basename);
+	dir_len = strlen(dirname);
+	base_len = strlen(basename);
+
+	memcpy(newname, dirname, dir_len);
+	if (dir_len + base_len < sizeof(newname)) {
+		memcpy(newname + dir_len, basename, base_len);
+		newname[dir_len + base_len] = '\0';
+	}
+	else {
+		return 1;
+	}
+
 	env = getenv("KCONFIG_OVERWRITECONFIG");
 	if (!env || !*env) {
-		sprintf(tmpname, "%s.tmpconfig.%d", dirname, (int)getpid());
+		/* Create temporary filename */
+		memcpy(tmpname, dirname, dir_len);
+		if (dir_len + 11 + 10 < sizeof(tmpname)) {
+			snprintf(tmpname + dir_len, sizeof(tmpname) - dir_len,
+				 ".tmpconfig.%d", (int)getpid());
+		} else {
+			/* Path too long */
+			return 1;
+		}
 		out = fopen(tmpname, "w");
 	} else {
 		*tmpname = 0;
