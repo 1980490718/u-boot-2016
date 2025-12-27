@@ -93,3 +93,6 @@ GTAGS
 # Exclude file
 arch/arm/dts/dtbtable.S
 tools/mbn_tools.pyc
+
+# httpd generated files
+httpd/fsdata.c
