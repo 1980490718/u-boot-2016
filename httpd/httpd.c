@@ -225,7 +225,7 @@ static int httpd_findandstore_firstchunk(void){
 				// U-Boot
 				if((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)){
 
-					printf("## Error: wrong file size, should be less than or equal to: %d bytes!\n", WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
+					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 
@@ -240,7 +240,7 @@ static int httpd_findandstore_firstchunk(void){
 						art_size = WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES;
 					}
 					if (hs->upload_total > art_size){
-						printf("## Error: wrong file size, should be less than or equal to: %d bytes!\n", art_size);
+						printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", (unsigned long)art_size);
 						webfailsafe_upload_failed = 1;
 						file_too_big = 1;
 					}
@@ -250,14 +250,14 @@ static int httpd_findandstore_firstchunk(void){
 
 				// 	printf("## Error: file too big!\n");
 				// 	webfailsafe_upload_failed = 1;
-				
+
 				// CDT
 				}
 				else if((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT)
 						&& (hs->upload_total > WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES)
 						){
 
-					printf("## Error: wrong file size, should be less than or equal to: %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
+					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 
@@ -516,7 +516,7 @@ void httpd_appcall(void){
 						uip_abort();
 						return;
 					} else {
-						printf("Data will be downloaded at 0x%X in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						printf("Data will be downloaded at 0x%lX in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 					}
 					memset((void *)webfailsafe_data_pointer, 0xFF, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
 

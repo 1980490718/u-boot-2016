@@ -24,25 +24,25 @@ void check_button_is_press(void);
 #define WEBFAILSAFE_UPGRADE_TYPE_CDT		4
 
 #define CONFIG_LOADADDR                                 0x44000000
-#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS                  0x50000000
+#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS                  (unsigned long)0x50000000
 
-#define WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS                0x520000
-#define WEBFAILSAFE_UPLOAD_ART_ADDRESS                  0x660000
-#define WEBFAILSAFE_UPLOAD_FW_ADDRESS                   0x6a0000 //单nor情况,不会发生
+#define WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS                (unsigned long)0x520000
+#define WEBFAILSAFE_UPLOAD_ART_ADDRESS                  (unsigned long)0x660000
+#define WEBFAILSAFE_UPLOAD_FW_ADDRESS                   (unsigned long)0x6a0000
 
-#define WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND           0x800000
-#define WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND             0x980000
-#define WEBFAILSAFE_UPLOAD_FW_ADDRESS_NAND              0xa00000
+#define WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS_NAND           (unsigned long)0x800000
+#define WEBFAILSAFE_UPLOAD_ART_ADDRESS_NAND             (unsigned long)0x980000
+#define WEBFAILSAFE_UPLOAD_FW_ADDRESS_NAND              (unsigned long)0xa00000
 
 #define CONFIG_ART_START                  0x660000
 
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES          (640*1024)
-#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES            (256*1024)
-#define WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES        (512*1024)
-#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES            (256*1024)
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES          (unsigned long)(640*1024)
+#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES            (unsigned long)(256*1024)
+#define WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES        (unsigned long)(512*1024)
+#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES            (unsigned long)(256*1024)
 
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES_NAND     (1536*1024)
-#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES_NAND       (512*1024)
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES_NAND     (unsigned long)(1536*1024)
+#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES_NAND       (unsigned long)(512*1024)
 
 #define FW_TYPE_NOR 0
 #define FW_TYPE_EMMC 1
