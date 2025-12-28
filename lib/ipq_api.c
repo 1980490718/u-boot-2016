@@ -93,7 +93,8 @@ void check_button_is_press(void)
 {
 	int counter = 0;
 
-	while(button_is_press("reset_key", GL_RESET_BUTTON_IS_PRESS)){
+	while (button_is_press("reset_key", RESET_BUTTON_PRESSED))
+	{
 
 		if(counter == 0)
 			printf("Reset button is pressed for: %2d ", counter);
