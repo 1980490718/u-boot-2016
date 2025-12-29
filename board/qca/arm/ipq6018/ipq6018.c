@@ -1252,6 +1252,10 @@ void ipq_uboot_fdt_fixup(void)
 			add_config_entry("config@cp01-c5");
 			add_config_entry("config-cp01-c5");
 			break;
+		case MACH_TYPE_IPQ6018_AP_CP03_C2:
+			add_config_entry("config@cp03-c2");
+			add_config_entry("config-cp03-c2");
+			break;
 		default:
 			add_config_list_from_fdt();
 	}
