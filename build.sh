@@ -78,7 +78,16 @@ echo "Deep clean by .gitignore rules"
 			arch/arm/dts/dtbtable.S \
 			httpd/fsdata.c \
 			tools/mbn_tools.pyc \
-			u-boot*
+			u-boot* \
+			tools/gen_eth_addr \
+			tools/img2srec \
+			tools/proftool \
+			tools/fdtgrep \
+			tools/envcrc \
+			tools/dumpimage \
+			scripts/kconfig/conf \
+			scripts/basic/fixdep
+
 exit 0
 	fi
 fi
@@ -221,7 +230,7 @@ for DEFCONFIG in "${DEFCONFIGS[@]}"; do
 	fi
 
 	# Compile U-Boot
-	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j$(nproc); then
+	if ! make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j1; then
 		echo "Error: Compilation failed for $DEFCONFIG"
 		BUILD_FAILED+=($DEFCONFIG)
 		continue
