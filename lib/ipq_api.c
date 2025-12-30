@@ -2,6 +2,7 @@
 #include <ipq_api.h>
 #include <asm/gpio.h>
 #include <fdtdec.h>
+#include <net.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -112,6 +113,7 @@ void check_button_is_press(void)
 		if(counter >= 5){
 			led_off("power_led");
 			led_on("blink_led");
+			eth_initialize();
 			run_command("httpd 192.168.1.1", 0);
 			run_command("res", 0);
 			break;
