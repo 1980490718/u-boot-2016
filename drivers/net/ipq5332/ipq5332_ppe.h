@@ -267,5 +267,3 @@ union ipo_action_u {
 
 #define NSS_CC_UNIPHY_PORT1_RX_CBCR	0x39B004B4
 #define NSS_CC_UNIPHY_PORT1_TX_CBCR	0x39B004B8
-
-#define switch_to_bridge() ipq5332_ppe_provision_init()

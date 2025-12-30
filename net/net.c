@@ -111,34 +111,6 @@
 #ifdef CONFIG_HTTPD
 #include "httpd.h"
 #include <ipq_api.h>
-#if defined(CONFIG_IPQ6018)
-#include <../drivers/net/ipq6018/ipq6018_ppe.h>
-#include <../drivers/net/ipq6018/ipq6018_edma.h>
-#elif defined(CONFIG_IPQ807x)
-#include <../drivers/net/ipq807x/ipq807x_ppe.h>
-#include <../drivers/net/ipq807x/ipq807x_edma.h>
-#elif defined(CONFIG_IPQ5332)
-#include <../drivers/net/ipq5332/ipq5332_ppe.h>
-#include <../drivers/net/ipq5332/ipq5332_edma.h>
-#elif defined(CONFIG_IPQ9574)
-#include <../drivers/net/ipq9574/ipq9574_ppe.h>
-#include <../drivers/net/ipq9574/ipq9574_edma.h>
-#endif
-
-#ifndef switch_to_bridge
-void switch_to_bridge(void)
-{
-#if defined(CONFIG_IPQ807x)
-	ipq807x_ppe_provision_init();
-#elif defined(CONFIG_IPQ6018)
-	ipq6018_ppe_provision_init();
-#elif defined(CONFIG_IPQ5332)
-	ipq5332_ppe_provision_init();
-#elif defined(CONFIG_IPQ9574)
-	ipq9574_ppe_provision_init();
-#endif
-}
-#endif
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -529,7 +501,6 @@ restart:
 #endif
 #if defined(CONFIG_HTTPD)
 		case HTTPD:
-			switch_to_bridge();
 			HttpdStart();
 			break;
 #endif
