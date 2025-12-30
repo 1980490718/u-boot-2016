@@ -21,7 +21,12 @@ void HttpdStart(void) {
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];
 	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
-	printf("HTTP server is starting at IP: %ld.%ld.%ld.%ld\n", (tmp_ip_addr & 0xff000000) >> 24, (tmp_ip_addr & 0x00ff0000) >> 16, (tmp_ip_addr & 0x0000ff00) >> 8, (tmp_ip_addr & 0x000000ff));
+	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
+		   (tmp_ip_addr & 0xff000000) >> 24,
+		   (tmp_ip_addr & 0x00ff0000) >> 16,
+		   (tmp_ip_addr & 0x0000ff00) >> 8,
+		   (tmp_ip_addr & 0x000000ff));
+
 	eaddr.addr[0] = net_ethaddr[0];
 	eaddr.addr[1] = net_ethaddr[1];
 	eaddr.addr[2] = net_ethaddr[2];
@@ -38,7 +43,15 @@ void HttpdStart(void) {
 
 	uip_sethostaddr(ip);
 
-	printf("done set host addr 0x%x 0x%x\n", uip_hostaddr[0], uip_hostaddr[1]);
+	u16_t hostaddr0 = ntohs(uip_hostaddr[0]);
+	u16_t hostaddr1 = ntohs(uip_hostaddr[1]);
+	u8_t byte1 = (hostaddr0 >> 8) & 0xff;
+	u8_t byte2 = hostaddr0 & 0xff;
+	u8_t byte3 = (hostaddr1 >> 8) & 0xff;
+	u8_t byte4 = hostaddr1 & 0xff;
+
+	printf("Host IP set to: %d.%d.%d.%d\n", byte1, byte2, byte3, byte4);
+
 	ip[0] = htons((0xFFFFFF00 & 0xFFFF0000) >> 16);
 	ip[1] = htons(0xFFFFFF00 & 0x0000FFFF);
 
