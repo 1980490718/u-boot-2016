@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>UBOOT更新</title><link rel="stylesheet" href="style.css"></head>
+<body>
+	<div class="main-container">
+		<aside class="sidebar">
+			<ul class="sidebar-nav"><li class="sidebar-nav-item"><a href="index.html">固件更新</a></li><li class="sidebar-nav-item active"><a>U-BOOT更新</a></li><li class="sidebar-nav-item"><a href="art.html">ART更新</a></li><li class="sidebar-nav-item"><a href="mibib.html">MIBIB更新</a></li><li class="sidebar-nav-item"><a href="cdt.html">CDT更新</a></li><li class="sidebar-nav-item"><a href="gpt.html">GPT更新</a></li></ul>
+		</aside>
+		<main class="main-content">
+			<div class="card">
+				<h2>U-BOOT更新</h2>
+				<p>您将要更新此设备<strong>U-BOOT导程序</strong>。<br>请从本地选择要更新的路由器U-BOOT文件并点击<strong>确认更新</strong>按钮。</p>
+				<form method="post" enctype="multipart/form-data" name="uboot">
+					<div class="form-group">
+						<label for="uboot-file">请选择<strong>U-BOOT文件</strong></label>
+						<input type="file" name="uboot" id="uboot-file" accept=".elf,.ELF,.bin,.BIN,.img,.IMG,.mbn,.MBN" required>
+					</div>
+					<div class="button-container"><button type="submit">确认更新</button></div>
+				</form>
+				<div class="warning-box"><strong>温馨提示：</strong><ul><li>请确认所选的U-BOOT文件是正确的;</li><li>请勿在更新过程中,断开路由器电源;</li><li>如果更新成功,设备将自动重启。</li></ul></div>
+			</div>
+		</main>
+	</div>
+	<div class="additional-links"><p class="link-tip">您可以在右方链接中了解本项目的更多信息:<a href="https://github.com/1980490718/u-boot-2016" target="_blank">GitHub</a> | Version:</div>
+</body>
+</html>

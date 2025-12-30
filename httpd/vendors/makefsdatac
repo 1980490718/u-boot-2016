@@ -22,7 +22,7 @@
 # after receive POST data, returns this page and stops.
 
 # Vendor specific directory (default: "cleanwrt")
-vendor_dir=${1:-cleanwrt}
+vendor_dir=${1:-pig}
 
 # Temporary files
 files_content_tmp="vendors/.files_content"
