@@ -607,8 +607,10 @@ restart:
 		 */
 
 #if defined(CONFIG_HTTPD)
+		if (eth_rx() > 0) {
 			if(protocol == HTTPD)
 			  HttpdHandler();
+		}
 #else
 		eth_rx();
 #endif
