@@ -124,8 +124,14 @@ static int httpd_findandstore_firstchunk(void) {
 							printf("Upgrade type: CDT\n");
 							webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_CDT;
 						} else {
-							printf("## Error: input name not found!\n");
-							return 0;
+							end = (char *)strstr((char *)start, "name=\"mibib\"");
+							if (end) {
+								printf("Upgrade type: MIBIB\n");
+								webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_MIBIB;
+							} else {
+								printf("## Error: input name not found!\n");
+								return 0;
+							}
 						}
 					}
 				}
@@ -155,6 +161,10 @@ static int httpd_findandstore_firstchunk(void) {
 					}
 				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES)) {
 					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
+					webfailsafe_upload_failed = 1;
+					file_too_big = 1;
+				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_MIBIB) && (hs->upload_total > WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES)) {
+					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 				}
@@ -306,7 +316,7 @@ void httpd_appcall(void) {
 						uip_abort();
 						return;
 					} else {
-						printf("Data will be downloaded at 0x%lX in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						printf("Data will be downloaded at 0x%lx in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 					}
 					memset((void *)webfailsafe_data_pointer, 0xFF, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
 					if (httpd_findandstore_firstchunk()) {
