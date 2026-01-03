@@ -93,7 +93,7 @@ static int execute_command(const char *cmd) {
 }
 
 static void print_upgrade_warning(const char *upgrade_type) {
-	printf("\n\n****************************\n*    %s UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n", upgrade_type);
+	printf("\n******************************\n     %s UPGRADING     \n DO NOT POWER OFF DEVICE! \n******************************\n", upgrade_type);
 }
 
 #ifdef CONFIG_MD5
@@ -102,9 +102,8 @@ void printChecksumMd5(int address, unsigned int size) {
 	void *buf = (void *)(address);
 	u8 output[16];
 	md5_wd(buf, size, output, CHUNKSZ_MD5);
-	printf("md5 for %08x ... %08x ==> ", address, address + size);
+	printf("The md5sum from 0x%08x to 0x%08x is: ", address, address + size);
 	for (int i = 0; i < 16; i++) printf("%02x", output[i] & 0xFF);
-	printf("\n");
 }
 #else
 void printChecksumMd5(int address, unsigned int size) {}
