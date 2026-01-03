@@ -59,6 +59,8 @@ enum flash_type_enum {
 /* load address */
 #define CONFIG_LOADADDR								(unsigned long) 0x44000000 /* console default address */
 #define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				(unsigned long) 0x50000000
+/* simplify the WEBFAILSAFE_UPLOAD_RAM_ADDRESS as UPLOAD_ADDR */
+#define UPLOAD_ADDR									WEBFAILSAFE_UPLOAD_RAM_ADDRESS
 
 /* nand flash offset start and size */
 #define UBOOT_START_ADDR_NAND						(unsigned long) 0x800000 /* offset 0x800000 */
