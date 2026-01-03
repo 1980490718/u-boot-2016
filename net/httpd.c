@@ -157,7 +157,7 @@ static int do_firmware_upgrade(const ulong size) {
 			break;
 		}
 		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 		case FLASH_TYPE_NOR:
 		default: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
@@ -195,7 +195,7 @@ static int do_uboot_upgrade(const ulong size) {
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx",
 					UBOOT_START_ADDR_NAND, UBOOT_SIZE_NAND, UPLOAD_ADDR, UBOOT_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, UBOOT_NAME, size);
 			break;
 		default:
@@ -220,7 +220,7 @@ static int do_art_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", ART_START_ADDR_NAND, ART_SIZE_NAND, UPLOAD_ADDR, ART_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, ART_NAME, size);
 			break;
 		default:
@@ -242,7 +242,7 @@ static int do_gpt_upgrade(const ulong size) {
 			sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx", ((size - 1) / 512 + 1), UPLOAD_ADDR, ((size - 1) / 512 + 1));
 			break;
 		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 		case FLASH_TYPE_NOR:
 		default:
 			printf("\n* Flash type %d is not supported for GPT upgrade! Please return and select upgrade type \"mibib\"\n", qca_smem_flash_info.flash_type);
@@ -265,7 +265,7 @@ static int do_cdt_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", CDT_START_ADDR_NAND, CDT_SIZE_NAND, UPLOAD_ADDR, CDT_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, CDT_NAME, size);
 			break;
 		default:
@@ -286,7 +286,7 @@ static int do_mibib_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", MIBIB_START_ADDR_NAND, MIBIB_SIZE_NAND, UPLOAD_ADDR, MIBIB_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
-		case FLASH_TYPE_SPI_NOR:
+		case FLASH_TYPE_SPI:
 			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, MIBIB_NAME, size);
 			break;
 		default:

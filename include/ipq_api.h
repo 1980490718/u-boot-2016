@@ -51,7 +51,7 @@ enum flash_type_enum {
 #define FLASH_TYPE_ONENAND			3
 #define FLASH_TYPE_SDC				4
 #define FLASH_TYPE_MMC				5
-#define FLASH_TYPE_SPI_NOR			6
+#define FLASH_TYPE_SPI				6
 #define FLASH_TYPE_NOR_PLUS_NAND	7
 #define FLASH_TYPE_NOR_PLUS_EMMC	8
 #define FLASH_TYPE_QSPI_NAND		11
