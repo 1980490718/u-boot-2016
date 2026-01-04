@@ -1397,7 +1397,7 @@ $(version_h): include/config/uboot.release FORCE
 $(timestamp_h): $(srctree)/Makefile FORCE
 	$(call filechk,timestamp.h)
 #ifdef CONFIG_HTTPD
-	sed -i "s/Version:.*</Version:`date +%4Y.%m.%d_%H:%M:%S`</g" $(CURDIR)/httpd/vendors/pig/*.html
+	sed -i "s/Version:.*</Version: U-Boot $(UBOOTRELEASE) (`LC_ALL=C date +'%b %d %C%y - %T %z'`)</g" $(CURDIR)/httpd/vendors/pig/*.html
 	cd $(srctree)/httpd; ./vendors/makefsdatac; cd -
 # endif
 
