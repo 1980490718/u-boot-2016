@@ -64,7 +64,7 @@ void HttpdStart(void) {
 	ip[0] = htons((0xFFFFFF00 & 0xFFFF0000) >> 16);
 	ip[1] = htons(0xFFFFFF00 & 0x0000FFFF);
 
-	net_netmask.s_addr = 0x00FFFFFF;
+	net_netmask.s_addr = 0xFFFFFF00;
 	uip_setnetmask(ip);
 
 	do_http_progress(WEBFAILSAFE_PROGRESS_START);
