@@ -103,6 +103,41 @@ static uint32_t dhcpd_mac_hash(const uint8_t *mac) {
 }
 
 /**
+ * dhcpd_print_ip_with_mac - Helper function to print IP and MAC address
+ * @ip: IP address to print
+ * @mac: MAC address to print
+ * @action: Action description (e.g., "offer", "ACK")
+ */
+static void dhcpd_print_ip_with_mac(struct in_addr ip, const uint8_t *mac, const char *action) {
+	char ip_str[16];
+	ip_to_string(ip, ip_str);
+	printf("Sending DHCP %s for %s to %pM\n", action, ip_str, mac);
+}
+
+/**
+ * dhcpd_validate_config - Validate DHCP server configuration
+ * @cfg: Server configuration to validate
+ * Return: SUCCESS if valid, error code otherwise
+ */
+static int dhcpd_validate_config(const struct dhcpd_svr_cfg *cfg) {
+	if (!cfg) {
+		return ERR_INVALID_PARAM;
+	}
+
+	if (cfg->server_ip.s_addr == 0 || cfg->end_ip.s_addr == 0) {
+		return ERR_CONFIG;
+	}
+
+	uint32_t server_ip_int = ntohl(cfg->server_ip.s_addr);
+	uint32_t end_ip_int = ntohl(cfg->end_ip.s_addr);
+	if (server_ip_int >= end_ip_int) {
+		return ERR_CONFIG;
+	}
+
+	return SUCCESS;
+}
+
+/**
  * dhcpd_alloc_ip - Allocate IP address to client based on MAC address
  * @mac: Client MAC address
  * @allocated_ip: Output parameter for allocated IP address
@@ -643,11 +678,7 @@ static int dhcpd_handle_request(const struct dhcpd_pkt *bp, unsigned int len) {
 	}
 
 send_ack:
-	{
-		char ip_str[16];
-		ip_to_string(yiaddr, ip_str);
-		printf("Sending DHCP ACK for %s to %pM\n", ip_str, bp->chaddr);
-	}
+	dhcpd_print_ip_with_mac(yiaddr, bp->chaddr, "ACK");
 	return dhcpd_send_reply(bp, len, DHCPACK, yiaddr, NULL);
 
 send_nak:
@@ -729,9 +760,7 @@ static void dhcpd_handler_with_fallback(uchar *pkt, unsigned dport, struct in_ad
 					case DHCPDISCOVER:
 						ret = dhcpd_handle_discover(bp->chaddr, &yiaddr);
 						if (ret == SUCCESS) {
-							char ip_str[16];
-							ip_to_string(yiaddr, ip_str);
-							printf("Sending DHCP offer for %s to %pM\n", ip_str, bp->chaddr);
+							dhcpd_print_ip_with_mac(yiaddr, bp->chaddr, "offer");
 						} else {
 							printf("Failed to handle DHCP DISCOVER: error %d\n", ret);
 						}
@@ -759,19 +788,9 @@ static void dhcpd_handler_with_fallback(uchar *pkt, unsigned dport, struct in_ad
  * Return: SUCCESS on success, error code on failure
  */
 int dhcpd_set_config(struct dhcpd_svr_cfg *cfg) {
-	if (!cfg) {
-		return ERR_INVALID_PARAM;
-	}
-
-	/* Validate configuration */
-	if (cfg->server_ip.s_addr == 0 || cfg->end_ip.s_addr == 0) {
-		return ERR_CONFIG;
-	}
-
-	uint32_t server_ip_int = ntohl(cfg->server_ip.s_addr);
-	uint32_t end_ip_int = ntohl(cfg->end_ip.s_addr);
-	if (server_ip_int >= end_ip_int) {
-		return ERR_CONFIG;
+	int ret = dhcpd_validate_config(cfg);
+	if (ret != SUCCESS) {
+		return ret;
 	}
 
 	/* Copy configuration */
@@ -982,16 +1001,10 @@ int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
 	dhcpd_ip_settings();
 
 	/* Validate IP configuration */
-	if (dhcpd_svr_cfg.server_ip.s_addr == 0 || dhcpd_svr_cfg.end_ip.s_addr == 0) {
-		printf("Error: Invalid IP address\n");
-		return ERR_CONFIG;
-	}
-
-	uint32_t server_ip_int = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
-	uint32_t end_ip_int = ntohl(dhcpd_svr_cfg.end_ip.s_addr);
-	if (server_ip_int >= end_ip_int) {
-		printf("Error: Server IP should be less than end IP\n");
-		return ERR_CONFIG;
+	int ret = dhcpd_validate_config(&dhcpd_svr_cfg);
+	if (ret != SUCCESS) {
+		printf("Error: Invalid IP configuration\n");
+		return ret;
 	}
 
 	net_init();
