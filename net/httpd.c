@@ -31,31 +31,7 @@ static int arptimer = 0;
 struct in_addr net_httpd_ip;
 void HttpdStart(void) {
 #ifdef CONFIG_DHCPD
-	char *env_ip = getenv("ipaddr");
-	char *env_end_ip = getenv("serverip");
-	char *env_netmask = getenv("netmask");
-
-	if (env_ip != NULL) {
-		dhcpd_svr_cfg.server_ip = string_to_ip(env_ip);
-		dhcpd_svr_cfg.start_ip = dhcpd_svr_cfg.server_ip;
-	} else {
-		dhcpd_svr_cfg.server_ip.s_addr = htonl(0xc0a80101); /* 192.168.1.1 */
-		dhcpd_svr_cfg.start_ip = dhcpd_svr_cfg.server_ip;
-	}
-
-	if (env_end_ip != NULL) {
-		dhcpd_svr_cfg.end_ip = string_to_ip(env_end_ip);
-	} else {
-		dhcpd_svr_cfg.end_ip.s_addr = htonl(0xc0a801fd); /* 192.168.1.253 */
-	}
-
-	if (env_netmask != NULL) {
-		dhcpd_svr_cfg.netmask = string_to_ip(env_netmask);
-	} else {
-		dhcpd_svr_cfg.netmask.s_addr = htonl(0xffffff00); /* 255.255.255.0 */
-	}
-
-	dhcpd_svr_cfg.gateway = dhcpd_svr_cfg.server_ip;
+	dhcpd_ip_settings();
 
 	unsigned short int ip_addr[2];
 	unsigned short int nm_addr[2];

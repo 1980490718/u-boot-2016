@@ -115,6 +115,7 @@ int dhcpd_start_server_nonblocking(void);
 int dhcpd_poll_server(void);
 void dhcpd_stop_server(void);
 int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
+void dhcpd_ip_settings(void);
 
 /* Exported variables */
 extern struct dhcpd_svr_cfg dhcpd_svr_cfg;

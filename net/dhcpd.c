@@ -927,6 +927,43 @@ int dhcpd_start_server_nonblocking(void) {
 
 	return SUCCESS;
 }
+/**
+ * dhcpd_configure_ip_settings - Configure IP settings from environment or defaults
+ * Configures server IP, start IP, end IP, netmask, and gateway from environment
+ * variables if available, otherwise uses default values.
+ */
+void dhcpd_ip_settings(void) {
+	char *env_ip = getenv("ipaddr");
+	char *env_serverip = getenv("serverip");
+	char *env_netmask = getenv("netmask");
+	char *env_gateway = getenv("gatewayip");
+
+	/* Get server IP from environment (optional, defaults to 192.168.1.1) */
+	if (env_ip != NULL) {
+		dhcpd_svr_cfg.server_ip = string_to_ip(env_ip);
+		dhcpd_svr_cfg.start_ip = dhcpd_svr_cfg.server_ip;
+	} else {
+		dhcpd_svr_cfg.server_ip.s_addr = htonl(0xc0a80101); /* 192.168.1.1 */
+		dhcpd_svr_cfg.start_ip = dhcpd_svr_cfg.server_ip;
+	}
+
+	/* Get end IP from environment (optional, defaults to 192.168.1.253) */
+	if (env_serverip != NULL) {
+		dhcpd_svr_cfg.end_ip = string_to_ip(env_serverip);
+	} else {
+		dhcpd_svr_cfg.end_ip.s_addr = htonl(0xc0a801fd); /* 192.168.1.253 */
+	}
+
+	/* Get netmask from environment (optional, defaults to 255.255.255.0) */
+	if (env_netmask != NULL) {
+		dhcpd_svr_cfg.netmask = string_to_ip(env_netmask);
+	} else {
+		dhcpd_svr_cfg.netmask.s_addr = htonl(0xffffff00); /* 255.255.255.0 */
+	}
+
+	/* Get gateway from environment (optional, defaults to server IP) */
+	dhcpd_svr_cfg.gateway = (env_gateway != NULL) ? string_to_ip(env_gateway) : dhcpd_svr_cfg.server_ip;
+}
 
 /**
  * do_dhcpd - U-Boot command implementation for DHCP server
@@ -941,35 +978,8 @@ int dhcpd_start_server_nonblocking(void) {
  *   dhcpd -nb  - Start DHCP server in non-blocking mode
  */
 int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
-	char *env_ip = getenv("ipaddr");
-	char *env_serverip = getenv("serverip");
-	char *env_netmask = getenv("netmask");
-	char *env_gateway = getenv("gatewayip");
-
-	/* Get server IP from environment */
-	if (env_ip == NULL) {
-		printf("Error: Please setenv 'ipaddr' at first.\n");
-		return ERR_CONFIG;
-	}
-	dhcpd_svr_cfg.server_ip = string_to_ip(env_ip);
-	dhcpd_svr_cfg.start_ip = dhcpd_svr_cfg.server_ip;
-
-	/* Get end IP from environment */
-	if (env_serverip == NULL) {
-		printf("Error: Please setenv 'serverip' at first.\n");
-		return ERR_CONFIG;
-	}
-	dhcpd_svr_cfg.end_ip = string_to_ip(env_serverip);
-
-	/* Get netmask from environment */
-	if (env_netmask == NULL) {
-		printf("Error: Please setenv 'netmask' at first.\n");
-		return ERR_CONFIG;
-	}
-	dhcpd_svr_cfg.netmask = string_to_ip(env_netmask);
-
-	/* Get gateway from environment (optional, defaults to server IP) */
-	dhcpd_svr_cfg.gateway = (env_gateway != NULL) ? string_to_ip(env_gateway) : dhcpd_svr_cfg.server_ip;
+	/* Configure IP settings from environment or defaults */
+	dhcpd_ip_settings();
 
 	/* Validate IP configuration */
 	if (dhcpd_svr_cfg.server_ip.s_addr == 0 || dhcpd_svr_cfg.end_ip.s_addr == 0) {
