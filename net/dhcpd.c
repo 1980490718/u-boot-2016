@@ -88,21 +88,6 @@ static bool dhcpd_ip_allocated_to_mac(uint32_t ip_host, const uint8_t *mac) {
 }
 
 /**
- * dhcpd_mac_hash - Calculate FNV-1a hash of MAC address for consistent IP allocation
- * @mac: MAC address to hash
- * Return: 32-bit hash value
- */
-static uint32_t dhcpd_mac_hash(const uint8_t *mac) {
-	/* Simple Fowler-Noll-Vo (FNV-1a) hash algorithm */
-	uint32_t hash = 2166136261u;  /* FNV offset basis */
-	for (int i = 0; i < 6; i++) {
-		hash ^= mac[i];
-		hash *= 16777619u;   /* FNV prime */
-	}
-	return hash;
-}
-
-/**
  * dhcpd_print_ip_with_mac - Helper function to print IP and MAC address
  * @ip: IP address to print
  * @mac: MAC address to print
@@ -116,7 +101,7 @@ static void dhcpd_print_ip_with_mac(struct in_addr ip, const uint8_t *mac, const
 
 /**
  * dhcpd_validate_config - Validate DHCP server configuration
- * @cfg: Server configuration to validate
+* @cfg: Server configuration to validate
  * Return: SUCCESS if valid, error code otherwise
  */
 static int dhcpd_validate_config(const struct dhcpd_svr_cfg *cfg) {
@@ -138,6 +123,40 @@ static int dhcpd_validate_config(const struct dhcpd_svr_cfg *cfg) {
 }
 
 /**
+ * dhcpd_create_lease - Create a new DHCP lease
+ * @mac: Client MAC address
+ * @ip: IP address to assign
+ * @index: Index in dhcpd_leases array to use
+ * Return: SUCCESS on success, error code on failure
+ */
+static int dhcpd_create_lease(const uint8_t *mac, struct in_addr ip, int index) {
+	if (!mac || index < 0 || index >= MAX_LEASES) {
+		return ERR_INVALID_PARAM;
+	}
+
+	dhcpd_leases[index].used = true;
+	memcpy(dhcpd_leases[index].mac_addr, mac, 6);
+	dhcpd_leases[index].ip_addr = ip;
+	dhcpd_leases[index].lease_start = get_timer(0);
+	dhcpd_leases[index].lease_time = 3600 * CONFIG_SYS_HZ; /* 1 hour */
+
+	return SUCCESS;
+}
+
+/**
+ * dhcpd_get_available_lease_slot - Find an available slot in the leases array
+ * Return: Index of available slot, or -1 if no slots available
+ */
+static int dhcpd_get_available_lease_slot(void) {
+	for (int i = 0; i < MAX_LEASES; i++) {
+		if (!dhcpd_leases[i].used) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/**
  * dhcpd_alloc_ip - Allocate IP address to client based on MAC address
  * @mac: Client MAC address
  * @allocated_ip: Output parameter for allocated IP address
@@ -151,52 +170,16 @@ static int dhcpd_validate_config(const struct dhcpd_svr_cfg *cfg) {
  * 5. Fallback to first available IP if pool full
  */
 static int dhcpd_alloc_ip(const uint8_t *mac, struct in_addr *allocated_ip) {
-	struct dhcpd_lease *l;
-	uint32_t start, end, pool_size;
-	uint32_t hash_value, base_ip, try_ip;
-	int max_attempts;
+	uint32_t start = ntohl(dhcpd_svr_cfg.start_ip.s_addr);
+	uint32_t end = ntohl(dhcpd_svr_cfg.end_ip.s_addr);
 	uint32_t server_ip_int = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
+	uint32_t base_ip = ntohl(dhcpd_svr_cfg.start_ip.s_addr);
+	uint32_t try_ip = base_ip;
+	int attempt = 0;
 
-	if (!mac || !allocated_ip) {
-		return ERR_INVALID_PARAM;
-	}
+	while (attempt < 2) {  /* Allow 2 attempts: first for available IP, second for fallback */
+		attempt++;
 
-	/* 1. Check if client already has a lease */
-	l = dhcpd_find_lease(mac);
-	if (l) {
-		*allocated_ip = l->ip_addr;
-		return SUCCESS;
-	}
-
-	/* 2. Get IP pool range */
-	start = ntohl(dhcpd_svr_cfg.start_ip.s_addr);
-	end = ntohl(dhcpd_svr_cfg.end_ip.s_addr);
-
-	/* Calculate pool size, accounting for server IP if it's in the range */
-	pool_size = end - start + 1;
-	if (server_ip_int >= start && server_ip_int <= end) {
-		pool_size--;  /* Exclude server IP from available pool */
-	}
-
-	if (pool_size == 0) {
-		allocated_ip->s_addr = 0;
-		return ERR_OUT_OF_RANGE;
-	}
-
-	/* 3. Calculate MAC hash value */
-	hash_value = dhcpd_mac_hash(mac);
-
-	/* 4. Calculate base IP using hash, skipping server IP if needed */
-	base_ip = start + (hash_value % pool_size);
-	if (server_ip_int >= start && server_ip_int <= end && base_ip >= server_ip_int) {
-		base_ip++;  /* Skip over server IP if hash points to server IP or beyond */
-	}
-
-	try_ip = base_ip;
-	max_attempts = pool_size;
-
-	/* 5. Find available IP using linear probing */
-	for (int attempt = 0; attempt < max_attempts; attempt++) {
 		/* Skip server IP if it's in the range */
 		if (try_ip == server_ip_int && server_ip_int >= start && server_ip_int <= end) {
 			try_ip = (try_ip < end) ? try_ip + 1 : start;
@@ -205,17 +188,13 @@ static int dhcpd_alloc_ip(const uint8_t *mac, struct in_addr *allocated_ip) {
 		/* Check if IP is available */
 		if (!dhcpd_ip_is_allocated(try_ip)) {
 			/* Found available IP, create lease */
-			for (int j = 0; j < MAX_LEASES; j++) {
-				if (!dhcpd_leases[j].used) {
-					dhcpd_leases[j].used = true;
-					memcpy(dhcpd_leases[j].mac_addr, mac, 6);
-					dhcpd_leases[j].ip_addr.s_addr = htonl(try_ip);
-					dhcpd_leases[j].lease_start = get_timer(0);
-					dhcpd_leases[j].lease_time = 3600 * CONFIG_SYS_HZ; /* 1 hour */
-
-					*allocated_ip = dhcpd_leases[j].ip_addr;
-					return SUCCESS;
-				}
+			int lease_idx = dhcpd_get_available_lease_slot();
+			if (lease_idx >= 0) {
+				struct in_addr ip_addr;
+				ip_addr.s_addr = htonl(try_ip);
+				dhcpd_create_lease(mac, ip_addr, lease_idx);
+				*allocated_ip = dhcpd_leases[lease_idx].ip_addr;
+				return SUCCESS;
 			}
 
 			/* No free lease slots */
@@ -249,17 +228,13 @@ static int dhcpd_alloc_ip(const uint8_t *mac, struct in_addr *allocated_ip) {
 	}
 
 	/* Try to find an available lease slot for fallback */
-	for (int j = 0; j < MAX_LEASES; j++) {
-		if (!dhcpd_leases[j].used) {
-			dhcpd_leases[j].used = true;
-			memcpy(dhcpd_leases[j].mac_addr, mac, 6);
-			dhcpd_leases[j].ip_addr.s_addr = htonl(fallback_ip);
-			dhcpd_leases[j].lease_start = get_timer(0);
-			dhcpd_leases[j].lease_time = 3600 * CONFIG_SYS_HZ; /* 1 hour */
-
-			*allocated_ip = dhcpd_leases[j].ip_addr;
-			return SUCCESS;
-		}
+	int lease_idx = dhcpd_get_available_lease_slot();
+	if (lease_idx >= 0) {
+		struct in_addr ip_addr;
+		ip_addr.s_addr = htonl(fallback_ip);
+		dhcpd_create_lease(mac, ip_addr, lease_idx);
+		*allocated_ip = dhcpd_leases[lease_idx].ip_addr;
+		return SUCCESS;
 	}
 
 	/* 7. Extreme case: all lease slots are full */
@@ -453,16 +428,11 @@ static int dhcpd_process_lease(const uint8_t *client_mac, struct in_addr req_ip,
 		return SUCCESS;
 	} else {
 		/* Create new lease */
-		for (int i = 0; i < MAX_LEASES; i++) {
-			if (!dhcpd_leases[i].used) {
-				dhcpd_leases[i].used = true;
-				memcpy(dhcpd_leases[i].mac_addr, client_mac, 6);
-				dhcpd_leases[i].ip_addr = req_ip;
-				dhcpd_leases[i].lease_start = get_timer(0);
-				dhcpd_leases[i].lease_time = 3600 * CONFIG_SYS_HZ; /* 1 hour */
-				*processed_ip = req_ip;
-				return SUCCESS;
-			}
+		int lease_idx = dhcpd_get_available_lease_slot();
+		if (lease_idx >= 0) {
+			dhcpd_create_lease(client_mac, req_ip, lease_idx);
+			*processed_ip = req_ip;
+			return SUCCESS;
 		}
 		/* No free lease slots */
 		*processed_ip = req_ip;
