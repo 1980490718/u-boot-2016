@@ -8,7 +8,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void led_toggle(const char *gpio_name)
 {
-
 	int node, value;
 	unsigned int gpio;
 	node = fdt_path_offset(gd->fdt_blob, gpio_name);
@@ -101,15 +100,15 @@ void check_button_is_press(void)
 			printf("Reset button is pressed for: %2d second(s) ", counter);
 
 		led_off("power_led");
-		mdelay(350);
+		mdelay(500);
 		led_on("power_led");
-		mdelay(350);
+		mdelay(500);
 
 		counter++;
 
 		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%2d second(s) ", counter);
 
-		if(counter >= 5){
+		if(counter >= 3){
 			printf("\n");
 			led_off("power_led");
 			led_on("blink_led");
