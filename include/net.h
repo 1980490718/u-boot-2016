@@ -520,11 +520,13 @@ extern ushort		net_native_vlan;	/* Our Native VLAN */
 extern int		net_restart_wrap;	/* Tried all network devices */
 extern int 		tftp_our_port;
 enum proto_t {
-	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
+    BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
+    TFTPSRV, TFTPPUT, LINKLOCAL
 #ifdef CONFIG_HTTPD
-	TFTPSRV, TFTPPUT, LINKLOCAL, HTTPD
-#else
-	TFTPSRV, TFTPPUT, LINKLOCAL
+    , HTTPD
+#endif
+#ifdef CONFIG_DHCPD
+    , DHCPD
 #endif
 };
 

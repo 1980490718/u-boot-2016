@@ -247,6 +247,8 @@ extern loff_t board_env_size;
 #define CONFIG_IPQ_ETH_INIT_DEFER
 #define CONFIG_IPQ_NO_MACS			2
 #define CONFIG_HTTPD
+#define CONFIG_DHCPD
+#define CONFIG_CMD_DHCPD
 /*
  * GEPHY
  */

@@ -21,3 +21,5 @@ obj-$(CONFIG_CMD_RARP) += rarp.o
 obj-$(CONFIG_CMD_SNTP) += sntp.o
 obj-$(CONFIG_CMD_NET)  += tftp.o
 obj-$(CONFIG_HTTPD)  += httpd.o
+obj-$(CONFIG_DHCPD)  += dhcpd.o
+obj-$(CONFIG_CMD_DHCPD)  += dhcpd.o

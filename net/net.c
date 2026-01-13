@@ -112,6 +112,9 @@
 #include "httpd.h"
 #include <ipq_api.h>
 #endif
+#ifdef CONFIG_CMD_DHCPD
+#include "dhcpd.h"
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -480,7 +483,14 @@ restart:
 			dhcp_request();		/* Basically same as BOOTP */
 			break;
 #endif
-
+#if defined(CONFIG_CMD_DHCPD)
+		case DHCPD:
+			/* Initialize network settings for DHCP server */
+			eth_init();
+			net_init();
+			dhcpd_start_server();
+			break;
+#endif
 		case BOOTP:
 			bootp_reset();
 			net_ip.s_addr = 0;
