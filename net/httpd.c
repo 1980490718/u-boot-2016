@@ -46,7 +46,7 @@ void HttpdStart(void) {
 	uip_setnetmask(nm_addr);
 
 	dhcpd_start_server_nonblocking();
-	printf("Starting HTTP server with DHCPD-managed IP\n");
+	printf("Starting HTTP server with DHCP\n");
 #endif
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];

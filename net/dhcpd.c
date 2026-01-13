@@ -96,7 +96,7 @@ static bool dhcpd_ip_allocated_to_mac(uint32_t ip_host, const uint8_t *mac) {
 static void dhcpd_print_ip_with_mac(struct in_addr ip, const uint8_t *mac, const char *action) {
 	char ip_str[16];
 	ip_to_string(ip, ip_str);
-	printf("Sending DHCP %s for %s to %pM\n", action, ip_str, mac);
+	printf("DHCP: %s %s to %pM\n", action, ip_str, mac);
 }
 
 /**
@@ -652,7 +652,7 @@ send_ack:
 	return dhcpd_send_reply(bp, len, DHCPACK, yiaddr, NULL);
 
 send_nak:
-	printf("Sending DHCP NAK to %pM: %s\n", bp->chaddr, nak_msg ? nak_msg : "");
+	printf("DHCP: NAK to %pM (%s)\n", bp->chaddr, nak_msg ? nak_msg : "");
 	return dhcpd_send_reply(bp, len, DHCPNAK, (struct in_addr){0}, nak_msg);
 }
 
@@ -792,7 +792,7 @@ int dhcpd_init_server(void) {
 	ip_to_string(dhcpd_svr_cfg.end_ip, end_str);
 	ip_to_string(dhcpd_svr_cfg.netmask, mask_str);
 	ip_to_string(dhcpd_svr_cfg.gateway, gw_str);
-	printf("Using settings from environment variables!\nServer IP: %s, end IP: %s, netmask: %s, gateway: %s\n", ip_str, end_str, mask_str, gw_str);
+	printf("Using settings from environment variables\nDHCP server: %s\nPool: %s-%s\nNetmask: %s\nGateway: %s\n", ip_str, ip_str, end_str, mask_str, gw_str);
 
 	return SUCCESS;
 }
