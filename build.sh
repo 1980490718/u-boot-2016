@@ -86,7 +86,12 @@ echo "Deep clean by .gitignore rules"
 			.stgit-edit.txt \
 			.gdb_history \
 			.u-boot.* \
+			combined_dtb.lds \
+			dtb_combined \
+			dtb_combined.bin.gz \
+			dtb_combined.map \
 			arch/arm/dts/dtbtable.S \
+			arch/arm/dts/compressed_dtb/dtbcombined.S \
 			httpd/fsdata.c \
 			tools/mbn_tools.pyc \
 			u-boot* \
@@ -98,7 +103,6 @@ echo "Deep clean by .gitignore rules"
 			tools/dumpimage \
 			scripts/kconfig/conf \
 			scripts/basic/fixdep
-
 exit 0
 	fi
 fi
