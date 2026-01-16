@@ -792,7 +792,7 @@ int dhcpd_init_server(void) {
 	ip_to_string(dhcpd_svr_cfg.end_ip, end_str);
 	ip_to_string(dhcpd_svr_cfg.netmask, mask_str);
 	ip_to_string(dhcpd_svr_cfg.gateway, gw_str);
-	printf("Using settings from environment variables\nDHCP server: %s\nPool: %s-%s\nNetmask: %s\nGateway: %s\n", ip_str, ip_str, end_str, mask_str, gw_str);
+	printf("Using settings from environment variables\nDHCP server: %s\nNetmask    : %s\nGateway    : %s\nPool start : %s\nPool end   : %s\n", ip_str, mask_str, gw_str, ip_str, end_str);
 
 	return SUCCESS;
 }
