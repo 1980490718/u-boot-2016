@@ -189,7 +189,11 @@ static int do_firmware_upgrade(const ulong size) {
 				} else if (fw_type == FW_TYPE_QSDK) {
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 				} else { // fw_type == FW_TYPE_UBI
+#if defined(CONFIG_IPQ807X_AP8220)
+					sprintf(buf, "nand device 0 && nand erase.chip && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR);
+#else
 					sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx", FIRMWARE_START_ADDR_NAND, FIRMWARE_SIZE_NAND, UPLOAD_ADDR, FIRMWARE_START_ADDR_NAND, size);
+#endif
 				}
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
@@ -217,7 +221,7 @@ static int do_uboot_upgrade(const ulong size) {
 					UBOOT_START_ADDR_NAND, UBOOT_SIZE_NAND, UPLOAD_ADDR, UBOOT_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
 		case FLASH_TYPE_SPI:
-			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, UBOOT_NAME, size);
+			sprintf(buf, "flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for U-Boot *\n");
@@ -242,7 +246,7 @@ static int do_art_upgrade(const ulong size) {
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", ART_START_ADDR_NAND, ART_SIZE_NAND, UPLOAD_ADDR, ART_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
 		case FLASH_TYPE_SPI:
-			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, ART_NAME, size);
+			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for ART *\n");
@@ -287,7 +291,7 @@ static int do_cdt_upgrade(const ulong size) {
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", CDT_START_ADDR_NAND, CDT_SIZE_NAND, UPLOAD_ADDR, CDT_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
 		case FLASH_TYPE_SPI:
-			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, CDT_NAME, size);
+			sprintf(buf, "flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for CDT *\n");
@@ -308,7 +312,7 @@ static int do_mibib_upgrade(const ulong size) {
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", MIBIB_START_ADDR_NAND, MIBIB_SIZE_NAND, UPLOAD_ADDR, MIBIB_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
 			break;
 		case FLASH_TYPE_SPI:
-			sprintf(buf, "sf probe && sf update 0x%lx %s 0x%lx", UPLOAD_ADDR, MIBIB_NAME, size);
+			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for MIBIB *\n");

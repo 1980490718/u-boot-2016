@@ -41,3 +41,9 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
+
+config IPQ807X_AP8220
+    bool "IPQ807x AP8220 board support"
+    default n
+    help
+      Enable support for IPQ807x AP8220 board

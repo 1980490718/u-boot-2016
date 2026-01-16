@@ -101,6 +101,9 @@ enum flash_type_enum {
 #define UBOOT_NAME									"0:APPSBL"
 #define UBOOT_NAME_1								"0:APPSBL_1"
 #define ART_NAME									"0:ART"
+#define ROOTFS_NAME0								"rootfs"
+#define ROOTFS_NAME1								"rootfs1"
+#define ROOTFS_NAME2								"rootfs2"
 
 /* upgrade file size limit */
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (640 * 1024) /* 640KiB hex length is 0x100000 */

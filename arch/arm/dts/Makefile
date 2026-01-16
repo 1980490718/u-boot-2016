@@ -39,6 +39,10 @@ dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk10-c2.dtb \
 	ipq807x-db-hk02.dtb
 
+dtb-$(CONFIG_IPQ807X_AP8220) += ipq807x-ac02.dtb
+ifeq ($(CONFIG_TARGET_IPQ807X_AP8220),y)
+dtb-y += ipq807x-ac02.dtb
+endif
 dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
 	ipq806x-ap160.dtb \
 	ipq806x-ap160_2xx.dtb \

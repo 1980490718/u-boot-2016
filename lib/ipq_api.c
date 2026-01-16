@@ -110,8 +110,15 @@ void check_button_is_press(void)
 
 		if(counter >= 3){
 			printf("\n");
+#if defined(CONFIG_IPQ807X_AP8220)
+			led_on("power_led");
+			led_on("wlan2g_led");
+			led_on("wlan5g_led");
+			led_on("bluetooth_led");
+#else
 			led_off("power_led");
 			led_on("blink_led");
+#endif
 			eth_initialize();
 			run_command("httpd 192.168.1.1", 0);
 			run_command("res", 0);

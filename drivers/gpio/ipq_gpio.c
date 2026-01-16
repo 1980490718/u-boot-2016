@@ -208,6 +208,11 @@ void led_init(void)
 	led_init_by_name("power_led");
 	led_init_by_name("blink_led");
 	led_init_by_name("system_led");
+#if defined(CONFIG_IPQ807X_AP8220)
+	led_init_by_name("wlan2g_led");
+	led_init_by_name("wlan5g_led");
+	led_init_by_name("bluetooth_led");
+#endif
 
 	led_on("power_led");
 	mdelay(500);
