@@ -316,7 +316,7 @@ done
 
 # Restore HTML files to default version state
 echo "Restoring HTML files to default version state..."
-sed -i "s/Version:.*</Version:</g" $PWD/httpd/vendors/pig/*.html
+sed -i "s/Version:[^<]*</Version:</g" $PWD/httpd/vendors/pig/*.html
 
 # Print build summary
 echo "================================================"
