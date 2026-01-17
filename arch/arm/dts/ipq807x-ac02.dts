@@ -81,7 +81,7 @@
 		switch_mac_mode = <0x0>;
 		switch_mac_mode1 = <0x1>;
 		switch_mac_mode2 = <0x1>;
-		napa_gpio = <25 44>;
+		napa_gpio = <33 44>;
 		napa_gpio_cnt = <2>;
 		port_phyinfo {
 			port@0 {
