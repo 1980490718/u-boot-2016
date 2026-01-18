@@ -47,3 +47,9 @@ config IPQ807X_AP8220
     default n
     help
       Enable support for IPQ807x AP8220 board
+
+config IPQ807X_AX6
+    bool "IPQ807x AX6 board support"
+    default n
+    help
+      Enable support for IPQ807x AX6 board

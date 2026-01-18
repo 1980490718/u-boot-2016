@@ -115,6 +115,11 @@ void check_button_is_press(void)
 			led_on("wlan2g_led");
 			led_on("wlan5g_led");
 			led_on("bluetooth_led");
+#elif defined(CONFIG_IPQ807X_AX6)
+			led_off("system_led");
+			led_on("power_led");
+			led_on("blink_led");
+			led_off("network_blue_led");
 #else
 			led_off("power_led");
 			led_on("blink_led");

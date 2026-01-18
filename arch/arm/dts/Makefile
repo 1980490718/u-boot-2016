@@ -31,7 +31,6 @@ dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk11-c1.dtb \
 	ipq807x-ac01.dtb \
 	ipq807x-ac03.dtb \
-	ipq807x-ac04.dtb \
 	ipq807x-oak02.dtb \
 	ipq807x-hk01-c2.dtb \
 	ipq807x-hk01-c4.dtb \
@@ -40,6 +39,11 @@ dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-db-hk02.dtb
 
 dtb-$(CONFIG_IPQ807X_AP8220) += ipq807x-ac02.dtb
+
+dtb-$(CONFIG_IPQ807X_AX6) += ipq807x-ac04-c1.dtb
+ifneq ($(CONFIG_IPQ807X_AX6),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-ac04.dtb
+endif
 
 dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
 	ipq806x-ap160.dtb \

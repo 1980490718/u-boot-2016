@@ -106,11 +106,27 @@ enum flash_type_enum {
 #define ROOTFS_NAME2								"rootfs2"
 
 /* upgrade file size limit */
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (640 * 1024) /* 640KiB hex length is 0x100000 */
+#if defined(CONFIG_IPQ807X_AX6)
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
+#else
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (640 * 1024) /* 640KiB hex length is 0xA0000 */
+#endif
+#if defined(CONFIG_IPQ807X_AX6)
+#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES 		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
+#else
 #define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
+#endif
+#if defined(CONFIG_IPQ807X_AX6)
+#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
+#else
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
+#endif
 #define WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES	(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
+#if defined(CONFIG_IPQ807X_AX6)
+#define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
+#else
 #define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (64 * 1024) /* 64KiB hex length is 0x10000 */
+#endif
 
 /* function declarations */
 int check_test(void);

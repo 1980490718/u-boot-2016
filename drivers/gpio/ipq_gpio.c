@@ -213,6 +213,10 @@ void led_init(void)
 	led_init_by_name("wlan5g_led");
 	led_init_by_name("bluetooth_led");
 #endif
+#if defined(CONFIG_IPQ807X_AX6)
+	led_init_by_name("network_blue_led");
+	led_init_by_name("aiot_led");
+#endif
 
 	led_on("power_led");
 	mdelay(500);
