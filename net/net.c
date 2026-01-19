@@ -1389,8 +1389,23 @@ static int net_check_prereq(enum proto_t protocol)
 #if defined(CONFIG_HTTPD)
 	case HTTPD:
 		if (net_httpd_ip.s_addr == 0) {
-			puts("*** ERROR: httpd address not given\n");
-			return 1;
+			char *s = getenv("ipaddr");
+			if (s != NULL) {
+				net_httpd_ip = string_to_ip(s);
+			} else {
+				run_command("env default ipaddr", 0);
+				s = getenv("ipaddr");
+				if (s != NULL) {
+					net_httpd_ip = string_to_ip(s);
+					printf("*** Warning: httpd address not given, using builtin default ipaddr: %s\n", s);
+				}
+			}
+			if (net_ip.s_addr == 0) {
+				char *s_ip = getenv("ipaddr");
+				if (s_ip != NULL) {
+					net_ip = string_to_ip(s_ip);
+				}
+			}
 		}
 		goto common;
 #endif
