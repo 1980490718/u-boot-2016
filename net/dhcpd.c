@@ -802,15 +802,13 @@ int dhcpd_set_config(struct dhcpd_svr_cfg *cfg) {
 int dhcpd_init_server(void) {
 	/* Configure IP settings first */
 	dhcpd_ip_settings();
-	eth_init();
-	udelay(10000);
 	/* Initialize leases if not already done */
 	memset(dhcpd_leases, 0, sizeof(dhcpd_leases));
 
 	/* Save the original UDP handler to restore later */
 	original_udp_handler = net_get_udp_handler();
 
-	/* Set up DHCP handler with fallback to original handler for non-DHP traffic */
+	/* Set up DHCP handler with fallback to original handler for non-DHCP traffic */
 	net_set_udp_handler(dhcpd_handler_with_fallback);
 
 	/* Print server info */
@@ -849,15 +847,6 @@ void dhcpd_deinit_server(void) {
 }
 
 /**
- * dhcpd_process_packets - Process received network packets
- *
- * Called periodically to handle incoming DHCP requests.
- */
-void dhcpd_process_packets(void) {
-	eth_rx();
-}
-
-/**
  * dhcpd_poll_server - Non-blocking server polling function
  * Return: SUCCESS if running, error code if stopped or interrupted
  *
@@ -869,7 +858,7 @@ int dhcpd_poll_server(void) {
 		return ERR_NETWORK;  /* Server not running */
 	}
 
-	dhcpd_process_packets();
+	eth_rx();
 
 	// Check for Ctrl+C interruption
 	if (ctrlc()) {
@@ -890,64 +879,6 @@ void dhcpd_stop_server(void) {
 		dhcpd_deinit_server();
 		dhcpd_state = DHCPD_STATE_STOPPED;
 	}
-}
-
-/**
- * dhcpd_request - Start DHCP server in blocking mode (for console)
- * Return: SUCCESS on normal exit, error code on failure
- *
- * This function runs a blocking main loop that processes DHCP requests
- * until interrupted by Ctrl+C. It's intended for standalone console use.
- */
-int dhcpd_request(void) {
-	/* Initialize the server */
-	if (dhcpd_init_server() != SUCCESS) {
-		return ERR_NETWORK;
-	}
-
-	dhcpd_state = DHCPD_STATE_RUNNING;
-
-	/* Main server loop */
-	while (1) {
-		dhcpd_process_packets();
-		if (ctrlc()) {
-			break;
-		}
-		udelay(1000);
-	}
-
-	/* Deinitialize the server */
-	dhcpd_deinit_server();
-	dhcpd_state = DHCPD_STATE_STOPPED;
-	return SUCCESS;
-}
-
-/**
- * dhcpd_request_nonblocking - Start DHCP server in non-blocking mode
- * Return: SUCCESS on success, error code on failure
- *
- * This function initializes the server and processes packets for a short
- * duration (5 seconds) before returning. It's intended for integration
- * with other services like HTTP server.
- */
-int dhcpd_request_nonblocking(void) {
-	/* Initialize the server */
-	if (dhcpd_init_server() != SUCCESS) {
-		return ERR_NETWORK;
-	}
-
-	dhcpd_state = DHCPD_STATE_RUNNING;
-
-	/* Process packets for a short duration to handle initial DHCP requests */
-	unsigned long start = get_timer(0);
-	unsigned long timeout = 2 * CONFIG_SYS_HZ; /* 2 seconds timeout */
-
-	while (get_timer(start) < timeout) {
-		dhcpd_process_packets();
-		udelay(1000);  /* Small delay to prevent excessive CPU usage */
-	}
-
-	return SUCCESS;
 }
 
 /**
@@ -1006,6 +937,69 @@ void dhcpd_ip_settings(void) {
 		/* Default to server IP (ipaddr) */
 		dhcpd_svr_cfg.gateway = server_addr;
 	}
+}
+
+/**
+ * dhcpd_request - Start DHCP server in blocking mode (for console)
+ * Return: SUCCESS on normal exit, error code on failure
+ *
+ * This function runs a blocking main loop that processes DHCP requests
+ * until interrupted by Ctrl+C. It's intended for standalone console use.
+ */
+int dhcpd_request(void) {
+	eth_init();
+	mdelay(1500);
+	/* Initialize the server */
+	if (dhcpd_init_server() != SUCCESS) {
+		return ERR_NETWORK;
+	}
+
+	dhcpd_state = DHCPD_STATE_RUNNING;
+
+	/* Main server loop */
+	while (1) {
+		eth_rx();
+		if (ctrlc()) {
+			break;
+		}
+		udelay(1000);
+	}
+
+	/* Deinitialize the server */
+	dhcpd_stop_server();
+	return SUCCESS;
+}
+
+/**
+ * dhcpd_request_nonblocking - Start DHCP server in non-blocking mode
+ * Return: SUCCESS on success, error code on failure
+ *
+ * This function initializes the server and processes packets for a short
+ * duration (5 seconds) before returning. It's intended for integration
+ * with other services like HTTP server.
+ */
+int dhcpd_request_nonblocking(void) {
+#ifndef CONFIG_HTTPD
+	eth_init();
+	udelay(10000);
+#endif
+	/* Initialize the server */
+	if (dhcpd_init_server() != SUCCESS) {
+		return ERR_NETWORK;
+	}
+
+	dhcpd_state = DHCPD_STATE_RUNNING;
+
+	/* Process packets for a short duration to handle initial DHCP requests */
+	unsigned long start = get_timer(0);
+	unsigned long timeout = 2 * CONFIG_SYS_HZ; /* 2 seconds timeout */
+
+	while (get_timer(start) < timeout) {
+		eth_rx();
+		udelay(1000);  /* Small delay to prevent excessive CPU usage */
+	}
+
+	return SUCCESS;
 }
 
 /**

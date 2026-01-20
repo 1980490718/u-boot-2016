@@ -32,33 +32,48 @@ struct in_addr net_httpd_ip;
 void HttpdStart(void) {
 #ifdef CONFIG_DHCPD
 	dhcpd_ip_settings();
-
-	unsigned short int ip_addr[2];
-	unsigned short int nm_addr[2];
-
-	ip_addr[0] = htons((ntohl(dhcpd_svr_cfg.server_ip.s_addr) & 0xFFFF0000) >> 16);
-	ip_addr[1] = htons(ntohl(dhcpd_svr_cfg.server_ip.s_addr) & 0x0000FFFF);
-
-	nm_addr[0] = htons((ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0xFFFF0000) >> 16);
-	nm_addr[1] = htons(ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0x0000FFFF);
-
-	uip_sethostaddr(ip_addr);
-	uip_setnetmask(nm_addr);
-
+	mdelay(1500);
 	dhcpd_request_nonblocking();
+	mdelay(500);
 	dhcpd_poll_server();
+	mdelay(1500);
 	printf("Starting HTTP server with DHCP\n");
-#endif
+
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];
-	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
-#ifndef CONFIG_DHCPD
+	ulong tmp_ip_addr = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
 	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
 		   (tmp_ip_addr & 0xff000000) >> 24,
 		   (tmp_ip_addr & 0x00ff0000) >> 16,
 		   (tmp_ip_addr & 0x0000ff00) >> 8,
 		   (tmp_ip_addr & 0x000000ff));
-#endif
+	eaddr.addr[0] = net_ethaddr[0];
+	eaddr.addr[1] = net_ethaddr[1];
+	eaddr.addr[2] = net_ethaddr[2];
+	eaddr.addr[3] = net_ethaddr[3];
+	eaddr.addr[4] = net_ethaddr[4];
+	eaddr.addr[5] = net_ethaddr[5];
+	uip_setethaddr(eaddr);
+	uip_init();
+	httpd_init();
+	ip[0] = htons((tmp_ip_addr & 0xFFFF0000) >> 16);
+	ip[1] = htons(tmp_ip_addr & 0x0000FFFF);
+	uip_sethostaddr(ip);
+	ip[0] = htons((ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0xFFFF0000) >> 16);
+	ip[1] = htons(ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0x0000FFFF);
+	net_netmask.s_addr = dhcpd_svr_cfg.netmask.s_addr;
+	uip_setnetmask(ip);
+#else
+	struct uip_eth_addr eaddr;
+	unsigned short int ip[2];
+	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
+
+	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
+		   (tmp_ip_addr & 0xff000000) >> 24,
+		   (tmp_ip_addr & 0x00ff0000) >> 16,
+		   (tmp_ip_addr & 0x0000ff00) >> 8,
+		   (tmp_ip_addr & 0x000000ff));
+
 	eaddr.addr[0] = net_ethaddr[0];
 	eaddr.addr[1] = net_ethaddr[1];
 	eaddr.addr[2] = net_ethaddr[2];
@@ -89,7 +104,7 @@ void HttpdStart(void) {
 
 	net_netmask.s_addr = 0xFFFFFF00;
 	uip_setnetmask(ip);
-
+#endif
 	do_http_progress(WEBFAILSAFE_PROGRESS_START);
 	webfailsafe_is_running = 1;
 }
