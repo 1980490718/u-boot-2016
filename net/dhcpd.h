@@ -60,16 +60,15 @@
 #define ERR_NETWORK			-3
 #define ERR_NOT_FOUND		-4
 #define ERR_OUT_OF_RANGE	-5
-#define ERR_DUPLICATE_IP	-6
-#define ERR_INVALID_PACKET	-7
-#define ERR_SERVER_FULL		-8
-#define ERR_CONFIG			-9
+#define ERR_INVALID_PACKET	-6
+#define ERR_SERVER_FULL		-7
+#define ERR_CONFIG			-8
+#define ERR_BUFFER_OVERFLOW	-9
 
 /* DHCP Server States */
 typedef enum {
 	DHCPD_STATE_STOPPED = 0,
 	DHCPD_STATE_RUNNING,
-	DHCPD_STATE_PAUSED,
 } dhcpd_state_t;
 
 /* BOOTP/DHCP message header (RFC 2131) */
@@ -110,8 +109,8 @@ struct dhcpd_svr_cfg {
 };
 
 /* Exported functions */
-int dhcpd_start_server(void);
-int dhcpd_start_server_nonblocking(void);
+int dhcpd_request(void);
+int dhcpd_request_nonblocking(void);
 int dhcpd_poll_server(void);
 void dhcpd_stop_server(void);
 int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);

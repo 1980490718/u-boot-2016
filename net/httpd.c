@@ -45,7 +45,8 @@ void HttpdStart(void) {
 	uip_sethostaddr(ip_addr);
 	uip_setnetmask(nm_addr);
 
-	dhcpd_start_server_nonblocking();
+	dhcpd_request_nonblocking();
+	dhcpd_poll_server();
 	printf("Starting HTTP server with DHCP\n");
 #endif
 	struct uip_eth_addr eaddr;

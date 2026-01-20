@@ -488,7 +488,7 @@ restart:
 			/* Initialize network settings for DHCP server */
 			eth_init();
 			net_init();
-			dhcpd_start_server();
+			dhcpd_request();
 			break;
 #endif
 		case BOOTP:
