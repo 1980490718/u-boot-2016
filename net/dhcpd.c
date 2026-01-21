@@ -992,7 +992,7 @@ int dhcpd_request_nonblocking(void) {
 
 	/* Process packets for a short duration to handle initial DHCP requests */
 	unsigned long start = get_timer(0);
-	unsigned long timeout = 2 * CONFIG_SYS_HZ; /* 2 seconds timeout */
+	unsigned long timeout = 5 * CONFIG_SYS_HZ; /* 5 seconds timeout */
 
 	while (get_timer(start) < timeout) {
 		eth_rx();
