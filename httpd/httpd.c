@@ -4,10 +4,16 @@
 #include "fsdata.h"
 #include <asm/gpio.h>
 #include <ipq_api.h>
+#ifdef CONFIG_CMD_SETENV_WEB
+#include <setenv_web.h>
+#endif
 
 #define STATE_NONE					0
 #define STATE_FILE_REQUEST			1
 #define STATE_UPLOAD_REQUEST		2
+#ifdef CONFIG_CMD_SETENV_WEB
+#define STATE_ENV_REQUEST			3
+#endif
 
 #define ISO_G		0x47
 #define ISO_E		0x45
@@ -81,6 +87,13 @@ static void httpd_state_reset(void) {
 	hs->dataptr = 0;
 	hs->upload = 0;
 	hs->upload_total = 0;
+#ifdef CONFIG_CMD_SETENV_WEB
+	hs->senddataptr = NULL;
+	hs->sendlen = 0;
+	hs->request_method = 0;
+	hs->length_upload = 0;
+	memset(hs->filename, 0, sizeof(hs->filename));
+#endif
 	data_start_found = 0;
 	post_packet_counter = 0;
 	led_on("blink_led");
@@ -182,6 +195,50 @@ static int httpd_findandstore_firstchunk(void) {
 	return 0;
 }
 
+#ifdef CONFIG_CMD_SETENV_WEB
+/* Url decode function */
+static int parse_url_args(char *s, int *argc, char **argv, int max_args) {
+	int n = 0;
+	char *tok = strtok(s, "&");
+	while (tok && n < max_args) {
+		argv[n++] = tok;
+		tok = strtok(NULL, "&");
+	}
+	*argc = n;
+	return n;
+}
+
+/* Send HTTP response */
+static void send_http_response(u8_t *buf, int len) {
+	hs->state = STATE_ENV_REQUEST;
+	hs->senddataptr = buf;
+	hs->sendlen = len;
+	uip_send(hs->senddataptr, (hs->sendlen > uip_mss() ? uip_mss() : hs->sendlen));
+}
+
+/* Handle POST request */
+static int handle_post_request(int (*handler)(int, char **, char *, int), char *resp_buf, int bufsize) {
+	char *body = strstr((char *)uip_appdata, "\r\n\r\n");
+	int resp_len = 0;
+	if (body) {
+		body += 4;
+		int header_len = body - (char *)uip_appdata;
+		int body_len = uip_len - header_len;
+		char *body_copy = malloc(body_len + 1);
+		if (body_copy) {
+			memcpy(body_copy, body, body_len);
+			body_copy[body_len] = '\0';
+			int argc = 0;
+			char *argv[10];
+			parse_url_args(body_copy, &argc, argv, 10);
+			resp_len = handler(argc, argv, resp_buf, bufsize);
+			free(body_copy);
+		}
+	}
+	return resp_len;
+}
+#endif
+
 void httpd_appcall(void) {
 	struct fs_file fsfile;
 	unsigned int i;
@@ -211,8 +268,43 @@ void httpd_appcall(void) {
 			}
 			if (uip_newdata() && hs->state == STATE_NONE) {
 				if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T && (uip_appdata[3] == ISO_space || uip_appdata[3] == ISO_tab)) {
+#ifdef CONFIG_CMD_SETENV_WEB
+					/* Handle environment variable API request */
+					if (strncmp((char *)&uip_appdata[4], "/setenv", 7) == 0) {
+						char *query = strchr((char *)&uip_appdata[4], '?');
+						int argc = 0;
+						char *argv[10];
+						if (query) {
+							*query = 0;
+							query++;
+							parse_url_args(query, &argc, argv, 10);
+						}
+						char resp_buf[8192];
+						int resp_len = web_setenv_handle(argc, argv, resp_buf, sizeof(resp_buf));
+						send_http_response((u8_t *)resp_buf, resp_len);
+						return;
+					}
+#endif
 					hs->state = STATE_FILE_REQUEST;
 				} else if (uip_appdata[0] == ISO_P && uip_appdata[1] == ISO_O && uip_appdata[2] == ISO_S && uip_appdata[3] == ISO_T && (uip_appdata[4] == ISO_space || uip_appdata[4] == ISO_tab)) {
+#ifdef CONFIG_CMD_SETENV_WEB
+					/* Handle environment variable API request */
+					if (strncmp((char *)uip_appdata, "POST /setenv", 12) == 0) {
+						char resp_buf[8192];
+						int resp_len = handle_post_request(web_setenv_handle, resp_buf, sizeof(resp_buf));
+						/* Print response to console */
+						printf("[WEB setenv] %.*s\n", resp_len, resp_buf);
+						send_http_response((u8_t *)resp_buf, resp_len);
+						return;
+					}
+					/* Handle reset device request */
+					if (strncmp((char *)uip_appdata, "POST /reset", 11) == 0) {
+					static char resp_buf[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nServer: uIP\r\nConnection: close\r\n\r\nRebooting...\n";
+					send_http_response((u8_t *)resp_buf, strlen(resp_buf));
+					do_reset(NULL, 0, 0, NULL);
+					return;
+					}
+#endif
 					hs->state = STATE_UPLOAD_REQUEST;
 					led_off("blink_led");
 				}
@@ -327,6 +419,25 @@ void httpd_appcall(void) {
 					return;
 				}
 			}
+#ifdef CONFIG_CMD_SETENV_WEB
+			/* Handle environment variable request state */
+			if (hs->state == STATE_ENV_REQUEST) {
+				if (uip_acked()) {
+					if (hs->sendlen > uip_mss()) {
+						hs->senddataptr += uip_conn->len;
+						hs->sendlen -= uip_conn->len;
+						uip_send(hs->senddataptr, (hs->sendlen > uip_mss() ? uip_mss() : hs->sendlen));
+					} else {
+						httpd_state_reset();
+						uip_close();
+					}
+				}
+				if (uip_rexmit()) {
+					uip_send(hs->senddataptr, (hs->sendlen > uip_mss() ? uip_mss() : hs->sendlen));
+				}
+				return;
+			}
+#endif
 			if (uip_acked()) {
 				if (hs->state == STATE_FILE_REQUEST) {
 					if (hs->upload <= uip_mss()) {

@@ -199,7 +199,13 @@ config CMD_IMPORTENV
 	default y
 	help
 	  Import environments.
-
+config CMD_SETENV_WEB
+	bool "setenv_web - Web interface for environment variables (requires HTTP server)"
+	default y
+	help
+	  Enable web interface for manipulating U-Boot environment variables.
+	  This allows changing environment variables through HTTP requests.
+	  Requires network support to function.
 config CMD_EDITENV
 	bool "editenv"
 	default y

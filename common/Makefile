@@ -165,6 +165,9 @@ obj-$(CONFIG_CMD_SF) += cmd_sf.o
 obj-$(CONFIG_CMD_SCSI) += cmd_scsi.o
 obj-$(CONFIG_CMD_SHA1SUM) += cmd_sha1sum.o
 obj-$(CONFIG_CMD_SETEXPR) += cmd_setexpr.o
+ifdef CONFIG_CMD_SETENV_WEB
+obj-y += cmd_setenv_web.o
+endif
 obj-$(CONFIG_CMD_SOFTSWITCH) += cmd_softswitch.o
 obj-$(CONFIG_CMD_SPI) += cmd_spi.o
 obj-$(CONFIG_CMD_SPIBOOTLDR) += cmd_spibootldr.o
