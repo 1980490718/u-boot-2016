@@ -18,6 +18,9 @@
 static struct dhcpd_lease dhcpd_leases[MAX_LEASES];  /* DHCP lease database */
 struct dhcpd_svr_cfg dhcpd_svr_cfg;                  /* Server configuration */
 
+/*nak message buffer*/
+static char dhcpd_nak_msg_buffer[256];
+
 static dhcpd_state_t dhcpd_state = DHCPD_STATE_STOPPED;  /* Current server state */
 static rxhand_f *original_udp_handler = NULL;           /* Original UDP handler to restore */
 
@@ -366,13 +369,19 @@ static int dhcpd_validate_request(const uint8_t *client_mac, struct in_addr req_
 	uint32_t req_network = req_ip.s_addr & dhcpd_svr_cfg.netmask.s_addr;
 
 	if (req_network != network) {
-		*nak_msg = "requested address not on local network";
+		char ip_str[16];
+		ip_to_string(req_ip, ip_str);
+		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] not on local network", ip_str);
+		*nak_msg = dhcpd_nak_msg_buffer;
 		return ERR_INVALID_PACKET;
 	}
 
 	/* Check if requested IP is in our IP pool */
 	if (!dhcpd_ip_in_pool(ip_host)) {
-		*nak_msg = "requested address not available";
+		char ip_str[16];
+		ip_to_string(req_ip, ip_str);
+		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] not available", ip_str);
+		*nak_msg = dhcpd_nak_msg_buffer;
 		return ERR_OUT_OF_RANGE;
 	}
 
