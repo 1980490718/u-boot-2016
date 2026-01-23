@@ -972,12 +972,13 @@ int dhcpd_request(void) {
 
 /**
  * dhcpd_request_nonblocking - Start DHCP server in non-blocking mode
- * Return: SUCCESS on success, error code on failure
+ * @return: SUCCESS on success, error code on failure
  *
- * This function initializes the server and processes packets for a short
- * duration (5 seconds) before returning. It's intended for integration
- * with other services like HTTP server.
+ * This function initializes the DHCP server and processes incoming packets
+ * for a limited duration before returning. It's designed for integration
+ * with other network services like HTTP server.
  */
+static int global_retry_count = 0;
 int dhcpd_request_nonblocking(void) {
 #ifndef CONFIG_HTTPD
 	eth_init();
@@ -990,13 +991,44 @@ int dhcpd_request_nonblocking(void) {
 
 	dhcpd_state = DHCPD_STATE_RUNNING;
 
-	/* Process packets for a short duration to handle initial DHCP requests */
 	unsigned long start = get_timer(0);
-	unsigned long timeout = 5 * CONFIG_SYS_HZ; /* 5 seconds timeout */
+	unsigned long max_timeout = 10 * CONFIG_SYS_HZ;  // Max processing time: 10 seconds
+	unsigned long idle_timeout = 3 * CONFIG_SYS_HZ;  // Idle timeout: 3 seconds
+	unsigned long last_pkt_time = start;
+	int prcd_pkts = 0;  /* Processed packets counter */
 
-	while (get_timer(start) < timeout) {
-		eth_rx();
-		udelay(1000);  /* Small delay to prevent excessive CPU usage */
+	while (get_timer(start) < max_timeout) {
+		unsigned long current_time = get_timer(0);
+
+		int rx_result = eth_rx();
+		if (rx_result > 0) {
+			last_pkt_time = current_time;
+			prcd_pkts += rx_result;
+			if (prcd_pkts >= 300) {  /* Success threshold: 300 packets processed */
+				global_retry_count = 0;
+				return SUCCESS;
+			}
+		}
+
+		/* Exit if no packets received for idle_timeout duration */
+		if ((current_time - last_pkt_time) >= idle_timeout) {
+			break;
+		}
+
+		udelay(1000);
+	}
+
+	/* Handle retry logic if insufficient packets processed */
+	if (prcd_pkts < 300) {
+		if (global_retry_count < 5) {  /* Max retry attempts: 5 */
+			global_retry_count++;
+			return RETRY_REQUEST;  /* Signal to retry */
+		} else {
+			global_retry_count = 0;
+			return ERR_DHCP_FAILURE;  /* Permanent failure after max retries */
+		}
+	} else {
+		global_retry_count = 0;  /* Reset retry counter on success */
 	}
 
 	return SUCCESS;

@@ -32,28 +32,17 @@ struct in_addr net_httpd_ip;
 void HttpdStart(void) {
 #ifdef CONFIG_DHCPD
 	dhcpd_ip_settings();
-	mdelay(1000);
-	int ret = dhcpd_request_nonblocking();
-	int retry_count = 0;
-	const int max_retries = 5;
-	while (ret != SUCCESS && retry_count < max_retries) {
-		printf("DHCP server initialization failed: %d, retrying (%d/%d)...\n", ret, retry_count + 1, max_retries);
-		mdelay(1500);
-		ret = dhcpd_request_nonblocking();
-		retry_count++;
-	}
-	if (ret != SUCCESS) {
-		printf("Error: DHCP server initialization failed after %d attempts: %d\n", max_retries, ret);
-	} else {
-		printf("DHCP server initialized successfully after %d attempt(s)\n", retry_count + 1);
-	}
 	mdelay(1500);
+	dhcpd_request_nonblocking();
+	mdelay(500);
 	dhcpd_poll_server();
 	mdelay(1500);
+	printf("Starting HTTP server with DHCP\n");
+
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];
 	ulong tmp_ip_addr = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
-	printf("Starting HTTP server with DHCP at IP: %ld.%ld.%ld.%ld\n",
+	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
 		   (tmp_ip_addr & 0xff000000) >> 24,
 		   (tmp_ip_addr & 0x00ff0000) >> 16,
 		   (tmp_ip_addr & 0x0000ff00) >> 8,

@@ -64,6 +64,8 @@
 #define ERR_SERVER_FULL		-7
 #define ERR_CONFIG			-8
 #define ERR_BUFFER_OVERFLOW	-9
+#define RETRY_REQUEST		-10
+#define ERR_DHCP_FAILURE	-11
 
 /* DHCP Server States */
 typedef enum {
