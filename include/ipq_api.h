@@ -58,7 +58,11 @@ enum flash_type_enum {
 
 /* load address */
 #define CONFIG_LOADADDR								(unsigned long) 0x44000000 /* console default address */
+#if defined(CONFIG_256MB_RAM)
+#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				CONFIG_LOADADDR /* For 256MB RAM, use the console default address */
+#else
 #define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				(unsigned long) 0x50000000
+#endif
 /* simplify the WEBFAILSAFE_UPLOAD_RAM_ADDRESS as UPLOAD_ADDR */
 #define UPLOAD_ADDR									WEBFAILSAFE_UPLOAD_RAM_ADDRESS
 
@@ -105,24 +109,34 @@ enum flash_type_enum {
 #define ROOTFS_NAME1								"rootfs1"
 #define ROOTFS_NAME2								"rootfs2"
 
-/* upgrade file size limit */
+/* ------------------------------------------------upgrade file size limit------------------------------------------------ */
+/* uboot size limit */
 #if defined(CONFIG_IPQ807X_AX6)
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
+#elif defined(CONFIG_IPQ6018_M2)
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1536 * 1024) /* 1536KiB hex length is 0x180000 */
 #else
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (640 * 1024) /* 640KiB hex length is 0xA0000 */
 #endif
-#if defined(CONFIG_IPQ807X_AX6)
+
+/* art size limit */
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
 #define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES 		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
 #else
 #define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
 #endif
-#if defined(CONFIG_IPQ807X_AX6)
+
+/* cdt size limit */
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
 #else
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
 #endif
+
+/* mibib size limit */
 #define WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES	(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
-#if defined(CONFIG_IPQ807X_AX6)
+
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
 #define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
 #else
 #define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (64 * 1024) /* 64KiB hex length is 0x10000 */

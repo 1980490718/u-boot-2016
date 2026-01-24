@@ -127,10 +127,14 @@ endif
 
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-cp02-c1.dtb \
-			ipq6018-cp03-c1.dtb \
 			ipq6018-cp03-c2.dtb \
 			ipq6018-db-cp01.dtb \
 			ipq6018-db-cp02.dtb
+
+dtb-$(CONFIG_IPQ6018_M2) += ipq6018-m2.dtb
+ifneq ($(CONFIG_IPQ6018_M2),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp03-c1.dtb
+endif
 
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-al01-c1.dtb \
 			ipq9574-al02-c1.dtb \

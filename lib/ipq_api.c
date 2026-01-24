@@ -120,6 +120,11 @@ void check_button_is_press(void)
 			led_on("power_led");
 			led_on("blink_led");
 			led_off("network_blue_led");
+#elif defined(CONFIG_IPQ6018_M2)
+			led_on("system_led");
+			led_on("wlan2g_led");
+			led_on("wlan5g_led");
+			led_on("mesh_led");
 #else
 			led_off("power_led");
 			led_on("blink_led");
