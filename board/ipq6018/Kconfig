@@ -39,6 +39,12 @@ config IPQ6018_M2
 	help
 		Enable support for IPQ6018_M2 board
 
+config IPQ6018_360V6
+	bool "IPQ6018 360V6 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_360V6 board
+
 config 256MB_RAM
 	bool "Board has only 256MB RAM"
 	default n

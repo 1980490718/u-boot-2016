@@ -132,7 +132,8 @@ dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-db-cp02.dtb
 
 dtb-$(CONFIG_IPQ6018_M2) += ipq6018-m2.dtb
-ifneq ($(CONFIG_IPQ6018_M2),y)
+dtb-$(CONFIG_IPQ6018_360V6) += ipq6018-360v6.dtb
+ifeq ($(filter y,$(CONFIG_IPQ6018_M2) $(CONFIG_IPQ6018_360V6)),)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp03-c1.dtb
 endif
 

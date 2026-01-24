@@ -207,7 +207,7 @@ static int do_firmware_upgrade(const ulong size) {
 				} else { // fw_type == FW_TYPE_UBI
 #if defined(CONFIG_IPQ807X_AP8220)
 					sprintf(buf, "nand device 0 && nand erase.chip && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR);
-#elif defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
+#elif defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 					sprintf(buf, "flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR);
 #else
 					sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx", FIRMWARE_START_ADDR_NAND, FIRMWARE_SIZE_NAND, UPLOAD_ADDR, FIRMWARE_START_ADDR_NAND, size);
@@ -237,7 +237,7 @@ static int do_uboot_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 #if defined(CONFIG_IPQ807X_AX6)
 			sprintf(buf, "flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR);
-#elif defined(CONFIG_IPQ6018_M2)
+#elif defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
 #else
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx",
@@ -267,7 +267,7 @@ static int do_art_upgrade(const ulong size) {
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, ART_NAME, UPLOAD_ADDR);
 			break;
 		case FLASH_TYPE_NAND:
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
 #else
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", ART_START_ADDR_NAND, ART_SIZE_NAND, UPLOAD_ADDR, ART_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
@@ -318,7 +318,7 @@ static int do_cdt_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 #if defined(CONFIG_IPQ807X_AX6)
 			sprintf(buf, "flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR);
-#elif defined(CONFIG_IPQ6018_M2)
+#elif defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 #else
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", CDT_START_ADDR_NAND, CDT_SIZE_NAND, UPLOAD_ADDR, CDT_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
@@ -343,7 +343,7 @@ static int do_mibib_upgrade(const ulong size) {
 	print_upgrade_warning("MIBIB");
 	switch (qca_smem_flash_info.flash_type) {
 		case FLASH_TYPE_NAND:
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2)
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
 #else
 			sprintf(buf, "nand erase 0x%lx 0x%lx && nand write 0x%lx 0x%lx 0x%lx", MIBIB_START_ADDR_NAND, MIBIB_SIZE_NAND, UPLOAD_ADDR, MIBIB_START_ADDR_NAND, ((size / 131072 + (size % 131072 != 0)) * 131072));
