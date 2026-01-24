@@ -45,6 +45,12 @@ config IPQ6018_360V6
 	help
 		Enable support for IPQ6018_360V6 board
 
+config IPQ6018_AX5_JDCLOUD
+	bool "IPQ6018 AX5 JDCloud Board Support"
+	default n
+	help
+		Enable support for IPQ6018_AX5_JDCLOUD board
+
 config 256MB_RAM
 	bool "Board has only 256MB RAM"
 	default n
