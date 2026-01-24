@@ -27,6 +27,7 @@
 		blink_led = "/tlmm-gpio/led_gpio/led_blue";
 		system_led = "/tlmm-gpio/led_gpio/led_green";
 		reset_key = "/tlmm-gpio/key_gpio/reset";
+		wps_key = "/tlmm-gpio/key_gpio/joylink";
 	};
 
 	ess-switch {

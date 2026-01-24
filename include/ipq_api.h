@@ -1,4 +1,5 @@
 #define RESET_BUTTON_PRESSED        0
+#define WPS_BUTTON_PRESSED          0
 
 #define LED_ON 1
 #define LED_OFF 0
