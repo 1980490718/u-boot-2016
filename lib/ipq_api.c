@@ -89,16 +89,15 @@ bool button_is_press(const char *gpio_name, int value)
 		return false;
 }
 
-void check_button_is_press(void) {
+void check_button_is_press(void)
+{
 	int counter = 0;
 
-	while (button_is_press("reset_key", RESET_BUTTON_PRESSED) || button_is_press("wps_key", WPS_BUTTON_PRESSED)) {
-		if(counter == 0) {
-			 if(button_is_press("reset_key", RESET_BUTTON_PRESSED))
-				 printf("Reset button is pressed for: %2d second(s) ", counter);
-			 else if(button_is_press("wps_key", WPS_BUTTON_PRESSED))
-				 printf("WPS button is pressed for: %2d second(s) ", counter);
-		 }
+	while (button_is_press("reset_key", RESET_BUTTON_PRESSED))
+	{
+
+		if(counter == 0)
+			printf("Reset button is pressed for: %2d second(s) ", counter);
 
 		led_off("power_led");
 		mdelay(500);
