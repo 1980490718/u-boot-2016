@@ -37,33 +37,33 @@
 			led_power {
 				gpio = <46>;
 				func = <0>;
-				out = <GPIO_OUT_HIGH>;
+				out = <GPIO_OUT_LOW>;
 				drvstr = <GPIO_8MA>;
-				pull = <GPIO_PULL_UP>;
+				pull = <GPIO_PULL_DOWN>;
 				oe = <GPIO_OE_ENABLE>;
 			};
 			wlan2g {
 				gpio = <47>;
 				func = <0>;
-				out = <GPIO_OUT_HIGH>;
+				out = <GPIO_OUT_LOW>;
 				drvstr = <GPIO_8MA>;
-				pull = <GPIO_PULL_UP>;
+				pull = <GPIO_PULL_DOWN>;
 				oe = <GPIO_OE_ENABLE>;
 			};
 			wlan5g {
 				gpio = <48>;
 				func = <0>;
-				out = <GPIO_OUT_HIGH>;
+				out = <GPIO_OUT_LOW>;
 				drvstr = <GPIO_8MA>;
-				pull = <GPIO_PULL_UP>;
+				pull = <GPIO_PULL_DOWN>;
 				oe = <GPIO_OE_ENABLE>;
 			};
 			bluetooth {
 				gpio = <50>;
 				func = <0>;
-				out = <GPIO_OUT_HIGH>;
+				out = <GPIO_OUT_LOW>;
 				drvstr = <GPIO_8MA>;
-				pull = <GPIO_PULL_UP>;
+				pull = <GPIO_PULL_DOWN>;
 				oe = <GPIO_OE_ENABLE>;
 			};
 		};

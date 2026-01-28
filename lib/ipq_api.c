@@ -112,9 +112,9 @@ void check_button_is_press(void)
 			printf("\n");
 #if defined(CONFIG_IPQ807X_AP8220)
 			led_on("power_led");
-			led_on("wlan2g_led");
-			led_on("wlan5g_led");
-			led_on("bluetooth_led");
+			led_off("wlan2g_led");
+			led_off("wlan5g_led");
+			led_off("bluetooth_led");
 #elif defined(CONFIG_IPQ807X_AX6)
 			led_off("system_led");
 			led_on("power_led");

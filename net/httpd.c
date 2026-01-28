@@ -372,7 +372,11 @@ static int do_mibib_upgrade(const ulong size) {
 int do_http_progress(const int state) {
 	switch (state) {
 		case WEBFAILSAFE_PROGRESS_START:
+#if defined(CONFIG_IPQ807X_AP8220)
+			led_on("power_led");
+#else
 			led_off("power_led");
+#endif
 			led_on("blink_led");
 			led_off("system_led");
 			printf("HTTP server is ready!\n");
