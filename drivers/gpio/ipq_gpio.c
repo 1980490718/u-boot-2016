@@ -217,6 +217,9 @@ void led_init(void)
 	led_init_by_name("network_blue_led");
 	led_init_by_name("aiot_led");
 #endif
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+	led_init_by_name("led_system_power2");
+#endif
 
 	led_on("power_led");
 	mdelay(500);

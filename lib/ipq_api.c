@@ -125,6 +125,9 @@ void check_button_is_press(void)
 			led_on("wlan2g_led");
 			led_on("wlan5g_led");
 			led_on("mesh_led");
+			led_on("bluetooth_led");
+#elif defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+			led_on("led_system_power2");
 #else
 			led_off("power_led");
 			led_on("blink_led");

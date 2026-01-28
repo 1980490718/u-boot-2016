@@ -106,12 +106,16 @@ enum flash_type_enum {
 #define UBOOT_NAME_1								"0:APPSBL_1"
 #define ART_NAME									"0:ART"
 #define ROOTFS_NAME0								"rootfs"
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+#define ROOTFS_NAME1								"rootfs_1"
+#else
 #define ROOTFS_NAME1								"rootfs1"
+#endif
 #define ROOTFS_NAME2								"rootfs2"
 
 /* ------------------------------------------------upgrade file size limit------------------------------------------------ */
 /* uboot size limit */
-#if defined(CONFIG_IPQ807X_AX6)
+#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ807X_XGLINK_5GCPE)
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
 #elif defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1536 * 1024) /* 1536KiB hex length is 0x180000 */
@@ -131,6 +135,8 @@ enum flash_type_enum {
 /* cdt size limit */
 #if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
+#elif defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (64 * 1024) /* 64KiB hex length is 0x40000 */
 #else
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
 #endif
