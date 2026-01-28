@@ -25,7 +25,6 @@ dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk06.dtb \
 	ipq807x-hk07.dtb \
 	ipq807x-hk08.dtb \
-	ipq807x-hk09.dtb \
 	ipq807x-hk10.dtb \
 	ipq807x-hk14.dtb \
 	ipq807x-hk11-c1.dtb \
@@ -43,6 +42,11 @@ dtb-$(CONFIG_IPQ807X_AP8220) += ipq807x-ac02.dtb
 dtb-$(CONFIG_IPQ807X_AX6) += ipq807x-ac04-c1.dtb
 ifneq ($(CONFIG_IPQ807X_AX6),y)
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-ac04.dtb
+endif
+
+dtb-$(CONFIG_IPQ807X_XGLINK_5GCPE) += ipq807x-xglink-5gcpe.dtb
+ifneq ($(CONFIG_IPQ807X_XGLINK_5GCPE),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk09.dtb
 endif
 
 dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \

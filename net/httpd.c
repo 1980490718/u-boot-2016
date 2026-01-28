@@ -209,6 +209,8 @@ static int do_firmware_upgrade(const ulong size) {
 					sprintf(buf, "nand device 0 && nand erase.chip && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR);
 #elif defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
 					sprintf(buf, "flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR);
+#elif defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR);
 #else
 					sprintf(buf, "nand erase 0x%lx 0x%lx; nand write 0x%lx 0x%lx 0x%lx", FIRMWARE_START_ADDR_NAND, FIRMWARE_SIZE_NAND, UPLOAD_ADDR, FIRMWARE_START_ADDR_NAND, size);
 #endif
@@ -245,7 +247,11 @@ static int do_uboot_upgrade(const ulong size) {
 #endif
 			break;
 		case FLASH_TYPE_SPI:
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
+#else
 			sprintf(buf, "flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR);
+#endif
 			break;
 		default:
 			printf("\n* Unsupported flash type for U-Boot *\n");
@@ -325,7 +331,11 @@ static int do_cdt_upgrade(const ulong size) {
 #endif
 			break;
 		case FLASH_TYPE_SPI:
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
+#else
 			sprintf(buf, "flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR);
+#endif
 			break;
 		default:
 			printf("\n* Unsupported flash type for CDT *\n");

@@ -43,13 +43,19 @@ config LIST_FUSE
 	default n
 
 config IPQ807X_AP8220
-    bool "IPQ807x AP8220 board support"
-    default n
-    help
-      Enable support for IPQ807x AP8220 board
+	bool "IPQ807x AP8220 board support"
+	default n
+	help
+	  Enable support for IPQ807x AP8220 board
 
 config IPQ807X_AX6
-    bool "IPQ807x AX6 board support"
-    default n
-    help
-      Enable support for IPQ807x AX6 board
+	bool "IPQ807x AX6 board support"
+	default n
+	help
+	  Enable support for IPQ807x AX6 board
+
+config IPQ807X_XGLINK_5GCPE
+	bool "IPQ807x XGLINK 5GCPE board support"
+	default n
+	help
+	  Enable support for IPQ807x XGLINK 5GCPE board
