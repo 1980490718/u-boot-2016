@@ -62,27 +62,15 @@ void gpio_tlmm_config(struct qca_gpio_config *gpio_config)
 	return;
 }
 
-#ifdef CONFIG_HTTPD
-int gpio_set_value(unsigned gpio, int value)
-#else
 void gpio_set_value(unsigned int gpio, unsigned int out)
-#endif
 {
 	unsigned int *addr = (unsigned int *)GPIO_IN_OUT_ADDR(gpio);
 	unsigned int val = 0;
 
 	val = readl(addr);
 	val &= ~(0x2);
-
-#ifdef CONFIG_HTTPD
-	val |= value << 1;
-#else
 	val |= out << 1;
-#endif
 	writel(val, addr);
-#ifdef CONFIG_HTTPD
-	return 0;
-#endif
 }
 
 int gpio_get_value(unsigned int gpio)
@@ -93,26 +81,15 @@ int gpio_get_value(unsigned int gpio)
 	return (val & 1);
 }
 
-#ifdef CONFIG_HTTPD
-int gpio_direction_output(unsigned gpio, int value)
-#else
 void gpio_direction_output(unsigned int gpio, unsigned int out)
-#endif
 {
 	unsigned int *addr = (unsigned int *)GPIO_CONFIG_ADDR(gpio);
 	unsigned int val = 0;
 
-#ifdef CONFIG_HTTPD
-	gpio_set_value(gpio, value);
-#else
 	gpio_set_value(gpio, out);
-#endif
 	val = readl(addr);
 	val |= 1 << 9;
 	writel(val, addr);
-#ifdef CONFIG_HTTPD
-	return 0;
-#endif
 }
 
 int qca_gpio_init(int offset)

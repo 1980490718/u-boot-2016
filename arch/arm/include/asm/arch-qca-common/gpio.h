@@ -31,6 +31,12 @@
 #ifndef GPIO_H
 #define GPIO_H
 
+#ifdef CONFIG_HTTPD
+#ifndef _ASM_GENERIC_GPIO_H_
+#define _ASM_GENERIC_GPIO_H_
+#endif
+#endif
+
 #define GPIO_OUT	(1 << 1)
 
 struct qca_gpio_config {
@@ -53,20 +59,14 @@ void led_booting(void);
 void led_init(void);
 void btn_init(void);
 void led_toggle(const char *gpio_name);
-int gpio_set_value(unsigned gpio, int value);
-#else
-void gpio_set_value(unsigned int gpio, unsigned int out);
 #endif
+void gpio_set_value(unsigned int gpio, unsigned int out);
 
 int gpio_get_value(unsigned int gpio);
 
 int qca_gpio_init(int offset);
 int qca_gpio_deinit(int offset);
-#ifdef CONFIG_HTTPD
-int gpio_direction_output(unsigned gpio, int value);
-#else
 void gpio_direction_output(unsigned int gpio, unsigned int out);
-#endif
 
 /* GPIO TLMM: Output value */
 #define GPIO_OUT_LOW	0
