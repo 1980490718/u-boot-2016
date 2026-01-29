@@ -5,6 +5,7 @@
 #include <net.h>
 #include <stdbool.h>
 #include <asm-generic/global_data.h>
+#include <asm/arch-qca-common/smem.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -160,3 +161,25 @@ int check_fw_type(void *address) {
 	else return -1;
 	return 0;
 }
+
+/* Get the size information from the smem table (in bytes) */
+unsigned long get_smem_table_size_bytes(const char *name) {
+	uint32_t offset, byte_size;
+	if (getpart_offset_size((char *)name, &offset, &byte_size) == 0) {
+		return (unsigned long)byte_size;
+	}
+	return 0;
+}
+
+/* define macro for get size function */
+#define DEFINE_GET_SIZE_FUNC(func_name, partition_name) \
+	unsigned long func_name(void) { \
+		return get_smem_table_size_bytes(partition_name); \
+	}
+
+/* api for webfailsafe upgrade size limit */
+DEFINE_GET_SIZE_FUNC(get_uboot_size, "0:APPSBL")
+DEFINE_GET_SIZE_FUNC(get_art_size, "0:ART")
+DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
+DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
+DEFINE_GET_SIZE_FUNC(get_firmware_size, "rootfs")

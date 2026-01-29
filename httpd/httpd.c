@@ -109,10 +109,18 @@ static void httpd_state_reset(void) {
 	}
 }
 
+/* Common error printing functions */
+static void print_file_size_error(unsigned long max_size) {
+	printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", max_size);
+}
+
+static void print_error(const char *msg) {
+	printf("## Error: %s\n", msg);
+}
+
 static int httpd_findandstore_firstchunk(void) {
 	char *start = NULL;
 	char *end = NULL;
-	int art_size = 0;
 	if (!boundary_value) {
 		return 0;
 	}
@@ -148,7 +156,7 @@ static int httpd_findandstore_firstchunk(void) {
 								printf("Upgrade type: MIBIB\n");
 								webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_MIBIB;
 							} else {
-								printf("## Error: input name not found!\n");
+								print_error("input name not found!");
 								return 0;
 							}
 						}
@@ -164,26 +172,19 @@ static int httpd_findandstore_firstchunk(void) {
 				hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
 				printf("Upload file size: %d bytes\n", hs->upload_total);
 				if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)) {
-					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
-					webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				} else if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ART) {
-					if (strcmp(getenv("machid"), "8030202") == 0) {
-						art_size = WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES;
-					} else {
-						art_size = WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES;
-					}
-					if (hs->upload_total > art_size) {
-						printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", (unsigned long)art_size);
+					print_file_size_error(WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
 						webfailsafe_upload_failed = 1;
-						file_too_big = 1;
-					}
+					file_too_big = 1;
+				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ART) && (hs->upload_total > WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES)) {
+					print_file_size_error(WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES);
+						webfailsafe_upload_failed = 1;
+					file_too_big = 1;
 				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES)) {
-					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
-					webfailsafe_upload_failed = 1;
+					print_file_size_error(WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
+						webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_MIBIB) && (hs->upload_total > WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES)) {
-					printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
+					print_file_size_error(WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 				}
@@ -195,7 +196,7 @@ static int httpd_findandstore_firstchunk(void) {
 				return 1;
 			}
 		} else {
-			printf("## Error: couldn't find start of data!\n");
+			print_error("couldn't find start of data!");
 		}
 	}
 	return 0;
@@ -328,7 +329,7 @@ void httpd_appcall(void) {
 						}
 					}
 					if (i != 0) {
-						printf("## Error: request file name too long!\n");
+						print_error("request file name too long!");
 						httpd_state_reset();
 						uip_abort();
 						return;
@@ -339,7 +340,7 @@ void httpd_appcall(void) {
 						fs_open(file_index_html.name, &fsfile);
 					} else {
 						if (!fs_open((const char *)&uip_appdata[4], &fsfile)) {
-							printf("## Error: file not found!\n");
+							print_error("file not found!");
 							fs_open(file_404_html.name, &fsfile);
 						}
 					}
@@ -359,19 +360,19 @@ void httpd_appcall(void) {
 						if (end) {
 							hs->upload_total = atoi(start);
 						} else {
-							printf("## Error: couldn't find \"Content-Length\"!\n");
+							print_error("couldn't find \"Content-Length\"!");
 							httpd_state_reset();
 							uip_abort();
 							return;
 						}
 					} else {
-						printf("## Error: couldn't find \"Content-Length\"!\n");
+						print_error("couldn't find \"Content-Length\"!");
 						httpd_state_reset();
 						uip_abort();
 						return;
 					}
 					if (hs->upload_total < 10240) {
-						printf("## Error: request for upload < 10 KB data!\n");
+						print_error("request for upload < 10 KB data!");
 						httpd_state_reset();
 						uip_abort();
 						return;
@@ -390,26 +391,26 @@ void httpd_appcall(void) {
 								boundary_value[1] = '-';
 								boundary_value[end - start + 2] = 0;
 							} else {
-								printf("## Error: couldn't allocate memory for boundary!\n");
+								print_error("couldn't allocate memory for boundary!");
 								httpd_state_reset();
 								uip_abort();
 								return;
 							}
 						} else {
-							printf("## Error: couldn't find boundary!\n");
+							print_error("couldn't find boundary!");
 							httpd_state_reset();
 							uip_abort();
 							return;
 						}
 					} else {
-						printf("## Error: couldn't find boundary!\n");
+						print_error("couldn't find boundary!");
 						httpd_state_reset();
 						uip_abort();
 						return;
 					}
 					webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
 					if (!webfailsafe_data_pointer) {
-						printf("## Error: couldn't allocate RAM for data!\n");
+						print_error("couldn't allocate RAM for data!");
 						httpd_state_reset();
 						uip_abort();
 						return;
@@ -475,7 +476,7 @@ void httpd_appcall(void) {
 					uip_appdata[uip_len] = '\0';
 					if (!data_start_found) {
 						if (!httpd_findandstore_firstchunk()) {
-							printf("## Error: couldn't find start of data in next packet!\n");
+							print_error("couldn't find start of data in next packet!");
 							httpd_state_reset();
 							uip_abort();
 							return;

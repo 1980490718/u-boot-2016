@@ -113,41 +113,11 @@ enum flash_type_enum {
 #endif
 #define ROOTFS_NAME2								"rootfs2"
 
-/* ------------------------------------------------upgrade file size limit------------------------------------------------ */
-/* uboot size limit */
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
-#elif defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (1536 * 1024) /* 1536KiB hex length is 0x180000 */
-#else
-#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		(unsigned long) (640 * 1024) /* 640KiB hex length is 0xA0000 */
-#endif
-
-/* art size limit */
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
-#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES 		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
-#else
-#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
-#endif
-
-#define WEBFAILSAFE_UPLOAD_ART_BIG_SIZE_IN_BYTES (unsigned long)(512 * 1024) /* 512KiB hex length is 0x80000 */
-
-/* cdt size limit */
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
-#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (512 * 1024) /* 512KiB hex length is 0x80000 */
-#elif defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (64 * 1024) /* 64KiB hex length is 0x40000 */
-#else
-#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
-#endif
-
-/* mibib size limit */
-
-#if defined(CONFIG_IPQ807X_AX6) || defined(CONFIG_IPQ6018_M2) || defined(CONFIG_IPQ6018_360V6)
-#define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
-#else
-#define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		(unsigned long) (64 * 1024) /* 64KiB hex length is 0x10000 */
-#endif
+/* dynamic upgrade file size limit */
+#define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		get_uboot_size()
+#define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES		get_art_size()
+#define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		get_cdt_size()
+#define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		get_mibib_size()
 
 /* function declarations */
 int check_test(void);
@@ -158,3 +128,11 @@ void led_toggle(const char *gpio_name);
 void led_on(const char *gpio_name);
 void led_off(const char *gpio_name);
 void check_button_is_press(void);
+/* main api for get smem table size*/
+unsigned long get_smem_table_size_bytes(const char *name);
+/* api for webfailsafe upgrade size limit */
+unsigned long get_uboot_size(void);
+unsigned long get_art_size(void);
+unsigned long get_firmware_size(void);
+unsigned long get_cdt_size(void);
+unsigned long get_mibib_size(void);
