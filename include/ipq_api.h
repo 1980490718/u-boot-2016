@@ -66,32 +66,6 @@ enum flash_type_enum {
 /* simplify the WEBFAILSAFE_UPLOAD_RAM_ADDRESS as UPLOAD_ADDR */
 #define UPLOAD_ADDR									WEBFAILSAFE_UPLOAD_RAM_ADDRESS
 
-/* nand flash offset start and size */
-#define UBOOT_START_ADDR_NAND						(unsigned long) 0x800000 /* offset 0x800000 */
-#define UBOOT_SIZE_NAND								(unsigned long) (1536 * 1024) /* 1.5MiB hex length is 0x180000 */
-#define ART_START_ADDR_NAND							(unsigned long) 0x1100000 /* offset 0x1100000 */
-#define ART_SIZE_NAND								WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES
-#define FIRMWARE_START_ADDR_NAND					(unsigned long) 0xa00000 /* offset 0xa00000 */
-#define FIRMWARE_SIZE_NAND							(unsigned long) (115 * 1024 * 1024) /* 115MiB hex length is 0x7300000 */
-#define CDT_START_ADDR_NAND							(unsigned long) 0xc80000 /* offset 0xc80000 */
-#define CDT_1_START_ADDR_NAND						(unsigned long) 0xd00000 /* offset 0xd00000 */
-#define CDT_SIZE_NAND								(unsigned long) (256 * 1024) /* 256KiB hex length is 0x40000 */
-#define MIBIB_START_ADDR_NAND						(unsigned long) 0x180000 /* offset 0x180000 */
-#define MIBIB_SIZE_NAND								(unsigned long) (1024 * 1024) /* 1MiB hex length is 0x100000 */
-
-/* nor flash offset start and size */
-#define UBOOT_START_ADDR_NOR						(unsigned long) 0x520000 /* offset 0x520000 */
-#define UBOOT_1_START_ADDR_NOR						(unsigned long) 0x5C0000 /* offset 0x5C0000 */
-#define UBOOT_SIZE_NOR								WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES
-#define FIRMWARE_START_ADDR_NOR						(unsigned long) 0x6a0000 /* offset 0x6a0000 */
-#define ART_START_ADDR_NOR							(unsigned long) 0x660000 /* offset 0x660000 */
-#define ART_SIZE_NOR								WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES
-#define MIBIB_START_ADDR_NOR						(unsigned long) 0xc0000 /* offset 0xc0000 */
-#define MIBIB_SIZE_NOR								WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES
-#define CDT_START_ADDR_NOR							(unsigned long) 0x4f0000 /* offset 0xc80000 */
-#define CDT_1_START_ADDR_NOR						(unsigned long) 0x500000 /* offset 0xc80000 */
-#define CDT_SIZE_NOR								WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES
-
 /* extract file name from oem binary */
 #define HLOS_NAME									"hlos-0cc33b23252699d495d79a843032498bfa593aba"
 #define ROOTFS_NAME									"rootfs-f3c50b484767661151cfb641e2622703e45020fe"
@@ -119,6 +93,13 @@ enum flash_type_enum {
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		get_cdt_size()
 #define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		get_mibib_size()
 
+/*
+ * dynamic get nor firmware size
+ * firmware size = kernel size + rootfs size
+ */
+#define NOR_FIRMWARE_START	get_hlos_offset()
+#define NOR_FIRMWARE_SIZE	get_nor_firmware_combined_size()
+
 /* function declarations */
 int check_test(void);
 int check_config(void);
@@ -128,11 +109,16 @@ void led_toggle(const char *gpio_name);
 void led_on(const char *gpio_name);
 void led_off(const char *gpio_name);
 void check_button_is_press(void);
+unsigned long get_nor_firmware_combined_size(void);
 /* main api for get smem table size*/
 unsigned long get_smem_table_size_bytes(const char *name);
+unsigned long get_smem_table_offset(const char *name);
+
 /* api for webfailsafe upgrade size limit */
 unsigned long get_uboot_size(void);
 unsigned long get_art_size(void);
 unsigned long get_firmware_size(void);
 unsigned long get_cdt_size(void);
 unsigned long get_mibib_size(void);
+unsigned long get_hlos_offset(void);
+unsigned long get_nor_firmware_combined_size(void);

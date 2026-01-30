@@ -183,3 +183,28 @@ DEFINE_GET_SIZE_FUNC(get_art_size, "0:ART")
 DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
 DEFINE_GET_SIZE_FUNC(get_firmware_size, "rootfs")
+
+/* Get the offset start information from the smem table */
+unsigned long get_smem_table_offset(const char *name) {
+	uint32_t offset, byte_size;
+	if (getpart_offset_size((char *)name, &offset, &byte_size) == 0) {
+		return (unsigned long)offset;
+	}
+	return 0;
+}
+
+/* Get the combined size of the NOR firmware (kernel + rootfs) */
+unsigned long get_nor_firmware_combined_size(void) {
+	unsigned long kernel_size = get_smem_table_size_bytes("0:HLOS");
+	unsigned long rootfs_size = get_smem_table_size_bytes("rootfs");
+	return kernel_size + rootfs_size;
+}
+
+/* define macro for get offset function */
+#define DEFINE_GET_OFFSET_FUNC(func_name, partition_name) \
+	unsigned long func_name(void) { \
+		return get_smem_table_offset(partition_name); \
+	}
+
+/* api for partition offset start */
+DEFINE_GET_OFFSET_FUNC(get_hlos_offset, "0:HLOS")
