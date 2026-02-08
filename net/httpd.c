@@ -229,8 +229,6 @@ static int do_uboot_upgrade(const ulong size) {
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR);
 			break;
 		case FLASH_TYPE_NAND:
-			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
-			break;
 		case FLASH_TYPE_SPI:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
 			break;
@@ -254,8 +252,6 @@ static int do_art_upgrade(const ulong size) {
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, ART_NAME, UPLOAD_ADDR);
 			break;
 		case FLASH_TYPE_NAND:
-			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
-			break;
 		case FLASH_TYPE_SPI:
 			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
 			break;
@@ -299,8 +295,6 @@ static int do_cdt_upgrade(const ulong size) {
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 			break;
 		case FLASH_TYPE_NAND:
-			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
-			break;
 		case FLASH_TYPE_SPI:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 			break;
@@ -320,8 +314,6 @@ static int do_mibib_upgrade(const ulong size) {
 	print_upgrade_warning("MIBIB");
 	switch (qca_smem_flash_info.flash_type) {
 		case FLASH_TYPE_NAND:
-			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
-			break;
 		case FLASH_TYPE_SPI:
 			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
 			break;
