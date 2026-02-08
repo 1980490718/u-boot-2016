@@ -205,7 +205,7 @@ static int do_firmware_upgrade(const ulong size) {
 				} else if (fw_type == FW_TYPE_QSDK) {
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 				} else { // fw_type == FW_TYPE_UBI
-					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR);
+					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
 				}
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");

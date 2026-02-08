@@ -182,7 +182,27 @@ DEFINE_GET_SIZE_FUNC(get_uboot_size, "0:APPSBL")
 DEFINE_GET_SIZE_FUNC(get_art_size, "0:ART")
 DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
-DEFINE_GET_SIZE_FUNC(get_firmware_size, "rootfs")
+
+/* Function to get firmware size supporting multiple rootfs partition names */
+unsigned long get_firmware_size(void) {
+	unsigned long size;
+	/* Try different possible rootfs partition names in priority order */
+	/* Priority order: rootfs -> rootfs1 -> rootfs2 -> rootfs_1 */
+	size = get_smem_table_size_bytes("rootfs");
+	if (size > 0)
+		return size;
+	size = get_smem_table_size_bytes("rootfs1");
+	if (size > 0)
+		return size;
+	size = get_smem_table_size_bytes("rootfs2");
+	if (size > 0)
+		return size;
+	size = get_smem_table_size_bytes("rootfs_1");
+	if (size > 0)
+		return size;
+	/* If none found, return size of default rootfs */
+	return get_smem_table_size_bytes("rootfs");
+}
 
 /* Get the offset start information from the smem table */
 unsigned long get_smem_table_offset(const char *name) {

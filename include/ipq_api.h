@@ -80,12 +80,9 @@ enum flash_type_enum {
 #define UBOOT_NAME_1								"0:APPSBL_1"
 #define ART_NAME									"0:ART"
 #define ROOTFS_NAME0								"rootfs"
-#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-#define ROOTFS_NAME1								"rootfs_1"
-#else
 #define ROOTFS_NAME1								"rootfs1"
-#endif
 #define ROOTFS_NAME2								"rootfs2"
+#define ROOTFS_NAME_1								"rootfs_1"
 
 /* dynamic upgrade file size limit */
 #define WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES		get_uboot_size()
