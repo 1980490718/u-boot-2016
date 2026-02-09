@@ -147,19 +147,13 @@ void led_init_by_name(const char *gpio_name)
 {
 	int node;
 	struct qca_gpio_config gpio_config;
-	const char *alias_path;
 
-	alias_path = fdt_get_alias(gd->fdt_blob, gpio_name);
-	if (alias_path) {
-		node = fdt_path_offset(gd->fdt_blob, alias_path);
-	} else {
-		node = fdt_path_offset(gd->fdt_blob, gpio_name);
-	}
-
+	node = fdt_path_offset(gd->fdt_blob, gpio_name);
 	if (node < 0) {
-		printf("Could not find %s node and %s in FDT\n", gpio_name, alias_path);
+		printf("Could not find %s node\n", gpio_name);
 		return;
 	}
+
 	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob,
 						  node, "gpio", 0);
 	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob,
@@ -178,8 +172,6 @@ void led_init_by_name(const char *gpio_name)
 						  node, "od_en", 0);
 	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob,
 						  node, "pu_res", 0);
-	gpio_config.sr_en	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "sr_en", 0);
 
 	gpio_tlmm_config(&gpio_config);
 }
