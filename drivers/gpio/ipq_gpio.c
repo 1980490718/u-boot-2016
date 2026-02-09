@@ -143,10 +143,6 @@ int qca_gpio_deinit(int offset)
 }
 
 #ifdef CONFIG_HTTPD
-void led_booting(void)
-{
-}
-
 void led_init_by_name(const char *gpio_name)
 {
 	int node;

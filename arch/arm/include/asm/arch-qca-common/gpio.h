@@ -55,7 +55,6 @@ struct qca_gpio_config {
 void gpio_tlmm_config(struct qca_gpio_config *gpio_config);
 
 #ifdef CONFIG_HTTPD
-void led_booting(void);
 void led_init(void);
 void btn_init(void);
 void led_toggle(const char *gpio_name);

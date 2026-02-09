@@ -91,7 +91,6 @@ void main_loop(void)
 
 #ifdef CONFIG_HTTPD
 	check_button_is_press();
-	led_booting();
 #endif
 	s = bootdelay_process();
 #ifndef CONFIG_REDUCE_FOOTPRINT
