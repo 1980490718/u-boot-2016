@@ -51,6 +51,12 @@ config IPQ6018_AX5_JDCLOUD
 	help
 		Enable support for IPQ6018_AX5_JDCLOUD board
 
+config IPQ6018_NN6000
+	bool "IPQ6018 NN6000 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_NN6000 board
+
 config 256MB_RAM
 	bool "Board has only 256MB RAM"
 	default n
