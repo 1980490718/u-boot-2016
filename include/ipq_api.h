@@ -105,6 +105,9 @@ int check_fw_type(void *address);
 void led_toggle(const char *gpio_name);
 void led_on(const char *gpio_name);
 void led_off(const char *gpio_name);
+void led_init_by_name(const char *gpio_name);
+void led_init(void);
+void btn_init(void);
 void check_button_is_press(void);
 unsigned long get_nor_firmware_combined_size(void);
 /* main api for get smem table size*/

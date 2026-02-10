@@ -228,3 +228,63 @@ unsigned long get_nor_firmware_combined_size(void) {
 
 /* api for partition offset start */
 DEFINE_GET_OFFSET_FUNC(get_hlos_offset, "0:HLOS")
+
+void led_init_by_name(const char *gpio_name)
+{
+	int node;
+	struct qca_gpio_config gpio_config;
+
+	node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node < 0) {
+		printf("Could not find %s node\n", gpio_name);
+		return;
+	}
+
+	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "gpio", 0);
+	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "func", 0);
+	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "out", 0);
+	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "pull", 0);
+	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "drvstr", 0);
+	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "oe", 0);
+	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob,
+						  node, "vm", 0);
+	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "od_en", 0);
+	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob,
+						  node, "pu_res", 0);
+
+	gpio_tlmm_config(&gpio_config);
+}
+
+void led_init(void)
+{
+	led_init_by_name("power_led");
+	led_init_by_name("blink_led");
+	led_init_by_name("system_led");
+#if defined(CONFIG_IPQ807X_AP8220)
+	led_init_by_name("wlan2g_led");
+	led_init_by_name("wlan5g_led");
+	led_init_by_name("bluetooth_led");
+#endif
+#if defined(CONFIG_IPQ807X_AX6)
+	led_init_by_name("network_blue_led");
+	led_init_by_name("aiot_led");
+#endif
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+	led_init_by_name("led_system_power2");
+#endif
+
+	led_on("power_led");
+	mdelay(500);
+}
+
+void btn_init(void)
+{
+	led_init_by_name("reset_key");
+}

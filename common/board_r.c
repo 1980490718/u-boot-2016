@@ -64,6 +64,9 @@
 #ifdef CONFIG_AVR32
 #include <asm/arch/mmu.h>
 #endif
+#ifdef CONFIG_HTTPD
+#include <ipq_api.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
