@@ -57,6 +57,12 @@ config IPQ6018_JDCLOUD_AX6600
 	help
 		Enable support for IPQ6018_JDCLOUD_AX6600 board
 
+config IPQ6018_JDCLOUD_ER1
+	bool "IPQ6018 JDCloud ER1 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_JDCLOUD_ER1 board
+
 config IPQ6018_NN6000
 	bool "IPQ6018 NN6000 Board Support"
 	default n

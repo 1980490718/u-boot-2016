@@ -144,6 +144,9 @@ endif
 ifeq ($(CONFIG_IPQ6018_JDCLOUD_AX6600),y)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-ax6600.dtb
 endif
+ifeq ($(CONFIG_IPQ6018_JDCLOUD_ER1),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-er1.dtb
+endif
 
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-al01-c1.dtb \
 			ipq9574-al02-c1.dtb \
