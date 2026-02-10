@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
+#include <part.h>
+#include <mmc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -165,9 +167,33 @@ int check_fw_type(void *address) {
 /* Get the size information from the smem table (in bytes) */
 unsigned long get_smem_table_size_bytes(const char *name) {
 	uint32_t offset, byte_size;
-	if (getpart_offset_size((char *)name, &offset, &byte_size) == 0) {
+	int ret;
+	/* First, try the traditional SMEM methods */
+	ret = getpart_offset_size((char *)name, &offset, &byte_size);
+	if (ret == 0 && byte_size != 0) {
 		return (unsigned long)byte_size;
 	}
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
+	/* If SMEM methods fail, try getting flash type to determine if it's EMMC */
+	uint32_t flash_type, flash_index, flash_chip_select, flash_block_size, flash_density;
+	ret = smem_get_boot_flash(&flash_type, &flash_index, &flash_chip_select, &flash_block_size, &flash_density);
+	/* If it's an EMMC device, try getting partition info from GPT */
+	if (ret == 0 && flash_type == SMEM_BOOT_MMC_FLASH) {
+		block_dev_desc_t *mmc_dev;
+		disk_partition_t disk_info;
+		/* Get the MMC device */
+		mmc_dev = mmc_get_dev(0); // Use first MMC device
+		if (mmc_dev != NULL && mmc_dev->type != DEV_TYPE_UNKNOWN) {
+			/* Try to get partition info from GPT by name */
+			ret = get_partition_info_efi_by_name(mmc_dev, name, &disk_info);
+			if (ret == 0) {
+				/* Successfully got partition info from GPT, return size in bytes */
+				return (unsigned long)disk_info.size * (unsigned long)mmc_dev->blksz;
+			}
+		}
+	}
+#endif
+	/* If all methods failed, return 0 */
 	return 0;
 }
 
@@ -229,41 +255,27 @@ unsigned long get_nor_firmware_combined_size(void) {
 /* api for partition offset start */
 DEFINE_GET_OFFSET_FUNC(get_hlos_offset, "0:HLOS")
 
-void led_init_by_name(const char *gpio_name)
-{
+void led_init_by_name(const char *gpio_name) {
 	int node;
 	struct qca_gpio_config gpio_config;
-
 	node = fdt_path_offset(gd->fdt_blob, gpio_name);
 	if (node < 0) {
 		printf("Could not find %s node\n", gpio_name);
 		return;
 	}
-
-	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "gpio", 0);
-	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "func", 0);
-	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob,
-						  node, "out", 0);
-	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "pull", 0);
-	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "drvstr", 0);
-	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob,
-						  node, "oe", 0);
-	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob,
-						  node, "vm", 0);
-	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "od_en", 0);
-	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob,
-						  node, "pu_res", 0);
-
+	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
+	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob, node, "func", 0);
+	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob, node, "out", 0);
+	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob, node, "pull", 0);
+	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob, node, "drvstr", 0);
+	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob, node, "oe", 0);
+	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob, node, "vm", 0);
+	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob, node, "od_en", 0);
+	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob, node, "pu_res", 0);
 	gpio_tlmm_config(&gpio_config);
 }
 
-void led_init(void)
-{
+void led_init(void) {
 	led_init_by_name("power_led");
 	led_init_by_name("blink_led");
 	led_init_by_name("system_led");
@@ -279,12 +291,10 @@ void led_init(void)
 #if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
 	led_init_by_name("led_system_power2");
 #endif
-
 	led_on("power_led");
 	mdelay(500);
 }
 
-void btn_init(void)
-{
+void btn_init(void) {
 	led_init_by_name("reset_key");
 }
