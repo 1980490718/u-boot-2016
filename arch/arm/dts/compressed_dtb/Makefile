@@ -1,5 +1,5 @@
 $(obj)/dtbcombined.S: $(obj)/../../../../dtb_combined.bin
-	gzip -k --best $(obj)/../../../../dtb_combined.bin
+	gzip -kfn --best $(obj)/../../../../dtb_combined.bin
 	echo ".section .dtb.combine_blob,\"a\"" > $(obj)/dtbcombined.S
 	echo '.balign 16' >> $(obj)/dtbcombined.S
 	echo ".global __dtb_blob_begin" >> $(obj)/dtbcombined.S
