@@ -63,6 +63,13 @@ config IPQ6018_JDCLOUD_ER1
 	help
 		Enable support for IPQ6018_JDCLOUD_ER1 board
 
+config IPQ6018_XIAOMI_AX1800
+	bool "IPQ6018 Xiaomi AX1800 Board Support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for IPQ6018_XIAOMI_AX1800 board
+
 config IPQ6018_NN6000
 	bool "IPQ6018 NN6000 Board Support"
 	default n
