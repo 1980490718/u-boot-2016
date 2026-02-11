@@ -2,190 +2,237 @@ name: Build IPQ U-Boot with Python 2.7
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
+
+# Global environment variables configuration
+env:
+  # Source code configuration
+  UBOOT_REPO_PATH: u-boot-2016
+
+  # Toolchain configuration
+  TOOLCHAIN_REPO_URL: https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git
+  TOOLCHAIN_BASE_DIR: /home/runner/work/staging_dir
+  TOOLCHAIN_SUBDIR: toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
+  TOOLCHAIN_PATH: /home/runner/work/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
+
+  # Python configuration
+  MINICONDA_URL: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  PYTHON_ENV_NAME: py27
+  PYTHON_VERSION: 2.7
+  PIP_INSTALL_URL: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+
+  # Time configuration
+  TIMEZONE: Asia/Shanghai
+  TIMESTAMP_FORMAT: "%Y%m%d-%H%M%S"
+  RELEASE_DATE_FORMAT: "%Y-%m-%d %H:%M:%S %Z"
+
+  # Build configuration
+  ARCH: arm
+  CROSS_COMPILE: arm-openwrt-linux-
 
 jobs:
   build-ipq-uboot:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout U-Boot repository
-      uses: actions/checkout@v4
-      with:
-        path: u-boot-2016
+      # 1. Checkout source code
+      - name: Checkout U-Boot repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.UBOOT_REPO_PATH }}
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          git \
-          build-essential \
-          flex \
-          bison \
-          libssl-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          zlib1g-dev \
-          curl \
-          wget \
-          lsb-release \
-          device-tree-compiler \
-          libfdt-dev
+      # 2. Install system dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git \
+            build-essential \
+            flex \
+            bison \
+            m4 \
+            libssl-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            zlib1g-dev \
+            libc6-dev \
+            curl \
+            wget \
+            lsb-release \
+            device-tree-compiler \
+            libfdt-dev \
+            gzip
 
-    - name: Install Miniconda and Python 2.7
-      run: |
-        # Install Miniconda for Python 2.7
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+      # 3. Install Miniconda and Python 2.7
+      - name: Install Miniconda and Python 2.7
+        run: |
+          # Install Miniconda
+          wget ${{ env.MINICONDA_URL }} -O miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
 
-        # Create a conda environment with Python 2.7
-        $HOME/miniconda/bin/conda create -n py27 python=2.7 -y
+          # Create Python 2.7 environment
+          $HOME/miniconda/bin/conda create -n ${{ env.PYTHON_ENV_NAME }} python=${{ env.PYTHON_VERSION }} -y
 
-        # Install pip using get-pip.py
-        wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-        $HOME/miniconda/envs/py27/bin/python get-pip.py
-        rm get-pip.py
+          # Install pip
+          wget ${{ env.PIP_INSTALL_URL }} -O get-pip.py
+          $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python get-pip.py
+          rm get-pip.py
 
-        # 检查pip是否安装成功
-        $HOME/miniconda/envs/py27/bin/pip --version
+          # Verify pip installation
+          $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/pip --version
 
-        # Create symbolic links for system-wide access
-        sudo ln -sf $HOME/miniconda/envs/py27/bin/python2.7 /usr/local/bin/python2.7
-        sudo ln -sf $HOME/miniconda/envs/py27/bin/pip /usr/local/bin/pip2.7
+          # Create system symlinks
+          sudo ln -sf $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python${{ env.PYTHON_VERSION }} /usr/local/bin/python${{ env.PYTHON_VERSION }}
+          sudo ln -sf $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/pip /usr/local/bin/pip${{ env.PYTHON_VERSION }}
 
-    - name: Verify Python 2.7 installation
-      run: |
-        python2.7 --version
-        pip2.7 --version
+      # 4. Verify Python installation
+      - name: Verify Python 2.7 installation
+        run: |
+          python${{ env.PYTHON_VERSION }} --version
+          pip${{ env.PYTHON_VERSION }} --version
 
-    - name: Clone toolchain repository
-      run: |
-        cd /home/runner/work
-        git clone https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git staging_dir
+      # 5. Clone toolchain repository
+      - name: Clone toolchain repository
+        run: |
+          mkdir -p ${{ env.TOOLCHAIN_BASE_DIR }}
+          cd ${{ env.TOOLCHAIN_BASE_DIR }}/..
+          git clone ${{ env.TOOLCHAIN_REPO_URL }} staging_dir
 
-    - name: Set up toolchain environment
-      run: |
-        # Set up toolchain environment variables
-        TOOLCHAIN_PATH="/home/runner/work/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin"
-        echo "TOOLCHAIN_PATH=$TOOLCHAIN_PATH" >> $GITHUB_ENV
-        echo "PATH=$TOOLCHAIN_PATH:$PATH" >> $GITHUB_ENV
-        echo "CROSS_COMPILE=arm-openwrt-linux-" >> $GITHUB_ENV
-        echo "ARCH=arm" >> $GITHUB_ENV
+      # 6. Set up toolchain environment variables
+      - name: Set up toolchain environment
+        run: |
+          echo "TOOLCHAIN_PATH=${{ env.TOOLCHAIN_PATH }}" >> $GITHUB_ENV
+          echo "PATH=${{ env.TOOLCHAIN_PATH }}:$PATH" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=${{ env.CROSS_COMPILE }}" >> $GITHUB_ENV
+          echo "ARCH=${{ env.ARCH }}" >> $GITHUB_ENV
 
-        # Verify toolchain installation
-        ls -la $TOOLCHAIN_PATH/arm-openwrt-linux-gcc
-        $TOOLCHAIN_PATH/arm-openwrt-linux-gcc --version
+          # Verify toolchain installation
+          ls -la ${{ env.TOOLCHAIN_PATH }}/${{ env.CROSS_COMPILE }}gcc || true
+          ${{ env.TOOLCHAIN_PATH }}/${{ env.CROSS_COMPILE }}gcc --version || true
 
-    - name: Set up Python 2.7 environment for build
-      run: |
-        # Set up Python 2.7 environment variables for build
-        # Warning: Do not set PYTHONHOME, as it will break Python's standard library path
-        echo "PYTHONPATH=$HOME/miniconda/envs/py27/lib/python2.7/site-packages" >> $GITHUB_ENV
-        echo "PYTHONBIN=$HOME/miniconda/envs/py27/bin/python" >> $GITHUB_ENV
-        # Set PYTHON environment variable to ensure Makefile uses correct Python interpreter
-        echo "PYTHON=$HOME/miniconda/envs/py27/bin/python" >> $GITHUB_ENV
+      # 7. Set up Python environment variables for build
+      - name: Set up Python 2.7 environment for build
+        run: |
+          echo "PYTHONPATH=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/lib/python${{ env.PYTHON_VERSION }}/site-packages" >> $GITHUB_ENV
+          echo "PYTHONBIN=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python" >> $GITHUB_ENV
+          echo "PYTHON=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python" >> $GITHUB_ENV
 
-    - name: Verify dtc installation
-      run: |
-        dtc --version
+      # 8. Verify dtc installation
+      - name: Verify dtc installation
+        run: |
+          dtc --version
 
-    - name: Clean working directory and set timezone
-      run: |
-        cd u-boot-2016
-        # Clean working directory and reset to HEAD
-        git reset --hard HEAD
-        git clean -fd
+      # 9. Clean working directory and set timezone
+      - name: Clean working directory and set timezone
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}
 
-        # Create .scmversion file to prevent "dirty" flag
-        # Get the current commit hash for version string
-        COMMIT_HASH=$(git rev-parse --short HEAD)
-        echo "-g${COMMIT_HASH}" > .scmversion
-        echo "Set .scmversion to: -g${COMMIT_HASH}"
+          # Reset working directory
+          git reset --hard HEAD
+          git clean -fd
 
-        echo "Working directory status:"
-        git status
+          # Set version information
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "-g${COMMIT_HASH}" > .scmversion
+          echo "Set .scmversion to: -g${COMMIT_HASH}"
 
-        # Set timezone to Asia/Shanghai
-        sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-        echo "Current time: $(date)"
+          echo "Working directory status:"
+          git status
 
-    - name: Build U-Boot for all IPQ platforms
-      run: |
-        cd u-boot-2016
+          # Set timezone
+          sudo ln -sf /usr/share/zoneinfo/${{ env.TIMEZONE }} /etc/localtime
+          echo "Current timezone: ${{ env.TIMEZONE }}"
+          echo "Current time: $(date)"
 
-        # Set Python 2.7 as default Python interpreter
-        export PYTHON=$HOME/miniconda/envs/py27/bin/python
+          # Get build datetime
+          BUILD_DATETIME=$(TZ=${{ env.TIMEZONE }} date +"${{ env.RELEASE_DATE_FORMAT }}")
+          echo "BUILD_DATETIME=${BUILD_DATETIME}" >> $GITHUB_ENV
 
-        # Verify that PYTHON environment variable is set correctly
-        echo "PYTHON environment variable: $PYTHON"
-        $PYTHON --version
+      # 10. Build U-Boot
+      - name: Build U-Boot for all IPQ platforms
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}
 
-        # Define all supported IPQ types
-        IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq807x" "ipq9574")
+          # Set Python environment
+          export PYTHON=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python
+          export PYTHON2=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python
+          export PATH=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin:$PATH
 
-        # Build each IPQ type
-        for ipq_type in "${IPQ_TYPES[@]}"; do
-          echo "================================================"
-          echo "Building U-Boot for IPQ type: $ipq_type"
-          echo "================================================"
-          # Set PYTHON environment variable to ensure build uses Python 2.7
-          # Use full Python path to avoid environment variable issues
           echo "PYTHON environment variable: $PYTHON"
-          $HOME/miniconda/envs/py27/bin/python --version
-          PYTHON=$HOME/miniconda/envs/py27/bin/python ./build.sh "$ipq_type"
-        done
+          $PYTHON --version
 
-        echo "All IPQ platform builds completed!"
+          # Define IPQ types directly (simpler approach)
+          IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq806x" "ipq807x" "ipq9574")
 
-    - name: Package each U-Boot file individually with zip ultra compression and timestamp
-      run: |
-        cd u-boot-2016/bin
+          # Build each IPQ type
+          for ipq_type in "${IPQ_TYPES[@]}"; do
+            echo "================================================"
+            echo "Building U-Boot for IPQ type: $ipq_type"
+            echo "================================================"
+            ./build.sh "$ipq_type"
+          done
 
-        # Get current timestamp (format: YYYYMMDD-HHMMSS)
-        TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
-        echo "Build timestamp: $TIMESTAMP"
+          echo "All IPQ platform builds completed!"
 
-        # Create separate zip packages for each U-Boot image file (with timestamp)
-        for file in openwrt-*-u-boot.*; do
-          if [ -f "$file" ]; then
-            # Extract filename (without extension)
-            filename=$(basename "$file" | cut -d. -f1)
-            # Create zip package with ultra compression and timestamp in filename
-            zip -9 "${filename}-${TIMESTAMP}.zip" "$file"
-            echo "Created: ${filename}-${TIMESTAMP}.zip"
-          fi
-        done
+      # 11. Package U-Boot files
+      - name: Package each U-Boot file individually with zip ultra compression and timestamp
+        id: package
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}/bin
 
-        # Display all created zip files
-        ls -la *.zip
-        echo "Individual zip packaging with timestamp completed!"
+          # Get timestamp
+          TIMESTAMP=$(date +"${{ env.TIMESTAMP_FORMAT }}")
+          echo "Build timestamp: $TIMESTAMP"
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-    - name: Create GitHub Release
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ github.run_number }}
-        name: U-Boot Build ${{ github.run_number }}
-        body: |
-          Automated U-Boot build for IPQ platforms
-          - Built from commit: ${{ github.sha }}
-          - Build number: ${{ github.run_number }}
-          - Date: ${{ github.event.head_commit.timestamp }}
-          - Build timestamp: $TIMESTAMP
+          # Create separate zip packages for each file
+          for file in openwrt-*-u-boot.*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file" | cut -d. -f1)
+              zip -9 "${filename}-${TIMESTAMP}.zip" "$file"
+              echo "Created: ${filename}-${TIMESTAMP}.zip"
+            fi
+          done
 
-          Supported IPQ platforms:
-          - ipq40xx
-          - ipq5018
-          - ipq5332
-          - ipq6018
-          - ipq807x
-          - ipq9574
+          # List created zip files
+          ls -la *.zip
+          echo "Individual zip packaging with timestamp completed!"
 
-          Each U-Boot file is individually packaged with ultra compression (zip -9) and timestamp.
-        files: u-boot-2016/bin/openwrt-*-u-boot-*.zip
-        draft: false
-        prerelease: false
+      # 12. Create GitHub Release (only for main/master branch pushes)
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v1
+        with:
+          # Use timestamp for tag name
+          tag_name: build-${{ env.TIMESTAMP }}
+          name: U-Boot Build ${{ env.BUILD_DATETIME }}
+          body: |
+            Automated U-Boot build for IPQ platforms
+
+            ## Build Information
+            - **Build Time**: ${{ env.BUILD_DATETIME }}
+            - **Build ID**: ${{ env.TIMESTAMP }}
+            - **Source Commit**: ${{ github.sha }}
+            - **Timezone**: ${{ env.TIMEZONE }}
+
+            ## Supported IPQ Platforms
+            - ipq40xx
+            - ipq5018
+            - ipq5332
+            - ipq6018
+            - ipq806x
+            - ipq807x
+            - ipq9574
+
+            ## File Information
+            Each U-Boot file is individually packaged with ultra compression (zip -9) and timestamp.
+
+            ## Important Notes
+            Please select the appropriate U-Boot file according to your device model.
+          files: ${{ env.UBOOT_REPO_PATH }}/bin/openwrt-*-u-boot-*.zip
+          draft: false
+          prerelease: false
