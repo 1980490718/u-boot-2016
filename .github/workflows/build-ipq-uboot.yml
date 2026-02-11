@@ -25,15 +25,18 @@ jobs:
           build-essential \
           flex \
           bison \
+          m4 \
           libssl-dev \
           libncurses5-dev \
           libncursesw5-dev \
           zlib1g-dev \
+          libc6-dev \
           curl \
           wget \
           lsb-release \
           device-tree-compiler \
-          libfdt-dev
+          libfdt-dev \
+          gzip
 
     - name: Install Miniconda and Python 2.7
       run: |
@@ -119,24 +122,23 @@ jobs:
 
         # Set Python 2.7 as default Python interpreter
         export PYTHON=$HOME/miniconda/envs/py27/bin/python
+        export PYTHON2=$HOME/miniconda/envs/py27/bin/python
+        export PATH=$HOME/miniconda/envs/py27/bin:$PATH
 
-        # Verify that PYTHON environment variable is set correctly
-        echo "PYTHON environment variable: $PYTHON"
-        $PYTHON --version
-
-        # Define all supported IPQ types
-        IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq807x" "ipq9574")
-
-        # Build each IPQ type
-        for ipq_type in "${IPQ_TYPES[@]}"; do
-          echo "================================================"
-          echo "Building U-Boot for IPQ type: $ipq_type"
-          echo "================================================"
-          # Set PYTHON environment variable to ensure build uses Python 2.7
+        # Set PYTHON environment variable to ensure build uses Python 2.7
           # Use full Python path to avoid environment variable issues
           echo "PYTHON environment variable: $PYTHON"
-          $HOME/miniconda/envs/py27/bin/python --version
-          PYTHON=$HOME/miniconda/envs/py27/bin/python ./build.sh "$ipq_type"
+          $PYTHON --version
+
+          # Define all supported IPQ types
+          IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq806x" "ipq807x" "ipq9574")
+
+          # Build each IPQ type
+          for ipq_type in "${IPQ_TYPES[@]}"; do
+            echo "================================================"
+            echo "Building U-Boot for IPQ type: $ipq_type"
+            echo "================================================"
+            ./build.sh "$ipq_type"
         done
 
         echo "All IPQ platform builds completed!"
@@ -182,6 +184,7 @@ jobs:
           - ipq5018
           - ipq5332
           - ipq6018
+          - ipq806x
           - ipq807x
           - ipq9574
 
