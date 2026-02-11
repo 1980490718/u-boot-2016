@@ -2,190 +2,573 @@ name: Build IPQ U-Boot with Python 2.7
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
+
+# Global environment variables configuration
+env:
+  # Source code configuration
+  UBOOT_REPO_PATH: u-boot-2016
+
+  # Toolchain configuration
+  TOOLCHAIN_REPO_URL: https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git
+  TOOLCHAIN_BASE_DIR: /home/runner/work/staging_dir
+  TOOLCHAIN_SUBDIR: toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
+  TOOLCHAIN_PATH: /home/runner/work/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
+
+  # Python configuration
+  MINICONDA_URL: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  PYTHON_ENV_NAME: py27
+  PYTHON_VERSION: 2.7
+  PIP_INSTALL_URL: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+
+  # Time configuration
+  TIMEZONE: Asia/Shanghai
+  TIMESTAMP_FORMAT: "%Y%m%d-%H%M%S"
+  RELEASE_DATE_FORMAT: "%Y-%m-%d %H:%M:%S %Z"
+  RELEASE_TAG_FORMAT: "%Y.%m.%d"
+
+  # Build configuration
+  ARCH: arm
+  CROSS_COMPILE: arm-openwrt-linux-
+
+permissions:
+  contents: write  # Required for creating/deleting releases and tags
 
 jobs:
   build-ipq-uboot:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout U-Boot repository
-      uses: actions/checkout@v4
-      with:
-        path: u-boot-2016
+      # 1. Checkout source code
+      - name: Checkout U-Boot repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.UBOOT_REPO_PATH }}
+          fetch-depth: 0  # Get full git history for tag creation and commit info
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          git \
-          build-essential \
-          flex \
-          bison \
-          libssl-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          zlib1g-dev \
-          curl \
-          wget \
-          lsb-release \
-          device-tree-compiler \
-          libfdt-dev
+      # 2. Install system dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git \
+            build-essential \
+            flex \
+            bison \
+            m4 \
+            libssl-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            zlib1g-dev \
+            libc6-dev \
+            curl \
+            wget \
+            lsb-release \
+            device-tree-compiler \
+            libfdt-dev \
+            gzip \
+            gh \
+            jq
 
-    - name: Install Miniconda and Python 2.7
-      run: |
-        # Install Miniconda for Python 2.7
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+      # 3. Install Miniconda and Python 2.7
+      - name: Install Miniconda and Python 2.7
+        run: |
+          # Install Miniconda
+          wget ${{ env.MINICONDA_URL }} -O miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
 
-        # Create a conda environment with Python 2.7
-        $HOME/miniconda/bin/conda create -n py27 python=2.7 -y
+          # Create Python 2.7 environment
+          $HOME/miniconda/bin/conda create -n ${{ env.PYTHON_ENV_NAME }} python=${{ env.PYTHON_VERSION }} -y
 
-        # Install pip using get-pip.py
-        wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-        $HOME/miniconda/envs/py27/bin/python get-pip.py
-        rm get-pip.py
+          # Install pip
+          wget ${{ env.PIP_INSTALL_URL }} -O get-pip.py
+          $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python get-pip.py
+          rm get-pip.py
 
-        # 检查pip是否安装成功
-        $HOME/miniconda/envs/py27/bin/pip --version
+          # Verify pip installation
+          $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/pip --version
 
-        # Create symbolic links for system-wide access
-        sudo ln -sf $HOME/miniconda/envs/py27/bin/python2.7 /usr/local/bin/python2.7
-        sudo ln -sf $HOME/miniconda/envs/py27/bin/pip /usr/local/bin/pip2.7
+          # Create system symlinks
+          sudo ln -sf $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python${{ env.PYTHON_VERSION }} /usr/local/bin/python${{ env.PYTHON_VERSION }}
+          sudo ln -sf $HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/pip /usr/local/bin/pip${{ env.PYTHON_VERSION }}
 
-    - name: Verify Python 2.7 installation
-      run: |
-        python2.7 --version
-        pip2.7 --version
+      # 4. Verify Python installation
+      - name: Verify Python 2.7 installation
+        run: |
+          python${{ env.PYTHON_VERSION }} --version
+          pip${{ env.PYTHON_VERSION }} --version
 
-    - name: Clone toolchain repository
-      run: |
-        cd /home/runner/work
-        git clone https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git staging_dir
+      # 5. Clone toolchain repository
+      - name: Clone toolchain repository
+        run: |
+          mkdir -p ${{ env.TOOLCHAIN_BASE_DIR }}
+          cd ${{ env.TOOLCHAIN_BASE_DIR }}/..
+          git clone ${{ env.TOOLCHAIN_REPO_URL }} staging_dir
 
-    - name: Set up toolchain environment
-      run: |
-        # Set up toolchain environment variables
-        TOOLCHAIN_PATH="/home/runner/work/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin"
-        echo "TOOLCHAIN_PATH=$TOOLCHAIN_PATH" >> $GITHUB_ENV
-        echo "PATH=$TOOLCHAIN_PATH:$PATH" >> $GITHUB_ENV
-        echo "CROSS_COMPILE=arm-openwrt-linux-" >> $GITHUB_ENV
-        echo "ARCH=arm" >> $GITHUB_ENV
+      # 6. Set up toolchain environment variables
+      - name: Set up toolchain environment
+        run: |
+          echo "TOOLCHAIN_PATH=${{ env.TOOLCHAIN_PATH }}" >> $GITHUB_ENV
+          echo "PATH=${{ env.TOOLCHAIN_PATH }}:$PATH" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=${{ env.CROSS_COMPILE }}" >> $GITHUB_ENV
+          echo "ARCH=${{ env.ARCH }}" >> $GITHUB_ENV
 
-        # Verify toolchain installation
-        ls -la $TOOLCHAIN_PATH/arm-openwrt-linux-gcc
-        $TOOLCHAIN_PATH/arm-openwrt-linux-gcc --version
+          # Verify toolchain installation
+          ls -la ${{ env.TOOLCHAIN_PATH }}/${{ env.CROSS_COMPILE }}gcc || true
+          ${{ env.TOOLCHAIN_PATH }}/${{ env.CROSS_COMPILE }}gcc --version || true
 
-    - name: Set up Python 2.7 environment for build
-      run: |
-        # Set up Python 2.7 environment variables for build
-        # Warning: Do not set PYTHONHOME, as it will break Python's standard library path
-        echo "PYTHONPATH=$HOME/miniconda/envs/py27/lib/python2.7/site-packages" >> $GITHUB_ENV
-        echo "PYTHONBIN=$HOME/miniconda/envs/py27/bin/python" >> $GITHUB_ENV
-        # Set PYTHON environment variable to ensure Makefile uses correct Python interpreter
-        echo "PYTHON=$HOME/miniconda/envs/py27/bin/python" >> $GITHUB_ENV
+      # 7. Set up Python environment variables for build
+      - name: Set up Python 2.7 environment for build
+        run: |
+          echo "PYTHONPATH=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/lib/python${{ env.PYTHON_VERSION }}/site-packages" >> $GITHUB_ENV
+          echo "PYTHONBIN=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python" >> $GITHUB_ENV
+          echo "PYTHON=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python" >> $GITHUB_ENV
 
-    - name: Verify dtc installation
-      run: |
-        dtc --version
+      # 8. Verify dtc installation
+      - name: Verify dtc installation
+        run: |
+          dtc --version
 
-    - name: Clean working directory and set timezone
-      run: |
-        cd u-boot-2016
-        # Clean working directory and reset to HEAD
-        git reset --hard HEAD
-        git clean -fd
+      # 9. Clean working directory and set timezone
+      - name: Clean working directory and set timezone
+        id: setup
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}
 
-        # Create .scmversion file to prevent "dirty" flag
-        # Get the current commit hash for version string
-        COMMIT_HASH=$(git rev-parse --short HEAD)
-        echo "-g${COMMIT_HASH}" > .scmversion
-        echo "Set .scmversion to: -g${COMMIT_HASH}"
+          # Reset working directory
+          git reset --hard HEAD
+          git clean -fd
 
-        echo "Working directory status:"
-        git status
+          # Set version information
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "-g${COMMIT_HASH}" > .scmversion
+          echo "Set .scmversion to: -g${COMMIT_HASH}"
 
-        # Set timezone to Asia/Shanghai
-        sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-        echo "Current time: $(date)"
+          echo "Working directory status:"
+          git status
 
-    - name: Build U-Boot for all IPQ platforms
-      run: |
-        cd u-boot-2016
+          # Set timezone
+          sudo ln -sf /usr/share/zoneinfo/${{ env.TIMEZONE }} /etc/localtime
+          echo "Current timezone: ${{ env.TIMEZONE }}"
+          echo "Current time: $(date)"
 
-        # Set Python 2.7 as default Python interpreter
-        export PYTHON=$HOME/miniconda/envs/py27/bin/python
+          # Get build datetime and date
+          BUILD_DATETIME=$(TZ=${{ env.TIMEZONE }} date +"${{ env.RELEASE_DATE_FORMAT }}")
+          BUILD_DATE=$(TZ=${{ env.TIMEZONE }} date +"${{ env.RELEASE_TAG_FORMAT }}")
+          TODAY_ISO=$(TZ=${{ env.TIMEZONE }} date +"%Y-%m-%d")
 
-        # Verify that PYTHON environment variable is set correctly
-        echo "PYTHON environment variable: $PYTHON"
-        $PYTHON --version
+          echo "BUILD_DATETIME=${BUILD_DATETIME}" >> $GITHUB_ENV
+          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          echo "TODAY_ISO=${TODAY_ISO}" >> $GITHUB_ENV
+          echo "COMMIT_HASH=${COMMIT_HASH}" >> $GITHUB_ENV
 
-        # Define all supported IPQ types
-        IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq807x" "ipq9574")
+      # 10. Get commit information for today
+      - name: Get commit information
+        id: commits
+        working-directory: ${{ env.UBOOT_REPO_PATH }}
+        run: |
+          # Ensure we have full history
+          git fetch --unshallow || true
+          git fetch --all || true
 
-        # Build each IPQ type
-        for ipq_type in "${IPQ_TYPES[@]}"; do
-          echo "================================================"
-          echo "Building U-Boot for IPQ type: $ipq_type"
-          echo "================================================"
-          # Set PYTHON environment variable to ensure build uses Python 2.7
-          # Use full Python path to avoid environment variable issues
-          echo "PYTHON environment variable: $PYTHON"
-          $HOME/miniconda/envs/py27/bin/python --version
-          PYTHON=$HOME/miniconda/envs/py27/bin/python ./build.sh "$ipq_type"
-        done
+          # Get all commits for today (use current date in Asia/Shanghai)
+          TODAY_START="${{ env.TODAY_ISO }} 00:00:00 +0800"
+          TODAY_END="${{ env.TODAY_ISO }} 23:59:59 +0800"
 
-        echo "All IPQ platform builds completed!"
+          echo "Searching for commits between $TODAY_START and $TODAY_END"
 
-    - name: Package each U-Boot file individually with zip ultra compression and timestamp
-      run: |
-        cd u-boot-2016/bin
+          # Simple commit log - list format
+          COMMITS=$(git log --since="$TODAY_START" --until="$TODAY_END" --pretty="- **%h**: %s - %an (%ar)" 2>/dev/null || git log --since="24 hours ago" --pretty="- **%h**: %s - %an (%ar)" || echo "- **${{ github.sha }}**: Current commit")
 
-        # Get current timestamp (format: YYYYMMDD-HHMMSS)
-        TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
-        echo "Build timestamp: $TIMESTAMP"
+          # Detailed commit log with full information
+          DETAILED_LOG=$(git log --since="$TODAY_START" --until="$TODAY_END" --pretty="### 📝 Commit: %h%n**Author:** %an <%ae>%n**Date:** %ai%n**Subject:** %s%n**Details:**%n%n%b%n---%n" 2>/dev/null || git log --since="24 hours ago" --pretty="### 📝 Commit: %h%n**Author:** %an <%ae>%n**Date:** %ai%n**Subject:** %s%n**Details:**%n%n%b%n---%n" || echo "No commits found in the last 24 hours")
 
-        # Create separate zip packages for each U-Boot image file (with timestamp)
-        for file in openwrt-*-u-boot.*; do
-          if [ -f "$file" ]; then
-            # Extract filename (without extension)
-            filename=$(basename "$file" | cut -d. -f1)
-            # Create zip package with ultra compression and timestamp in filename
-            zip -9 "${filename}-${TIMESTAMP}.zip" "$file"
-            echo "Created: ${filename}-${TIMESTAMP}.zip"
+          # Get commit statistics
+          COMMIT_COUNT=$(git log --since="$TODAY_START" --until="$TODAY_END" --oneline 2>/dev/null | wc -l)
+          if [ "$COMMIT_COUNT" -eq "0" ]; then
+            COMMIT_COUNT=$(git log --since="24 hours ago" --oneline 2>/dev/null | wc -l)
           fi
-        done
 
-        # Display all created zip files
-        ls -la *.zip
-        echo "Individual zip packaging with timestamp completed!"
+          # Get list of changed files
+          CHANGED_FILES=$(git log --since="$TODAY_START" --until="$TODAY_END" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || echo "No file changes detected")
 
-    - name: Create GitHub Release
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ github.run_number }}
-        name: U-Boot Build ${{ github.run_number }}
-        body: |
-          Automated U-Boot build for IPQ platforms
-          - Built from commit: ${{ github.sha }}
-          - Build number: ${{ github.run_number }}
-          - Date: ${{ github.event.head_commit.timestamp }}
-          - Build timestamp: $TIMESTAMP
+          # Get contributors
+          CONTRIBUTORS=$(git log --since="$TODAY_START" --until="$TODAY_END" --pretty="%an" 2>/dev/null | sort -u | tr '\n' ', ' | sed 's/, $//' || echo "Unknown")
 
-          Supported IPQ platforms:
-          - ipq40xx
-          - ipq5018
-          - ipq5332
-          - ipq6018
-          - ipq807x
-          - ipq9574
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          Each U-Boot file is individually packaged with ultra compression (zip -9) and timestamp.
-        files: u-boot-2016/bin/openwrt-*-u-boot-*.zip
-        draft: false
-        prerelease: false
+          echo "detailed_log<<EOF" >> $GITHUB_OUTPUT
+          echo "$DETAILED_LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "commit_count=${COMMIT_COUNT}" >> $GITHUB_OUTPUT
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "contributors=${CONTRIBUTORS}" >> $GITHUB_OUTPUT
+
+      # 11. Build U-Boot
+      - name: Build U-Boot for all IPQ platforms
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}
+
+          # Set Python environment
+          export PYTHON=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python
+          export PYTHON2=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin/python
+          export PATH=$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin:$PATH
+
+          echo "PYTHON environment variable: $PYTHON"
+          $PYTHON --version
+
+          # Define IPQ types directly (simpler approach)
+          IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq806x" "ipq807x" "ipq9574")
+
+          # Build each IPQ type
+          for ipq_type in "${IPQ_TYPES[@]}"; do
+            echo "================================================"
+            echo "Building U-Boot for IPQ type: $ipq_type"
+            echo "================================================"
+            ./build.sh "$ipq_type"
+          done
+
+          echo "All IPQ platform builds completed!"
+
+      # 12. Package U-Boot files
+      - name: Package each U-Boot file individually with zip ultra compression and timestamp
+        id: package
+        run: |
+          cd ${{ env.UBOOT_REPO_PATH }}/bin
+
+          # Get timestamp
+          TIMESTAMP=$(date +"${{ env.TIMESTAMP_FORMAT }}")
+          echo "Build timestamp: $TIMESTAMP"
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+
+          # Create separate zip packages for each file
+          for file in openwrt-*-u-boot.*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file" | cut -d. -f1)
+              zip -9 "${filename}-${TIMESTAMP}.zip" "$file"
+              echo "Created: ${filename}-${TIMESTAMP}.zip"
+            fi
+          done
+
+          # Also create a combined package for convenience
+          zip -9 "all-ipq-uboot-${TIMESTAMP}.zip" openwrt-*-u-boot.*
+          echo "Created: all-ipq-uboot-${TIMESTAMP}.zip"
+
+          # List created zip files
+          ls -la *.zip
+          echo "Individual zip packaging with timestamp completed!"
+
+      # 13. Upload build artifacts (for Actions page download)
+      - name: Upload U-Boot binaries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uboot-binaries-${{ env.TIMESTAMP }}
+          path: ${{ env.UBOOT_REPO_PATH }}/bin/*.zip
+          if-no-files-found: error
+          retention-days: 90
+
+      # 14. Comprehensive cleanup: Delete ALL releases and tags created today
+      - name: 🧹 Delete ALL releases and tags created today
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Searching for ALL releases created on ${{ env.TODAY_ISO }}..."
+
+          # Method 1: Try to get releases via gh API directly (more reliable)
+          TODAY_RELEASES=""
+
+          # Use gh api to list releases with pagination
+          PAGE=1
+          PER_PAGE=100
+
+          while true; do
+            echo "Fetching page $PAGE..."
+
+            # Use gh api instead of gh release list for better pagination control
+            RELEASES_JSON=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${{ github.repository }}/releases?per_page=$PER_PAGE&page=$PAGE" 2>/dev/null)
+
+            # Check if we got any releases
+            if [ -z "$RELEASES_JSON" ] || [ "$RELEASES_JSON" = "[]" ]; then
+              break
+            fi
+
+            # Filter releases created today
+            PAGE_RELEASES=$(echo "$RELEASES_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" '
+              .[] |
+              select(.created_at | startswith($date)) |
+              "\(.tag_name)|\(.name)|\(.id)"
+            ')
+
+            if [ -n "$PAGE_RELEASES" ]; then
+              TODAY_RELEASES="${TODAY_RELEASES}${PAGE_RELEASES}"$'\n'
+            fi
+
+            # Check if this is the last page
+            TOTAL_COUNT=$(echo "$RELEASES_JSON" | jq length)
+            if [ "$TOTAL_COUNT" -lt "$PER_PAGE" ]; then
+              break
+            fi
+
+            PAGE=$((PAGE + 1))
+          done
+
+          # Also try the simple method as fallback
+          if [ -z "$TODAY_RELEASES" ]; then
+            echo "Trying fallback method to find releases..."
+            SIMPLE_RELEASES=$(gh release list --limit 100 2>/dev/null | grep "${{ env.TODAY_ISO }}" || true)
+
+            if [ -n "$SIMPLE_RELEASES" ]; then
+              echo "Found releases via fallback method"
+              # Parse the simple format
+              TODAY_RELEASES=$(echo "$SIMPLE_RELEASES" | awk '{print $1 "|" $0 "|" "unknown"}')
+            fi
+          fi
+
+          # Remove empty lines and duplicates
+          TODAY_RELEASES=$(echo "$TODAY_RELEASES" | sed '/^$/d' | sort -u)
+
+          if [ -n "$TODAY_RELEASES" ]; then
+            echo "📋 Found the following releases created on ${{ env.TODAY_ISO }}:"
+            echo "$TODAY_RELEASES" | while IFS='|' read -r tag_name release_name release_id; do
+              echo "  - 📦 Release: $release_name"
+              echo "    🏷️  Tag: $tag_name"
+              echo "    🆔 ID: $release_id"
+            done
+
+            # Delete each release and its associated tag
+            DELETE_FAILED=0
+            echo "$TODAY_RELEASES" | while IFS='|' read -r tag_name release_name release_id; do
+              echo "🗑️  Deleting release: $release_name (tag: $tag_name)"
+
+              # Method 1: Delete via gh CLI
+              if gh release delete "$tag_name" --cleanup-tag --yes 2>/dev/null; then
+                echo "  ✅ Successfully deleted release and tag: $tag_name"
+                continue
+              fi
+
+              # Method 2: Delete via API if tag name method fails
+              if [ -n "$release_id" ] && [ "$release_id" != "unknown" ]; then
+                echo "  Trying API deletion with ID: $release_id"
+                if gh api -X DELETE "/repos/${{ github.repository }}/releases/$release_id" 2>/dev/null; then
+                  echo "  ✅ Deleted release via API"
+
+                  # Try to delete the tag
+                  if git ls-remote --tags origin | grep -q "refs/tags/$tag_name"; then
+                    git push --delete origin "$tag_name" 2>/dev/null && echo "  ✅ Deleted remote tag: $tag_name" || echo "  ⚠️  Could not delete remote tag"
+                  fi
+                  continue
+                fi
+              fi
+
+              # Method 3: Try to delete just the release without tag cleanup
+              echo "  Trying alternative deletion method..."
+              if gh release delete "$tag_name" --yes 2>/dev/null; then
+                echo "  ✅ Deleted release (tag may remain)"
+
+                # Try to delete the tag separately
+                if git ls-remote --tags origin | grep -q "refs/tags/$tag_name"; then
+                  git push --delete origin "$tag_name" 2>/dev/null && echo "  ✅ Deleted remote tag: $tag_name" || echo "  ⚠️  Could not delete remote tag"
+                fi
+              else
+                echo "  ❌ Failed to delete release: $tag_name"
+                DELETE_FAILED=1
+              fi
+            done
+
+            if [ "$DELETE_FAILED" -eq "0" ]; then
+              echo "✅ All releases from ${{ env.TODAY_ISO }} have been deleted"
+            else
+              echo "⚠️ Some releases could not be deleted, but continuing..."
+            fi
+          else
+            echo "✅ No releases found for ${{ env.TODAY_ISO }}"
+          fi
+
+          # Additional cleanup: Find and delete any leftover tags created today
+          echo "🔖 Checking for leftover tags created today..."
+
+          # Configure git
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # Fetch all tags
+          git fetch --tags --force 2>/dev/null || true
+
+          # Method 1: Find tags by date in tag message (more accurate)
+          LEFTOVER_TAGS=""
+
+          # Get all tags and check their creation date
+          for tag in $(git tag); do
+            # Skip if tag is empty
+            if [ -z "$tag" ]; then
+              continue
+            fi
+
+            # Get tagger date (for annotated tags) or commit date (for lightweight tags)
+            TAG_DATE=$(git log -1 --format=%ai "$tag" 2>/dev/null | cut -d' ' -f1 || echo "")
+
+            if [[ "$TAG_DATE" == "${{ env.TODAY_ISO }}" ]]; then
+              LEFTOVER_TAGS="${LEFTOVER_TAGS}${tag}"$'\n'
+            fi
+          done
+
+          # Method 2: Also check tags that contain today's date in their name
+          DATE_TAGS=$(git tag | grep -E "${{ env.BUILD_DATE }}|${{ env.TODAY_ISO }}" 2>/dev/null || true)
+          if [ -n "$DATE_TAGS" ]; then
+            LEFTOVER_TAGS="${LEFTOVER_TAGS}${DATE_TAGS}"$'\n'
+          fi
+
+          # Remove empty lines and duplicates
+          LEFTOVER_TAGS=$(echo "$LEFTOVER_TAGS" | sed '/^$/d' | sort -u)
+
+          if [ -n "$LEFTOVER_TAGS" ]; then
+            echo "📋 Found leftover tags created today:"
+            echo "$LEFTOVER_TAGS" | while read -r tag; do
+              # Skip empty tags
+              if [ -z "$tag" ]; then
+                continue
+              fi
+
+              echo "  - 🏷️  $tag"
+
+              # Delete local tag
+              if git tag -d "$tag" 2>/dev/null; then
+                echo "    ✅ Deleted local tag: $tag"
+              else
+                echo "    ⚠️  Local tag not found: $tag"
+              fi
+
+              # Delete remote tag
+              if git ls-remote --tags origin | grep -q "refs/tags/$tag"; then
+                if git push --delete origin "$tag" 2>/dev/null; then
+                  echo "    ✅ Deleted remote tag: $tag"
+                else
+                  echo "    ❌ Failed to delete remote tag: $tag"
+                fi
+              fi
+            done
+            echo "✅ Leftover tag cleanup completed"
+          else
+            echo "✅ No leftover tags found"
+          fi
+
+          # Final verification
+          echo "🔍 Final verification for ${{ env.TODAY_ISO }}..."
+          FINAL_CHECK=$(gh release list --limit 100 2>/dev/null | grep "${{ env.TODAY_ISO }}" || true)
+          if [ -n "$FINAL_CHECK" ]; then
+            echo "⚠️  Warning: Some releases may still exist:"
+            echo "$FINAL_CHECK"
+          else
+            echo "✅ Verification complete: No releases found for ${{ env.TODAY_ISO }}"
+          fi
+
+          # Set the new release information
+          echo "NEW_RELEASE_TAG=v${{ env.BUILD_DATE }}" >> $GITHUB_ENV
+          echo "NEW_RELEASE_NAME=IPQ U-Boot Build ${{ env.BUILD_DATE }}" >> $GITHUB_ENV
+
+          echo "✨ Cleanup completed. Ready to create new release: v${{ env.BUILD_DATE }}"
+
+      # 15. Ensure no tag conflict before creating release
+      - name: 🏷️  Ensure no tag conflict
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG="v${{ env.BUILD_DATE }}"
+
+          echo "🔍 Checking for tag conflicts: $NEW_TAG"
+
+          # Check local tag
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "⚠️  Local tag exists: $NEW_TAG, deleting..."
+            git tag -d "$NEW_TAG"
+          fi
+
+          # Check remote tag
+          if git ls-remote --tags origin | grep -q "refs/tags/$NEW_TAG"; then
+            echo "⚠️  Remote tag exists: $NEW_TAG, deleting..."
+            git push --delete origin "$NEW_TAG" 2>/dev/null || echo "  ❌ Failed to delete remote tag (may need manual cleanup)"
+          fi
+
+          echo "✅ No tag conflict for $NEW_TAG"
+
+      # 16. Create GitHub Release (only for push to main/master)
+      - name: 🚀 Create GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ env.BUILD_DATE }}
+          name: "IPQ U-Boot Build ${{ env.BUILD_DATE }}"
+          body: |
+            # 🚀 Automated U-Boot Build for IPQ Platforms
+
+            ## 📋 Build Information
+            | **Item** | **Details** |
+            |----------|-------------|
+            | **Build Time** | `${{ env.BUILD_DATETIME }}` |
+            | **Build ID** | `${{ env.TIMESTAMP }}` |
+            | **Source Commit** | [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |
+            | **Branch** | `${{ github.ref_name }}` |
+            | **Timezone** | `${{ env.TIMEZONE }}` |
+            | **Python Version** | `${{ env.PYTHON_VERSION }}` |
+            | **Toolchain** | `arm-cortex-a7_gcc-5.2.0_musl-1.1.16` |
+
+            ## 📊 Commit Statistics - ${{ env.TODAY_ISO }}
+            - **Total Commits**: `${{ steps.commits.outputs.commit_count || '1' }}`
+            - **Contributors**: ${{ steps.commits.outputs.contributors || github.actor }}
+            - **Latest Commit**: [`${{ env.COMMIT_HASH }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+
+            ## 🔧 Supported IPQ Platforms
+            | Platform | Status |
+            |----------|--------|
+            | **ipq40xx** | ✅ Built |
+            | **ipq5018** | ✅ Built |
+            | **ipq5332** | ✅ Built |
+            | **ipq6018** | ✅ Built |
+            | **ipq806x** | ✅ Built |
+            | **ipq807x** | ✅ Built |
+            | **ipq9574** | ✅ Built |
+
+            ## 📝 Today's Commits
+            ${{ steps.commits.outputs.detailed_log }}
+
+            ## 📁 Changed Files
+            ```
+            ${{ steps.commits.outputs.changed_files }}
+            ```
+
+            ## 📦 Download Options
+            - **Individual Files**: Each U-Boot binary is packaged separately with timestamp
+            - **Combined Package**: `all-ipq-uboot-${{ env.TIMESTAMP }}.zip` contains all binaries
+
+            ## ⚠️ Important Notes
+            - ⏰ This release **REPLACES ALL PREVIOUS RELEASES** from ${{ env.TODAY_ISO }}
+            - 📅 Build artifacts are retained for **90 days**
+            - 🔍 Select the appropriate U-Boot file according to your device model
+            - 🐍 Python ${{ env.PYTHON_VERSION }} environment was used for compatibility
+
+            ## 🔗 Additional Resources
+            - **Actions Run**: [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Commit History**: [View changes](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+
+            ---
+            *🔄 This release was automatically generated by GitHub Actions and **completely replaces all previous releases from ${{ env.TODAY_ISO }}**. Last updated: ${{ env.BUILD_DATETIME }}*
+          files: |
+            ${{ env.UBOOT_REPO_PATH }}/bin/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: false
