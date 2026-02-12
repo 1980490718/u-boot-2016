@@ -24,4 +24,10 @@ config PCI_IPQ
 config BOARD_TYPES
 	bool "Support board_type member in global data"
 	default y
+
+config IPQ40XX_ALIYUN_AP4220
+	bool "For ipq40xx aliyun ap4220 support"
+	default n
+		help
+			Enable support for ipq40xx aliyun ap4220 board.
 endif
