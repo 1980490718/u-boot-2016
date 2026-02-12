@@ -1181,7 +1181,11 @@ int check_flash_exceed(struct smem_ptn *p, uint32_t offset, uint32_t psize) {
 #ifdef CONFIG_CMD_NAND
 	case SMEM_BOOT_NAND_FLASH:
 	case SMEM_BOOT_QSPI_NAND_FLASH:
+#ifdef CONFIG_IPQ40XX
+		fsize = nand_info[get_device_id_by_part(p)].size;
+#else
 		fsize = nand_info[CONFIG_QPIC_NAND_NAND_INFO_IDX].size;
+#endif
 		break;
 #endif
 	default:
