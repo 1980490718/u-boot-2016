@@ -8,6 +8,9 @@
 #include <asm/arch-qca-common/smem.h>
 #include <part.h>
 #include <mmc.h>
+#ifdef CONFIG_IPQ40XX
+#include "../drivers/net/ipq_common/ipq_phy.h"
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -131,7 +134,9 @@ void check_button_is_press(void) {
 			led_off("power_led");
 			led_on("blink_led");
 #endif
+#ifndef CONFIG_IPQ40XX
 			eth_initialize();
+#endif
 			run_command("httpd 192.168.1.1", 0);
 			run_command("res", 0);
 			break;
