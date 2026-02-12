@@ -1017,7 +1017,7 @@ void qca_smem_part_to_mtdparts(char *mtdid, int len)
 unsigned int get_which_flash_param(char *part_name)
 {
 	int i;
-	int flash_var = 0;
+	int flash_var = -1;
 
 	for (i = 0; i < smem_ptable.len; i++) {
 		struct smem_ptn *p = &smem_ptable.parts[i];
