@@ -26,7 +26,9 @@
 #include <fdtdec.h>
 #include <asm/arch-qca-common/qpic_nand.h>
 #include <nand.h>
-
+#ifdef CONFIG_IPQ40XX
+#include <../board/qca/arm/common/fdt_info.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 #ifndef CONFIG_SDHCI_SUPPORT
@@ -60,7 +62,11 @@ uint32_t part_size, uint32_t file_size, char *layout)
 {
 
 	char runcmd[256];
+#ifdef CONFIG_IPQ40XX
+	int nand_dev = is_spi_nand_available();
+#else
 	int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
 
 	if (((flash_type == SMEM_BOOT_NAND_FLASH) ||
 		(flash_type == SMEM_BOOT_QSPI_NAND_FLASH))) {
@@ -107,7 +113,11 @@ static int fl_erase(int flash_type, uint32_t offset, uint32_t part_size,
 							 char *layout)
 {
 	char runcmd[256];
+#ifdef CONFIG_IPQ40XX
+	int nand_dev = is_spi_nand_available();
+#else
 	int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
 
 	if (((flash_type == SMEM_BOOT_NAND_FLASH) ||
 		(flash_type == SMEM_BOOT_QSPI_NAND_FLASH))) {
@@ -232,7 +242,11 @@ char * const argv[])
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 	flash_type = (flash_type_new != -1) ? flash_type_new : sfi->flash_type;
 #ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_IPQ40XX
+	nand_info_t *nand = &nand_info[is_spi_nand_available()];
+#else
 	nand_info_t *nand = &nand_info[CONFIG_NAND_FLASH_INFO_IDX];
+#endif
 #endif
 	if (strcmp(argv[0], "flash") == 0)
 		flash_cmd = 1;
