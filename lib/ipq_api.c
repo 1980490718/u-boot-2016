@@ -10,6 +10,31 @@
 #include <mmc.h>
 #ifdef CONFIG_IPQ40XX
 #include "../drivers/net/ipq_common/ipq_phy.h"
+#include <dt-bindings/qcom/gpio-ipq40xx.h>
+#endif
+#include <asm/arch-qca-common/gpio.h>
+
+/* Define GPIO macros if not already defined by platform-specific headers */
+#ifndef GPIO_PULL_UP
+#ifdef CONFIG_IPQ40XX
+#define GPIO_PULL_UP 2
+#elif defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5018) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ806X)
+#define GPIO_PULL_UP 3
+#else
+#define GPIO_PULL_UP 2
+#endif
+#endif
+#ifndef GPIO_PULL_DOWN
+#define GPIO_PULL_DOWN 1
+#endif
+#ifndef GPIO_NO_PULL
+#define GPIO_NO_PULL 0
+#endif
+#ifndef GPIO_8MA
+#define GPIO_8MA 3
+#endif
+#ifndef GPIO_OE_DISABLE
+#define GPIO_OE_DISABLE 0
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -17,16 +42,19 @@ DECLARE_GLOBAL_DATA_PTR;
 static int fdt_get_gpio_number(const char *gpio_name) {
 	int node;
 	unsigned int gpio;
+	char *env_val;
 	node = fdt_path_offset(gd->fdt_blob, gpio_name);
 	if (node < 0) {
-		printf("Could not find %s node in fdt\n", gpio_name);
+		/* Check environment variable for GPIO number */
+		env_val = getenv(gpio_name);
+		if (env_val) {
+			gpio = simple_strtoul(env_val, NULL, 10);
+			return gpio;
+		}
+		printf("Could not find %s node in fdt and no env variable set\n", gpio_name);
 		return -1;
 	}
 	gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
-	if (gpio < 0) {
-		printf("Could not find %s node's gpio in fdt\n", gpio_name);
-		return -1;
-	}
 	return gpio;
 }
 
@@ -102,6 +130,75 @@ bool button_is_press(const char *gpio_name, int value) {
 		return false;
 }
 
+/**
+ * Configure a GPIO as input with pull-up
+ */
+static void config_gpio_as_input_with_pullup(int gpio) {
+	struct qca_gpio_config gpio_config;
+	gpio_config.gpio = gpio;
+	gpio_config.func = 0;
+	gpio_config.out = 0;
+	gpio_config.pull = GPIO_PULL_UP;
+	gpio_config.drvstr = GPIO_8MA;
+	gpio_config.oe = GPIO_OE_DISABLE;
+	gpio_config.vm = 0;
+	gpio_config.od_en = 0;
+	gpio_config.pu_res = 0;
+	gpio_config.sr_en = 0;
+	gpio_tlmm_config(&gpio_config);
+}
+
+/**
+ * Check reset button status using either DTS node or environment variable
+ * If button is pressed for 3 seconds, start httpd server
+ */
+static void check_reset_button_status(void) {
+	int gpio = -1;
+	int counter = 0;
+	char *env_val;
+	/* First check environment variable, override DTS settings */
+	env_val = getenv("reset_key");
+	if (env_val) {
+		gpio = simple_strtoul(env_val, NULL, 10);
+		/* Environment variable takes precedence, use it directly */
+	} else {
+		/* If not in environment, check if reset_key is defined in DTS */
+		int node = fdt_path_offset(gd->fdt_blob, "reset_key");
+		if (node >= 0) {
+			/* Reset key is defined in DTS, use existing function */
+			return;
+		} else {
+			/* No reset key defined anywhere, return */
+			return;
+		}
+	}
+	/* Configure GPIO as input with pull-up */
+	config_gpio_as_input_with_pullup(gpio);
+	/* Check if reset button is pressed */
+	while (gpio_get_value(gpio) == 0) { /* 0 means pressed (active low) */
+		if (counter == 0) {
+			printf("Reset button is pressed for: %2d second(s) ", counter);
+		}
+		/* Blink power LED if available */
+		led_blink_then_on("power_led", 1000);
+		counter++;
+		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%2d second(s) ", counter);
+		if (counter >= 3) {
+			printf("\n");
+			/* Start httpd server */
+			led_off("power_led");
+			led_on("blink_led");
+			run_command("httpd 192.168.1.1", 0);
+			run_command("res", 0);
+			break;
+		}
+	}
+	if (counter != 0) {
+		printf("\n");
+	}
+	return;
+}
+
 void check_button_is_press(void) {
 	int counter = 0;
 	while (button_is_press("reset_key", RESET_BUTTON_PRESSED)) {
@@ -144,6 +241,8 @@ void check_button_is_press(void) {
 	}
 	if (counter != 0)
 		printf("\n");
+	/* Check reset button status using environment variable if not defined in fdt */
+	check_reset_button_status();
 	return;
 }
 
