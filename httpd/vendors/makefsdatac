@@ -37,9 +37,33 @@ prev_fsdata_struct="NULL"
 # Files counter
 files_counter=0
 
+# 检测压缩工具是否可用
+function check_compression_tools() {
+	has_htmlminifier=0
+	has_terser=0
+
+	if type -p html-minifier >/dev/null || type -p npx >/dev/null; then
+		has_htmlminifier=1
+	fi
+
+	if type -p terser >/dev/null || type -p npx >/dev/null; then
+		has_terser=1
+	fi
+}
+
+# 初始化工具检测
+check_compression_tools
+
 # Change ASCII to bytes, comma separated (e.g. "0x01, 0x02, 0x03...")
 function ascii_to_bytes() {
 	echo -ne $1 | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'
+}
+
+# Compress data using gzip and convert to hex
+function compress_and_convert() {
+	local _file="$1"
+	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g')
+	 echo "$_compressed_data"
 }
 
 # $1 -> file path
@@ -48,6 +72,7 @@ function print_data_array() {
 	local _file_name="${1##*/}"
 	local _file_name_no_ext="${_file_name%\.*}"
 	local _file_content=""
+	local _is_compressed=0
 
 	# Open variable declaration
 	`echo -ne "static const char data_"$_file_name_no_ext"_"$_file_ext"[] = {\n" >> "$files_content_tmp"`
@@ -68,29 +93,98 @@ function print_data_array() {
 	# Content
 	if [ "$_file_ext" == "css"  ]; then
 		if type -p java >/dev/null && [ -e "$yui_compressor" ]; then
-			_file_content=`java -jar "$yui_compressor" --charset utf-8 "$1" | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
+			# First compress with YUI, then gzip
+			local _temp_file=$(mktemp)
+			java -jar "$yui_compressor" --charset utf-8 "$1" > "$_temp_file"
+			_file_content=$(compress_and_convert "$_temp_file")
+			rm "$_temp_file"
+			_is_compressed=1
 		else
-			_file_content=`cat "$1" | tr -d '\r\n\t' | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
+			# Fallback: just remove whitespace and compress
+			local _temp_file=$(mktemp)
+			cat "$1" | tr -d '\r\n\t' > "$_temp_file"
+			_file_content=$(compress_and_convert "$_temp_file")
+			rm "$_temp_file"
+			_is_compressed=1
 		fi
-		`ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n\r\n" >> "$files_content_tmp"`
+		`ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "png"  ]; then
-		_file_content=`od -A n -t x1 < "$1" | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
-		`ascii_to_bytes "Content-Type: image/png\r\n\r\n" >> "$files_content_tmp"`
+		# Compress PNG files
+		_file_content=$(compress_and_convert "$1")
+		_is_compressed=1
+		`ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "jpg" -o "$_file_ext" == "jpeg"  ]; then
-		_file_content=`od -A n -t x1 < "$1" | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
-		`ascii_to_bytes "Content-Type: image/jpeg\r\n\r\n" >> "$files_content_tmp"`
+		# Compress JPEG files
+		_file_content=$(compress_and_convert "$1")
+		_is_compressed=1
+		`ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "gif"  ]; then
-		_file_content=`od -A n -t x1 < "$1" | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
-		`ascii_to_bytes "Content-Type: image/gif\r\n\r\n" >> "$files_content_tmp"`
+		# Compress GIF files
+		_file_content=$(compress_and_convert "$1")
+		_is_compressed=1
+		`ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp"`
+	elif [ "$_file_ext" == "js"  ]; then
+		# Compress JavaScript files
+		if [ $has_terser -eq 1 ]; then
+			local _temp_file=$(mktemp)
+			if type -p terser >/dev/null; then
+				terser "$1" -o "$_temp_file" --compress --mangle
+			else
+				npx terser "$1" -o "$_temp_file" --compress --mangle
+			fi
+			_file_content=$(compress_and_convert "$_temp_file")
+			rm "$_temp_file"
+		else
+			_file_content=$(compress_and_convert "$1")
+		fi
+		_is_compressed=1
+		`ascii_to_bytes "Content-type: application/javascript; charset=UTF-8\r\n" >> "$files_content_tmp"`
 	else
-		_file_content=`cat "$1" | tr -d '\t\r\n' | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'`
-		`ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n\r\n" >> "$files_content_tmp"`
+		# 处理 HTML 文件（包括内嵌 JS/CSS）
+		local _temp_file=$(mktemp)
+		local _processed_file=$(mktemp)
+
+		if [ $has_htmlminifier -eq 1 ]; then
+			# 步骤 1: 使用 HTMLMinifier 压缩 HTML 和内嵌的 JS/CSS
+			cat "$1" > "$_temp_file"
+
+			if type -p html-minifier >/dev/null; then
+				html-minifier --collapse-whitespace --remove-comments --remove-redundant-attributes \
+					--remove-optional-tags --minify-js true --minify-css true \
+					"$_temp_file" > "$_processed_file"
+			else
+				# 使用 npx 调用本地安装的 html-minifier
+				npx html-minifier --collapse-whitespace --remove-comments --remove-redundant-attributes \
+					--remove-optional-tags --minify-js true --minify-css true \
+					"$_temp_file" > "$_processed_file"
+			fi
+		else
+			# 降级方案：只移除空白字符
+			cat "$1" | tr -d '\t\r\n' > "$_processed_file"
+		fi
+
+		# 步骤 2: 使用 gzip 压缩处理后的文件
+		_file_content=$(compress_and_convert "$_processed_file")
+		_is_compressed=1
+
+		# 清理临时文件
+		rm -f "$_temp_file" "$_processed_file"
+
+		`ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"`
+	fi
+
+	# Add Content-Encoding header if compressed
+	if [ $_is_compressed -eq 1 ]; then
+		`echo "," >> "$files_content_tmp"`
+		`ascii_to_bytes "Content-Encoding: gzip\r\n" >> "$files_content_tmp"`
 	fi
 
 	`echo "," >> "$files_content_tmp"`
+	`ascii_to_bytes "\r\n" >> "$files_content_tmp"`
+	`echo "," >> "$files_content_tmp"`
 
 	# File content
-	`echo -ne "/* Page/File content */\n" >> "$files_content_tmp"`
+	`echo -ne "/* Page/File content (compressed) */\n" >> "$files_content_tmp"`
 	`echo -ne "$_file_content" >> "$files_content_tmp"`
 
 	# And close declaration
