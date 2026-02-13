@@ -156,14 +156,29 @@ SECTIONS
 		KEEP(*(.__bss_end));
 	}
 
-	.dynsym _image_binary_end : { *(.dynsym) }
-	.dynbss : { *(.dynbss) }
-	.dynstr : { *(.dynstr*) }
-	/DISCARD/ : { *(.dynamic*) }
-	.plt : { *(.plt*) }
-	/DISCARD/ : { *(.interp*) }
-	.gnu.hash : { *(.gnu.hash) }
-	.gnu : { *(.gnu*) }
-	.ARM.exidx : { *(.ARM.exidx*) }
-	.gnu.linkonce.armexidx : { *(.gnu.linkonce.armexidx.*) }
+	/*
+	 * Discard unused sections to reduce binary size
+	 */
+	/DISCARD/ : {
+		/* Dynamic linking sections (not needed in U-Boot) */
+		*(.dynsym)
+		*(.dynbss)
+		*(.dynstr*)
+		*(.dynamic*)
+		*(.plt*)
+		*(.interp*)
+
+		/* GNU specific sections */
+		*(.gnu.hash)
+		*(.gnu*)
+
+		/* ARM exception index sections */
+		*(.ARM.exidx*)
+		*(.gnu.linkonce.armexidx.*)
+
+		/* Comment and attribute sections */
+		*(.comment)
+		*(.ARM.attributes)
+		*(.shstrtab)
+	}
 }
