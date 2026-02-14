@@ -1,5 +1,25 @@
 #define RESET_BUTTON_PRESSED        0
 
+#ifndef GPIO_PULL_UP
+#ifdef CONFIG_IPQ40XX
+#define GPIO_PULL_UP 2 /* IPQ40XX platform */
+#else
+#define GPIO_PULL_UP 3 /* Other platforms */
+#endif
+#endif
+#ifndef GPIO_PULL_DOWN
+#define GPIO_PULL_DOWN 1
+#endif
+#ifndef GPIO_NO_PULL
+#define GPIO_NO_PULL 0
+#endif
+#ifndef GPIO_8MA
+#define GPIO_8MA 3
+#endif
+#ifndef GPIO_OE_DISABLE
+#define GPIO_OE_DISABLE 0
+#endif
+
 #define LED_ON 1
 #define LED_OFF 0
 

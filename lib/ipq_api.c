@@ -14,29 +14,6 @@
 #endif
 #include <asm/arch-qca-common/gpio.h>
 
-/* Define GPIO macros if not already defined by platform-specific headers */
-#ifndef GPIO_PULL_UP
-#ifdef CONFIG_IPQ40XX
-#define GPIO_PULL_UP 2
-#elif defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5018) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ806X)
-#define GPIO_PULL_UP 3
-#else
-#define GPIO_PULL_UP 2
-#endif
-#endif
-#ifndef GPIO_PULL_DOWN
-#define GPIO_PULL_DOWN 1
-#endif
-#ifndef GPIO_NO_PULL
-#define GPIO_NO_PULL 0
-#endif
-#ifndef GPIO_8MA
-#define GPIO_8MA 3
-#endif
-#ifndef GPIO_OE_DISABLE
-#define GPIO_OE_DISABLE 0
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 static int fdt_get_gpio_number(const char *gpio_name) {
