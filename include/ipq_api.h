@@ -57,15 +57,11 @@ enum flash_type_enum {
 #define FLASH_TYPE_QSPI_NAND		11
 
 /* load address */
-#if defined(CONFIG_IPQ40XX)
-#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				((unsigned long)0x88000000)
-#else
-#define CONFIG_LOADADDR								((unsigned long)0x44000000) /* console default address */
+#define CONFIG_LOADADDR								(unsigned long) 0x44000000 /* console default address */
 #if defined(CONFIG_256MB_RAM)
-#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				CONFIG_LOADADDR /* For 256MB RAM */
+#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				CONFIG_LOADADDR /* For 256MB RAM, use the console default address */
 #else
-#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				((unsigned long)0x50000000)
-#endif
+#define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				(unsigned long) 0x50000000
 #endif
 /* simplify the WEBFAILSAFE_UPLOAD_RAM_ADDRESS as UPLOAD_ADDR */
 #define UPLOAD_ADDR									WEBFAILSAFE_UPLOAD_RAM_ADDRESS
