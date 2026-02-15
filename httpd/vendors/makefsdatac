@@ -8,28 +8,99 @@
 # - flashing.hmtl
 # - fail.html
 #
-# All other files are optional. If you want to allow also
-# ART and/or U-Boot image update, add the following files,
-# with appropriate inputs in form:
-# - art.html (<input type="file" name="art">)
-# - uboot.html (<input type="file" name="uboot">)
-#
-# HTML and CSS files are compressed before placing them
-# inside "fsdata.c".
-#
+# Files are processed with dedicated tools and then compressed with gzip -9n.
+# HTML files with embedded JS/CSS are processed with careful preservation of styling.
 # You SHOULDN'T embed addresses of any external
 # files in "flashing.html" file, because web server,
 # after receive POST data, returns this page and stops.
 
-# Vendor specific directory (default: "cleanwrt")
+# Vendor specific directory (default: "pig")
 vendor_dir=${1:-pig}
 
 # Temporary files
 files_content_tmp="vendors/.files_content"
 files_list_tmp="vendors/.files_list"
 
-# YUI Compressor path (should be in the same dir)
-yui_compressor=`ls -t vendors/*.jar 2> /dev/null | tail --lines=1`
+# Enable better error handling
+set -e
+
+# Function to check Node.js module availability
+check_node_module() {
+	local module=$1
+	local version_var=$2
+
+	if command -v node >/dev/null 2>&1; then
+		# Try multiple methods to find the module
+		if node -e "try { require.resolve('$module'); console.log('found'); } catch(e) { process.exit(1); }" 2>/dev/null; then
+			eval "$version_var=1"
+			echo "Node module '$module' found"
+			return 0
+		else
+			# Try common global paths
+			for node_path in /usr/lib/node_modules \
+						   /usr/local/lib/node_modules \
+						   $HOME/.npm-global/lib/node_modules \
+						   $HOME/node_modules; do
+				if [ -d "$node_path/$module" ]; then
+					export NODE_PATH="$node_path:${NODE_PATH:-}"
+					eval "$version_var=1"
+					echo "Node module '$module' found at $node_path"
+					return 0
+				fi
+			done
+		fi
+	fi
+
+	eval "$version_var=0"
+	echo "Warning: Node module '$module' not available, using fallback methods"
+	return 1
+}
+
+# Check for Node.js and modules
+echo "Checking build tools..."
+
+# Check Node.js availability
+node_available=0
+if command -v node >/dev/null 2>&1; then
+	node_available=1
+	echo "Node.js found: $(node --version)"
+
+	# Show NODE_PATH if set
+	if [ -n "$NODE_PATH" ]; then
+		echo "NODE_PATH: $NODE_PATH"
+	fi
+else
+	echo "Warning: Node.js not found, using basic compression only"
+fi
+
+# Check for specific tools
+html_minifier_available=0
+css_minifier_available=0
+js_minifier_available=0
+
+if [ $node_available -eq 1 ]; then
+	# Check for html-minifier (try both names)
+	if check_node_module "html-minifier" "html_minifier_available"; then
+		html_minifier_available=1
+	elif check_node_module "html-minifier-terser" "html_minifier_available"; then
+		html_minifier_available=1
+		# Create alias if needed
+		mkdir -p node_modules
+		ln -sf $(dirname $(node -e "console.log(require.resolve('html-minifier-terser'))" 2>/dev/null)) node_modules/html-minifier 2>/dev/null || true
+	fi
+
+	# Check for clean-css
+	check_node_module "clean-css" "css_minifier_available"
+
+	# Check for terser
+	check_node_module "terser" "js_minifier_available"
+fi
+
+# Summary of available tools
+echo "Tool availability:"
+echo "  - HTML Minifier: $([ $html_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
+echo "  - CSS Minifier: $([ $css_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
+echo "  - JS Minifier: $([ $js_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
 
 # Previous fsdata_file var name
 prev_fsdata_struct="NULL"
@@ -39,99 +110,245 @@ files_counter=0
 
 # Change ASCII to bytes, comma separated (e.g. "0x01, 0x02, 0x03...")
 function ascii_to_bytes() {
-	echo -ne $1 | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g'
+	echo -ne "$1" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&, /g;s/, $//'
 }
 
 # Compress data using gzip and convert to hex
 function compress_and_convert() {
 	local _file="$1"
-	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\r\n' | sed 's/ /0x/;s/ /, 0x/g;s/.\{102\}/&\n/g')
-	 echo "$_compressed_data"
+	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&, /g;s/, $//')
+	echo "$_compressed_data"
+}
+
+# Advanced HTML minification with careful preservation of styling
+function minify_html_with_preserved_styling() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $html_minifier_available -eq 1 ]; then
+		echo "Minifying HTML: $(basename $_input_file)"
+
+		# Use node with async/await in an immediately-invoked function
+		node -e "
+		const fs = require('fs');
+
+		(async function() {
+			try {
+				// Try to load the minifier
+				let htmlMinifier;
+				try {
+					htmlMinifier = require('html-minifier');
+				} catch (e) {
+					htmlMinifier = require('html-minifier-terser');
+				}
+
+				// Read the file
+				const content = fs.readFileSync('$_input_file', 'utf8');
+
+				// Minify (await the promise)
+				const result = await htmlMinifier.minify(content, {
+					collapseWhitespace: true,
+					removeComments: true,
+					minifyCSS: true,
+					minifyJS: true,
+					removeRedundantAttributes: false,
+					removeScriptTypeAttributes: false,
+					removeStyleLinkTypeAttributes: false,
+					sortAttributes: false,
+					sortClassName: false,
+					preserveLineBreaks: false,
+					collapseBooleanAttributes: true,
+					removeEmptyAttributes: true,
+					minifyJS: {
+						compress: { drop_console: true },
+						mangle: true
+					},
+					minifyCSS: {
+						level: {
+							1: { all: true },
+							2: { all: false }
+						}
+					}
+				});
+
+				// Write the result
+				fs.writeFileSync('$_output_file', result);
+				console.log('HTML minification successful');
+			} catch (e) {
+				console.error('HTML minification failed:', e.message);
+				// Fallback: copy original file
+				fs.copyFileSync('$_input_file', '$_output_file');
+			}
+		})().catch(e => {
+			console.error('Unhandled error:', e.message);
+			fs.copyFileSync('$_input_file', '$_output_file');
+		});
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
+}
+
+# Separate JS minification for standalone JS files
+function minify_standalone_js() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $js_minifier_available -eq 1 ]; then
+		echo "Minifying JS: $(basename $_input_file)"
+		node -e "
+		try {
+			var Terser = require('terser');
+			var fs = require('fs');
+			var content = fs.readFileSync('$_input_file', 'utf8');
+			var result = Terser.minify(content, {
+				compress: {drop_console: true},
+				mangle: true
+			});
+			if (result.code) {
+				fs.writeFileSync('$_output_file', result.code);
+				console.log('JS minification successful');
+			} else {
+				throw new Error('Minification failed');
+			}
+		} catch(e) {
+			console.error('JS minification failed:', e.message);
+			fs.copyFileSync('$_input_file', '$_output_file');
+		}
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
+}
+
+# Advanced CSS minification for standalone CSS files
+function minify_standalone_css() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $css_minifier_available -eq 1 ]; then
+		echo "Minifying CSS: $(basename $_input_file)"
+		node -e "
+		try {
+			var CleanCSS = require('clean-css');
+			var fs = require('fs');
+			var content = fs.readFileSync('$_input_file', 'utf8');
+			var result = new CleanCSS({
+				level: {
+					1: {all: true},
+					2: {
+						all: false,
+						mergeIntoShorthands: false,
+						mergeMediaQueries: false
+					}
+				},
+				format: false
+			}).minify(content);
+			if (result.styles) {
+				fs.writeFileSync('$_output_file', result.styles);
+				console.log('CSS minification successful');
+			} else {
+				throw new Error('Minification failed');
+			}
+		} catch(e) {
+			console.error('CSS minification failed:', e.message);
+			fs.copyFileSync('$_input_file', '$_output_file');
+		}
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
 }
 
 # $1 -> file path
 function print_data_array() {
-	local _file_ext="${1##*.}"
-	local _file_name="${1##*/}"
+	local _file_path="$1"
+	local _file_ext="${_file_path##*.}"
+	local _file_name="${_file_path##*/}"
 	local _file_name_no_ext="${_file_name%\.*}"
 	local _file_content=""
 	local _is_compressed=0
 
+	echo "Processing: $_file_name"
+
 	# Open variable declaration
-	`echo -ne "static const char data_"$_file_name_no_ext"_"$_file_ext"[] = {\n" >> "$files_content_tmp"`
-	`echo -ne "/* HTTP Header */\n" >> "$files_content_tmp"`
+	echo -ne "static const char data_${_file_name_no_ext}_${_file_ext}[] = {\n" >> "$files_content_tmp"
 
 	# HTTP header (200 OK or 404 Not Found)
-	if [ "$_file_name_no_ext" == "404"  ]; then
-		`ascii_to_bytes "HTTP/1.0 404 File not found\r\n" >> "$files_content_tmp"`
+	if [ "$_file_name_no_ext" == "404" ]; then
+		ascii_to_bytes "HTTP/1.0 404 File not found\r\n" >> "$files_content_tmp"
 	else
-		`ascii_to_bytes "HTTP/1.0 200 OK\r\n" >> "$files_content_tmp"`
+		ascii_to_bytes "HTTP/1.0 200 OK\r\n" >> "$files_content_tmp"
 	fi
+	echo "," >> "$files_content_tmp"
 
-	# Server type
-	`echo "," >> "$files_content_tmp"`
-	`ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"`
-	`echo "," >> "$files_content_tmp"`
+	ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"
+	echo "," >> "$files_content_tmp"
 
-	# Content
-	if [ "$_file_ext" == "css"  ]; then
-		if type -p java >/dev/null && [ -e "$yui_compressor" ]; then
-			# First compress with YUI, then gzip
+	# Content - Process with dedicated tools and then gzip
+	case "$_file_ext" in
+		css)
 			local _temp_file=$(mktemp)
-			java -jar "$yui_compressor" --charset utf-8 "$1" > "$_temp_file"
+			minify_standalone_css "$_file_path" "$_temp_file"
 			_file_content=$(compress_and_convert "$_temp_file")
-			rm "$_temp_file"
+			rm -f "$_temp_file"
 			_is_compressed=1
-		else
-			# Fallback: just remove whitespace and compress
+			ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"
+			;;
+		js)
 			local _temp_file=$(mktemp)
-			cat "$1" | tr -d '\r\n\t' > "$_temp_file"
+			minify_standalone_js "$_file_path" "$_temp_file"
 			_file_content=$(compress_and_convert "$_temp_file")
-			rm "$_temp_file"
+			rm -f "$_temp_file"
 			_is_compressed=1
-		fi
-		`ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"`
-	elif [ "$_file_ext" == "png"  ]; then
-		# Compress PNG files
-		_file_content=$(compress_and_convert "$1")
-		_is_compressed=1
-		`ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp"`
-	elif [ "$_file_ext" == "jpg" -o "$_file_ext" == "jpeg"  ]; then
-		# Compress JPEG files
-		_file_content=$(compress_and_convert "$1")
-		_is_compressed=1
-		`ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp"`
-	elif [ "$_file_ext" == "gif"  ]; then
-		# Compress GIF files
-		_file_content=$(compress_and_convert "$1")
-		_is_compressed=1
-		`ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp"`
-	else
-		# Compress HTML files
-		local _temp_file=$(mktemp)
-		cat "$1" | tr -d '\t\r\n' > "$_temp_file"
-		_file_content=$(compress_and_convert "$_temp_file")
-		rm "$_temp_file"
-		_is_compressed=1
-		`ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"`
-	fi
+			ascii_to_bytes "Content-Type: application/javascript\r\n" >> "$files_content_tmp"
+			;;
+		html|htm)
+			local _temp_file=$(mktemp)
+			minify_html_with_preserved_styling "$_file_path" "$_temp_file"
+			_file_content=$(compress_and_convert "$_temp_file")
+			rm -f "$_temp_file"
+			_is_compressed=1
+			ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"
+			;;
+		png|jpg|jpeg|gif|ico|svg)
+			_file_content=$(compress_and_convert "$_file_path")
+			_is_compressed=1
+			case "$_file_ext" in
+				png)  ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp" ;;
+				jpg|jpeg) ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp" ;;
+				gif)  ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp" ;;
+				ico)  ascii_to_bytes "Content-Type: image/x-icon\r\n" >> "$files_content_tmp" ;;
+				svg)  ascii_to_bytes "Content-Type: image/svg+xml\r\n" >> "$files_content_tmp" ;;
+			esac
+			;;
+		*)
+			_file_content=$(compress_and_convert "$_file_path")
+			_is_compressed=1
+			ascii_to_bytes "Content-type: text/plain; charset=UTF-8\r\n" >> "$files_content_tmp"
+			;;
+	esac
 
 	# Add Content-Encoding header if compressed
 	if [ $_is_compressed -eq 1 ]; then
-		`echo "," >> "$files_content_tmp"`
-		`ascii_to_bytes "Content-Encoding: gzip\r\n" >> "$files_content_tmp"`
+		echo "," >> "$files_content_tmp"
+		ascii_to_bytes "Content-Encoding: gzip\r\n" >> "$files_content_tmp"
 	fi
 
-	`echo "," >> "$files_content_tmp"`
-	`ascii_to_bytes "\r\n" >> "$files_content_tmp"`
-	`echo "," >> "$files_content_tmp"`
+	echo "," >> "$files_content_tmp"
+	ascii_to_bytes "\r\n" >> "$files_content_tmp"
+	echo "," >> "$files_content_tmp"
 
 	# File content
-	`echo -ne "/* Page/File content (compressed) */\n" >> "$files_content_tmp"`
-	`echo -ne "$_file_content" >> "$files_content_tmp"`
+	echo -ne "$_file_content" >> "$files_content_tmp"
 
 	# And close declaration
-	`echo -ne ", 0 };\n\n" >> "$files_content_tmp"`
+	echo -ne ", 0 };\n\n" >> "$files_content_tmp"
+
+	echo "Processed: $_file_name"
 }
 
 # $1 -> file path
@@ -140,44 +357,66 @@ function print_data_struct() {
 	local _file_name="${1##*/}"
 	local _file_name_no_ext="${_file_name%\.*}"
 
-	`echo -ne "const struct fsdata_file file_"$_file_name_no_ext"_"$_file_ext"[] = {{\n" >> "$files_list_tmp"`
-	`echo -ne "\t"$prev_fsdata_struct",\n" >> "$files_list_tmp"`
-	`echo -ne "\t\"/$_file_name_no_ext.$_file_ext\",\n" >> "$files_list_tmp"`
-	`echo -ne "\tdata_"$_file_name_no_ext"_"$_file_ext",\n" >> "$files_list_tmp"`
-	`echo -ne "\t(int)sizeof(data_"$_file_name_no_ext"_"$_file_ext") - 1\n" >> "$files_list_tmp"`
-	`echo -ne "}};\n\n" >> "$files_list_tmp"`
+	echo -ne "const struct fsdata_file file_${_file_name_no_ext}_${_file_ext}[] = {{\n" >> "$files_list_tmp"
+	echo -ne "\t$prev_fsdata_struct,\n" >> "$files_list_tmp"
+	echo -ne "\t\"/$_file_name_no_ext.$_file_ext\",\n" >> "$files_list_tmp"
+	echo -ne "\tdata_${_file_name_no_ext}_${_file_ext},\n" >> "$files_list_tmp"
+	echo -ne "\t(int)sizeof(data_${_file_name_no_ext}_${_file_ext}) - 1\n" >> "$files_list_tmp"
+	echo -ne "}};\n\n" >> "$files_list_tmp"
 
-	prev_fsdata_struct="file_"$_file_name_no_ext"_"$_file_ext""
+	prev_fsdata_struct="file_${_file_name_no_ext}_${_file_ext}"
 }
 
 # === Main loop ===
 
-if [ -d vendors/"$vendor_dir"  ]; then # If vendor dir exists
+echo "Starting fsdata.c generation for vendor: $vendor_dir"
+
+if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	# Remove old fsdata.c
-	if [ -a "fsdata.c" ]; then
-		`rm "fsdata.c"`
+	if [ -f "fsdata.c" ]; then
+		rm -f "fsdata.c"
+		echo "Removed old fsdata.c"
 	fi
 
-	`touch "$files_content_tmp" "$files_list_tmp"`
+	# Create temporary files
+	touch "$files_content_tmp" "$files_list_tmp"
 
-	# Loop through all files in vendor dir
-	for file in vendors/"$vendor_dir"/*; do # For all found files
-		print_data_array $file
-		print_data_struct $file
-		files_counter=$((files_counter+1))
+	# Loop through all files in vendor dir (sort for consistency)
+	files_processed=0
+	for file in $(ls -1 "vendors/$vendor_dir"/* 2>/dev/null | sort); do
+		if [ -f "$file" ]; then
+			print_data_array "$file"
+			print_data_struct "$file"
+			files_processed=$((files_processed+1))
+		fi
 	done
 
+	if [ $files_processed -eq 0 ]; then
+		echo "Warning: No files found in vendors/$vendor_dir"
+		rm -f "$files_content_tmp" "$files_list_tmp"
+		exit 1
+	fi
+
 	# Add required defines
-	`echo "#define FS_ROOT "$prev_fsdata_struct"" >> "$files_list_tmp"`
-	`echo "#define FS_NUMFILES "$files_counter"" >> "$files_list_tmp"`
+	echo "#define FS_ROOT $prev_fsdata_struct" >> "$files_list_tmp"
+	echo "#define FS_NUMFILES $files_processed" >> "$files_list_tmp"
 
 	# Generate new fsdata.c
-	`touch "fsdata.c"`
+	cat "$files_content_tmp" > "fsdata.c"
+	cat "$files_list_tmp" >> "fsdata.c"
 
-	`cat "$files_content_tmp" > "fsdata.c"`
-	`cat "$files_list_tmp" >> "fsdata.c"`
+	# Clean up
+	rm -f "$files_content_tmp" "$files_list_tmp"
 
-	`rm "$files_content_tmp" "$files_list_tmp"`
+	echo "Successfully generated fsdata.c with $files_processed files"
+	echo "FS_ROOT: $prev_fsdata_struct"
+	echo "FS_NUMFILES: $files_processed"
+
+	# Show file size
+	if [ -f "fsdata.c" ]; then
+		echo "fsdata.c size: $(wc -l < fsdata.c) lines, $(du -h fsdata.c | cut -f1)"
+	fi
 else
-	echo "Error! Vendor specific directory (vendors/"$vendor_dir") doesn't exist!"
+	echo "Error! Vendor specific directory (vendors/$vendor_dir) doesn't exist!"
+	exit 1
 fi

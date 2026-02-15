@@ -71,7 +71,37 @@ jobs:
             libfdt-dev \
             gzip \
             gh \
-            jq
+            jq \
+            nodejs \
+            npm
+
+      # 2.1 Install Node.js compression tools
+      - name: Install Node.js compression tools
+        working-directory: ${{ github.workspace }}
+        run: |
+          # Install packages locally in workspace root
+          npm install html-minifier-terser clean-css terser
+          # Create compatibility symlinks
+          cd node_modules
+          ln -sf html-minifier-terser html-minifier
+          cd ..
+          # Set NODE_PATH to workspace root node_modules
+          echo "NODE_PATH=${{ github.workspace }}/node_modules" >> $GITHUB_ENV
+          export NODE_PATH=${{ github.workspace }}/node_modules
+          echo "NODE_PATH=$NODE_PATH"
+          # Verify installations
+          echo "Verifying installations..."
+          echo "Testing html-minifier-terser:"
+          node -e "try { require('html-minifier-terser'); console.log('✅ html-minifier-terser available'); } catch(e) { console.log('❌ html-minifier-terser not available:', e.message); }"
+          echo "Testing html-minifier:"
+          node -e "try { require('html-minifier'); console.log('✅ html-minifier available'); } catch(e) { console.log('❌ html-minifier not available:', e.message); }"
+          echo "Testing clean-css:"
+          node -e "try { require('clean-css'); console.log('✅ clean-css available'); } catch(e) { console.log('❌ clean-css not available:', e.message); }"
+          echo "Testing terser:"
+          node -e "try { require('terser'); console.log('✅ terser available'); } catch(e) { console.log('❌ terser not available:', e.message); }"
+          # List installed packages
+          echo "Installed local packages:"
+          npm list --depth=0
 
       # 3. Install Miniconda and Python 2.7
       - name: Install Miniconda and Python 2.7
