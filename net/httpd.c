@@ -394,3 +394,26 @@ void HttpdHandler(void) {
 		arptimer = 0;
 	}
 }
+
+int do_httpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
+	if (argc >= 2) {
+		net_httpd_ip = string_to_ip(argv[1]);
+		if (net_httpd_ip.s_addr == 0) {
+			return CMD_RET_USAGE;
+		}
+		net_copy_ip(&net_ip, &net_httpd_ip);
+	} else {
+		net_copy_ip(&net_httpd_ip, &net_ip);
+	}
+	if (net_loop(HTTPD) < 0) {
+		printf("httpd failed\n");
+		return CMD_RET_FAILURE;
+	}
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(
+	httpd, 2, 1, do_httpd,
+	"start www server for firmware recovery with [localAddress]\n",
+	NULL
+);
