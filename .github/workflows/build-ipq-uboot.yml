@@ -71,7 +71,29 @@ jobs:
             libfdt-dev \
             gzip \
             gh \
-            jq
+            jq \
+            nodejs \
+            npm
+
+      # 2.1 Install Node.js compression tools
+      - name: Install Node.js compression tools
+        run: |
+          # Install html-minifier-terser and create a compatibility layer
+          npm install -g html-minifier-terser clean-css terser
+
+          # Create a symbolic link or compatibility wrapper
+          mkdir -p ~/.npm-global/lib/node_modules/html-minifier
+          echo '{"name":"html-minifier","main":"../html-minifier-terser/dist/htmlminifier.js","version":"4.0.0"}' > ~/.npm-global/lib/node_modules/html-minifier/package.json
+
+          # Verify the setup
+          echo "Testing html-minifier availability:"
+          node -e "console.log('html-minifier available:', typeof require('html-minifier') !== 'undefined')" 2>/dev/null || echo "html-minifier not accessible"
+
+          echo "Testing clean-css availability:"
+          node -e "console.log('clean-css available:', typeof require('clean-css') !== 'undefined')" 2>/dev/null || echo "clean-css not accessible"
+
+          echo "Testing terser availability:"
+          node -e "console.log('terser available:', typeof require('terser') !== 'undefined')" 2>/dev/null || echo "terser not accessible"
 
       # 3. Install Miniconda and Python 2.7
       - name: Install Miniconda and Python 2.7

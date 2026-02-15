@@ -8,28 +8,38 @@
 # - flashing.hmtl
 # - fail.html
 #
-# All other files are optional. If you want to allow also
-# ART and/or U-Boot image update, add the following files,
-# with appropriate inputs in form:
-# - art.html (<input type="file" name="art">)
-# - uboot.html (<input type="file" name="uboot">)
-#
-# HTML and CSS files are compressed before placing them
-# inside "fsdata.c".
-#
+# Files are processed with dedicated tools and then compressed with gzip -9n.
+# HTML files with embedded JS/CSS are processed with careful preservation of styling.
 # You SHOULDN'T embed addresses of any external
 # files in "flashing.html" file, because web server,
 # after receive POST data, returns this page and stops.
 
-# Vendor specific directory (default: "cleanwrt")
+# Vendor specific directory (default: "pig")
 vendor_dir=${1:-pig}
 
 # Temporary files
 files_content_tmp="vendors/.files_content"
 files_list_tmp="vendors/.files_list"
 
-# YUI Compressor path (should be in the same dir)
-yui_compressor=`ls -t vendors/*.jar 2> /dev/null | tail --lines=1`
+# Check for specific tools
+node_available=$(type -p node >/dev/null && echo 1 || echo 0)
+
+# Check for specific tools
+html_minifier_available=0
+css_minifier_available=0
+js_minifier_available=0
+
+if [ $node_available -eq 1 ]; then
+	if node -e "require('html-minifier')" 2>/dev/null; then
+		html_minifier_available=1
+	fi
+	if node -e "require('clean-css')" 2>/dev/null; then
+		css_minifier_available=1
+	fi
+	if node -e "require('terser')" 2>/dev/null; then
+		js_minifier_available=1
+	fi
+fi
 
 # Previous fsdata_file var name
 prev_fsdata_struct="NULL"
@@ -49,6 +59,103 @@ function compress_and_convert() {
 	 echo "$_compressed_data"
 }
 
+# Advanced HTML minification with careful preservation of styling
+function minify_html_with_preserved_styling() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $html_minifier_available -eq 1 ]; then
+		# Use html-minifier with options that preserve styling
+		node -e "
+		var minify = require('html-minifier').minify;
+		var fs = require('fs');
+		var content = fs.readFileSync('$1', 'utf8');
+		var result = minify(content, {
+			collapseWhitespace: true,
+			removeComments: true,
+			minifyCSS: true,
+			minifyJS: true,
+			removeRedundantAttributes: false,  // Keep attributes that might affect styling
+			removeScriptTypeAttributes: false,
+			removeStyleLinkTypeAttributes: false,
+			sortAttributes: false,
+			sortClassName: false,
+			preserveLineBreaks: false,  // Preserve some line breaks to maintain layout
+			collapseBooleanAttributes: true,
+			removeEmptyAttributes: true,
+			removeScriptTypeAttributes: true,
+			removeStyleLinkTypeAttributes: true,
+			minifyJS: {
+				compress: {
+					drop_console: true
+				},
+				mangle: true
+			},
+			minifyCSS: {
+				level: {
+					1: {all: true},
+					2: {all: false}  // Don't aggressively optimize CSS to preserve styling
+				}
+			}
+		});
+		fs.writeFileSync('$2', result);
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
+}
+
+# Separate JS minification for standalone JS files
+function minify_standalone_js() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $js_minifier_available -eq 1 ]; then
+		# Use terser for standalone JS files
+		node -e "
+		var Terser = require('terser');
+		var fs = require('fs');
+		var content = fs.readFileSync('$1', 'utf8');
+		var result = Terser.minify(content, {compress: {drop_console: true}, mangle: true}).code;
+		fs.writeFileSync('$2', result);
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
+}
+
+# Advanced CSS minification for standalone CSS files
+function minify_standalone_css() {
+	local _input_file="$1"
+	local _output_file="$2"
+
+	if [ $css_minifier_available -eq 1 ]; then
+		# Use clean-css with conservative settings to preserve styling
+		node -e "
+		var CleanCSS = require('clean-css');
+		var fs = require('fs');
+		var content = fs.readFileSync('$1', 'utf8');
+		var result = new CleanCSS({
+			level: {
+				1: {all: true},
+				2: {
+					all: true,
+					mergeIntoShorthands: false,  // Conservative approach
+					mergeMediaQueries: false
+				}
+			},
+			format: 'beautify'  // Keep some formatting for readability
+		}).minify(content);
+		fs.writeFileSync('$2', result.styles);
+		"
+	else
+		# No dedicated tool available, copy original file
+		cp "$_input_file" "$_output_file"
+	fi
+}
+
 # $1 -> file path
 function print_data_array() {
 	local _file_ext="${1##*.}"
@@ -59,7 +166,7 @@ function print_data_array() {
 
 	# Open variable declaration
 	`echo -ne "static const char data_"$_file_name_no_ext"_"$_file_ext"[] = {\n" >> "$files_content_tmp"`
-	`echo -ne "/* HTTP Header */\n" >> "$files_content_tmp"`
+	#`echo -ne "/* HTTP Header */\n" >> "$files_content_tmp"`
 
 	# HTTP header (200 OK or 404 Not Found)
 	if [ "$_file_name_no_ext" == "404"  ]; then
@@ -73,45 +180,47 @@ function print_data_array() {
 	`ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"`
 	`echo "," >> "$files_content_tmp"`
 
-	# Content
+	# Content - Process with dedicated tools and then gzip
 	if [ "$_file_ext" == "css"  ]; then
-		if type -p java >/dev/null && [ -e "$yui_compressor" ]; then
-			# First compress with YUI, then gzip
-			local _temp_file=$(mktemp)
-			java -jar "$yui_compressor" --charset utf-8 "$1" > "$_temp_file"
-			_file_content=$(compress_and_convert "$_temp_file")
-			rm "$_temp_file"
-			_is_compressed=1
-		else
-			# Fallback: just remove whitespace and compress
-			local _temp_file=$(mktemp)
-			cat "$1" | tr -d '\r\n\t' > "$_temp_file"
-			_file_content=$(compress_and_convert "$_temp_file")
-			rm "$_temp_file"
-			_is_compressed=1
-		fi
+		local _temp_file=$(mktemp)
+		minify_standalone_css "$1" "$_temp_file"
+		_file_content=$(compress_and_convert "$_temp_file")
+		rm "$_temp_file"
+		_is_compressed=1
 		`ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"`
+	elif [ "$_file_ext" == "js" ]; then
+		local _temp_file=$(mktemp)
+		minify_standalone_js "$1" "$_temp_file"
+		_file_content=$(compress_and_convert "$_temp_file")
+		rm "$_temp_file"
+		_is_compressed=1
+		`ascii_to_bytes "Content-Type: application/javascript\r\n" >> "$files_content_tmp"`
+	elif [ "$_file_ext" == "html"  ]; then
+		local _temp_file=$(mktemp)
+		# Special handling for HTML files with preserved styling
+		minify_html_with_preserved_styling "$1" "$_temp_file"
+		_file_content=$(compress_and_convert "$_temp_file")
+		rm "$_temp_file"
+		_is_compressed=1
+		`ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "png"  ]; then
-		# Compress PNG files
+		# For binary files, just compress with gzip
 		_file_content=$(compress_and_convert "$1")
 		_is_compressed=1
 		`ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "jpg" -o "$_file_ext" == "jpeg"  ]; then
-		# Compress JPEG files
+		# For binary files, just compress with gzip
 		_file_content=$(compress_and_convert "$1")
 		_is_compressed=1
 		`ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp"`
 	elif [ "$_file_ext" == "gif"  ]; then
-		# Compress GIF files
+		# For binary files, just compress with gzip
 		_file_content=$(compress_and_convert "$1")
 		_is_compressed=1
 		`ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp"`
 	else
-		# Compress HTML files
-		local _temp_file=$(mktemp)
-		cat "$1" | tr -d '\t\r\n' > "$_temp_file"
-		_file_content=$(compress_and_convert "$_temp_file")
-		rm "$_temp_file"
+		# For other files, just compress with gzip
+		_file_content=$(compress_and_convert "$1")
 		_is_compressed=1
 		`ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"`
 	fi
@@ -127,7 +236,7 @@ function print_data_array() {
 	`echo "," >> "$files_content_tmp"`
 
 	# File content
-	`echo -ne "/* Page/File content (compressed) */\n" >> "$files_content_tmp"`
+	#`echo -ne "/* Page/File content (processed with preserved styling and gzip -c9n compressed) */\n" >> "$files_content_tmp"`
 	`echo -ne "$_file_content" >> "$files_content_tmp"`
 
 	# And close declaration
