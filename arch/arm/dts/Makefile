@@ -60,6 +60,8 @@ dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
 
 ifeq ($(CONFIG_IPQ40XX_ALIYUN_AP4220),y)
 dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-aliyun-ap4220.dtb
+else ifeq ($(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800),y)
+dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-thinkplus-fogpod800.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-dk01-c1.dtb \
 		ipq40xx-dk01-c2.dtb \

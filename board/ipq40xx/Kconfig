@@ -30,4 +30,10 @@ config IPQ40XX_ALIYUN_AP4220
 	default n
 		help
 			Enable support for ipq40xx aliyun ap4220 board.
+
+config IPQ40XX_THINKPLUS_FOGPOD800
+	bool "For ipq40xx thinkplus fogpod800 support"
+	default n
+		help
+			Enable support for ipq40xx thinkplus fogpod800 board.
 endif
