@@ -116,6 +116,13 @@ if [ $# -eq 0 ]; then
 	echo "Example: $0 ipq6018_tiny"          # Build specific board
 	echo "Example: $0 ipq40xx_defconfig"     # Build specific defconfig file
 	echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x, ipq9574"
+	echo ""
+	echo "Available IPQ defconfig files:"
+	for config in configs/ipq*_defconfig; do
+		if [ -f "$config" ]; then
+			echo "  $(basename "$config")"
+		fi
+	done
 exit 1
 fi
 
