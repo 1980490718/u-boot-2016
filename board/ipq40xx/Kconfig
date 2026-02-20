@@ -36,4 +36,10 @@ config IPQ40XX_THINKPLUS_FOGPOD800
 	default n
 		help
 			Enable support for ipq40xx thinkplus fogpod800 board.
+
+config IPQ40XX_P2W_R619AC
+	bool "For ipq40xx p2w r619ac support"
+	default n
+		help
+			Enable support for ipq40xx p2w r619ac board.
 endif

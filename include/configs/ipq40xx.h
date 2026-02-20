@@ -251,7 +251,8 @@ typedef struct {
 #define CONFIG_IPQ_MDIO     	1
 #define CONFIG_QCA8075_PHY      1
 #if !defined(CONFIG_IPQ40XX_ALIYUN_AP4220) && \
-	!defined(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800)
+	!defined(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800) && \
+	!defined(CONFIG_IPQ40XX_P2W_R619AC)
 #define CONFIG_QCA8033_PHY      1
 #endif
 #define CONFIG_MII
@@ -325,7 +326,8 @@ typedef struct {
 #define TLV_BUF_OFFSET				0x70000
 #define CONFIG_TLV_DUMP_SIZE			0x10000
 #if !defined(CONFIG_IPQ40XX_ALIYUN_AP4220) && \
-	!defined(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800)
+	!defined(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800) && \
+	!defined(CONFIG_IPQ40XX_P2W_R619AC)
 #define CONFIG_QCA_MMC				1
 #endif
 
