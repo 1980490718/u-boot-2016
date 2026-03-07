@@ -461,6 +461,22 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 		.check_quad_config = true,
 		.name = "FM25LS02BI3",
 	},
+	{
+		.id = { 0xA1, 0xE4 },// 3.3V 1Gb Fudan Micro SPI NAND
+		.page_size = 2112,
+		.erase_blk_size = 0x00021000,
+		.pgs_per_blk = 64,
+		.no_of_blocks = 1024,
+		.spare_size = 64,
+		.density = 0x08000000,
+		.otp_region = 0xCE40,
+		.no_of_addr_cycle = 0x3,
+		.num_bits_ecc_correctability = 1,
+		.timing_mode_support = 0,
+		.quad_mode = true,
+		.check_quad_config = true,
+		.name = "FM25S01A",
+	},
 };
 struct qpic_serial_nand_params *serial_params;
 #define MICRON_DEVICE_ID	0x152c152c
