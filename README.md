@@ -1,147 +1,115 @@
-# U-Boot 2016 引导加载程序构建说明 #
+# U-Boot 2016 构建说明 #
 
 ## 项目简介 ##
 
-本项目是基于U-Boot 2016版本的引导加载程序，专为高通IPQ系列芯片平台定制开发。
-项目源自开源的AU_LINUX_QSDK_NHSS.QSDK.12.5_TARGET_ALL.12.5.2783.2994项目，提供了简化的构建脚本，实现快速编译和部署。
-支持webfailsafe功能，但是未经过测试。
-注意：如果需要编译IPQ9574平台，需要替换可用的交叉编译工具链。默认的工具链可能不支持IPQ9574平台的编译。
+高通IPQ系列定制U-Boot，源自开源的QSDK 12.5。支持以下功能：
 
-## 环境准备 ##
+- 集成U-Boot的webfailsafe模式
+- 集成DHCP服务
+- 集成Web页面修改环境变量
+- 支持U-Boot/固件/CDT/MIBIB/GPT/ART的更新升级
+- 支持在环境变量中自定义reset_key=<GPIO_NUM>，以方便在没有添加支持的设备上启用按压reset按键进入uboot的webfailsafe模式进行相应的升级操作
 
-### 克隆项目 ###
+## 系统要求 ##
 
-# 克隆U-Boot项目 #
+- Ubuntu 20.04 LTS (推荐)
+
+## 依赖要求 ##
+
+首次构建前，请安装以下依赖（注意：必须使用Python 2.7，因为u-boot-2016自带的脚本仅兼容python2.7运行elftombn.py）：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python2.7 python2.7-dev python2.7-distutils wget cpio flex bison bc rsync nodejs npm gzip
 ```
-git clone https://github.com/1980490718/u-boot-2016.git
+
+此外，如果需要使用makefsdatac工具处理Web界面文件，还需要安装以下Node.js模块：
+
+```bash
+npm install -g html-minifier-terser clean-css terser
 ```
-
-# 克隆交叉编译工具链 #
-```
-git clone https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git staging_dir
-```
-
-## 构建脚本功能 ##
-
-提供的`build.sh`脚本具有以下核心功能：
-
-- 自动配置交叉编译工具链环境
-- 支持多种IPQ平台和特定板子的构建
-- 统一管理输出文件（存储在bin目录）
-- 提供清理功能（基础清理和深度清理）
-- 根据不同IPQ类型自动处理输出文件格式
-
-## 支持的平台 ##
-
-脚本支持以下IPQ平台类型：
-
-- ipq40xx
-- ipq5018
-- ipq5332
-- ipq6018
-- ipq806x
-- ipq807x
-- ipq9574
 
 ## 快速开始 ##
 
-### 基本构建步骤 ###
-
-# 进入项目目录 #
-```
+```bash
+git clone https://github.com/1980490718/u-boot-2016.git
+git clone https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git staging_dir
 cd u-boot-2016
+./build.sh clean          # 首次构建前清理
 ```
 
-# 清理一次构建环境
-```
-./build.sh clean
-```
+### 构建命令 ###
 
-# 构建特定平台的所有板子 #
-./build.sh [ipq40xx|ipq5018|ipq5332|ipq6018|ipq806x|ipq807x|ipq9574]
-
-# 构建特定的IPQ平台的所有板子 #
-./build.sh [board_name]
-
-# 例如，构建IPQ807x平台的所有板子 #
-```
-./build.sh ipq807x
+```bash
+./build.sh [platform]     # 构建平台所有板子
+./build.sh [board]        # 构建单个板子
+./build.sh clean          # 深度清理
+./build.sh clean_all      # 仅清理输出文件
 ```
 
-# 例如，只构建ipq807x_tiny板子 #
+## 支持的平台以及设备型号 ##
+
+|  平台   | 配置_defconfig              | 设备型号(配置)       |   machid   | 是否测试 | 编译命令示例                             |
+| :-----: | --------------------------- | -------------------- | :--------: | :------: | ---------------------------------------- |
+| IPQ40xx | ipq40xx_aliyun_ap4220       | 阿里云 AP4220        | 0x9000010  |    ✓     | `./build.sh ipq40xx_aliyun_ap4220`       |
+| IPQ40xx | ipq40xx_standard            | 公版标准             |    ---     |    ✓     | `./build.sh ipq40xx_standard`            |
+| IPQ40xx | ipq40xx_p2w_r619ac          | P2W R619AC           | 0x8010006  |    ✓     | `./build.sh ipq40xx_p2w_r619ac`          |
+| IPQ40xx | ipq40xx_thinkplus_fogpod800 | ThinkPlus FogPod800  | 0x8010100  |    ✓     | `./build.sh ipq40xx_thinkplus_fogpod800` |
+| IPQ40xx | ipq40xx                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq40xx`                     |
+| IPQ5018 | ipq5018_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq5018_tiny`                |
+| IPQ5018 | ipq5018_tiny_debug          | 公版调试简           |    ---     |    ✓     | `./build.sh ipq5018_tiny_debug`          |
+| IPQ5018 | ipq5018                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq5018`                     |
+| IPQ5332 | ipq5332_tiny                | 公版简               |    ---     |    ?     | `./build.sh ipq5332_tiny`                |
+| IPQ5332 | ipq5332_tiny_nor            | NOR闪存简            |    ---     |    ?     | `./build.sh ipq5332_tiny_nor`            |
+| IPQ5332 | ipq5332_tiny_debug          | 公版调试简           |    ---     |    ?     | `./build.sh ipq5332_tiny_debug`          |
+| IPQ5332 | ipq5332_tiny2               | 公版简2              |    ---     |    ?     | `./build.sh ipq5332_tiny2`               |
+| IPQ5332 | ipq5332                     | 公版基础             |    ---     |    ?     | `./build.sh ipq5332`                     |
+| IPQ6018 | ipq6018_360v6               | 奇虎360v6            | 0x8030200  |    ✓     | `./build.sh ipq6018_360v6`               |
+| IPQ6018 | ipq6018_ax1800pro           | 京东云 AX1800Pro     | 0x8030200  |    ✓     | `./build.sh ipq6018_ax1800pro`           |
+| IPQ6018 | ipq6018_ax5_jdcloud         | 京东云 AX5           | 0x8030200  |    ✓     | `./build.sh ipq6018_ax5_jdcloud`         |
+| IPQ6018 | ipq6018_jdcloud_ax6600      | 京东云 AX6600        | 0x8030201  |    ✓     | `./build.sh ipq6018_jdcloud_ax6600`      |
+| IPQ6018 | ipq6018_jdcloud_er1         | 京东云 ER1           | 0x8030203  |    ✓     | `./build.sh ipq6018_jdcloud_er1`         |
+| IPQ6018 | ipq6018_m2                  | 兆能 M2              | 0x8030200  |    ✓     | `./build.sh ipq6018_m2`                  |
+| IPQ6018 | ipq6018_nn6000              | Link NN6000          | 0x8030202  |    ✓     | `./build.sh ipq6018_nn6000`              |
+| IPQ6018 | ipq6018_xiaomi_ax1800       | 小米 AX1800          | 0x8030200  |    ✓     | `./build.sh ipq6018_xiaomi_ax1800`       |
+| IPQ6018 | ipq6018_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq6018_tiny`                |
+| IPQ6018 | ipq6018                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq6018`                     |
+| IPQ806x | ipq806x_standard            | 公版标准             |    ---     |    ?     | `./build.sh ipq806x_standard`            |
+| IPQ806x | ipq806x                     | 公版基础             |    ---     |    ?     | `./build.sh ipq806x`                     |
+| IPQ807x | ipq807x_ap8220              | 阿里云 AP8220        | 0x0801000A |    ✓     | `./build.sh ipq807x_ap8220`              |
+| IPQ807x | ipq807x_ax6                 | 小米 AX3600/红米 AX6 | 0x08010010 |    ✓     | `./build.sh ipq807x_ax6`                 |
+| IPQ807x | ipq807x_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq807x_tiny`                |
+| IPQ807x | ipq807x_xglink_5gcpe        | XGlink 5GCPE         | 0x08010008 |    ✓     | `./build.sh ipq807x_xglink_5gcpe`        |
+| IPQ807x | ipq807x                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq807x`                     |
+| IPQ9574 | ipq9574                     | 公版基础             |    ---     |    ?     | `./build.sh ipq9574`                     |
+
+> **编译说明**：所有配置的编译命令格式均为 `./build.sh <配置_defconfig>`，其中 `<配置_defconfig>` 为表格第二列中对应的配置名称。
+
+## 示例 ##
+
+```bash
+./build.sh ipq807x              # 构建IPQ807x全系
+./build.sh ipq807x_tiny         # 构建单个板子
+./build.sh ipq6018_xiaomi_ax1800 # 小米AX1800
 ```
-./build.sh ipq807x_tiny
-```
 
-### 输出文件说明 ###
+### 输出文件 ###
 
-根据不同的IPQ类型，生成的输出文件格式有所不同：
+- **ipq40xx/ipq806x**: bin/*.elf
+- **其他平台**: bin/*.mbn
 
-- **ipq40xx、ipq806x**：生成ELF格式文件
-  - 输出文件：`bin/openwrt-${CONFIG_NAME}-u-boot.elf`
-  - 处理方式：使用strip工具生成
+### 环境变量 ###
 
-- **ipq5018、ipq6018、ipq807x、ipq9574、ipq5332**：生成MBN格式文件
-  - 输出文件：`bin/openwrt-${CONFIG_NAME}-u-boot.mbn`
-  - 处理流程：先使用strip，再通过`tools/elftombn.py`转换为mbn格式
-
-### 清理选项 ###
-
-脚本提供两种清理模式：
-
-# 深度清理（删除所有构建文件和输出文件） #
-```
-./build.sh clean
-```
-
-# 仅清理输出文件 #
-```
-./build.sh clean_all
-```
-
-## 使用流程详解 ###
-
-1. **参数检查**：脚本首先验证提供的参数类型（平台类型、板子名称或清理选项）
-2. **清理操作**：如指定清理选项，则执行相应的清理操作
-3. **构建模式确定**：
-   - 如果提供的参数对应单个板子配置文件，则进入单板构建模式
-   - 如果提供的参数对应多个板子配置文件，则进入全平台构建模式
-4. **环境准备**：确保bin目录存在
-5. **构建过程**（针对每个板子）：
-   - 清理之前的构建产物：`make clean`
-   - 配置U-Boot：应用指定平台的配置
-   - 编译U-Boot：使用多核编译加速
-   - 处理输出文件：根据平台类型生成相应格式的输出文件
-6. **构建结果汇总**：显示成功和失败的构建，并列出bin目录中的最终产物
-
-## 环境变量配置 ##
-
-脚本会自动设置以下环境变量：
+脚本自动设置：
 
 ```bash
 ARCH=arm
 CROSS_COMPILE=arm-openwrt-linux-
-TARGETCC=arm-openwrt-linux-gcc
 STAGING_DIR=../staging_dir/
-HOSTLDFLAGS="-L$STAGING_DIR/usr/lib -znow -zrelro -pie"
 ```
 
-交叉编译工具链路径：`../staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin`
+## ⚠️ 重要提示 ##
 
-## 注意事项 ##
-
-1. 编译U-Boot之前，先安装编译OpenWrt相关的依赖工具，否则会报错
-2. 请检查交叉编译工具链路径正确（相对于项目目录的位置）
-3. 构建成功后，所有输出文件将统一存放在项目根目录的`bin`文件夹中
-4. 如需查看原始U-Boot文档，请参考`README_ORIG`文件
-5. ipq40xx平台编译出的文件大小可能超过512KB，需要适当精简配置，否则生成的文件过大导致无法刷入设备，甚至导致设备变砖
-6. 本项目不包含webfailsafe功能，如果需要支持，请自行移植
-7. 基于本项目构建的U-Boot，没有在任何IPQ平台上测试过，不保证支持所有的设备顺利运行
-8. 自从您使用本项目构建U-Boot后，您需要自行承担因使用本项目构建的U-Boot导致的任何风险，包括但不限于设备变砖、数据丢失,永久损坏等
-
-## 故障排除 ##
-
-- **错误：configs/{platform}_defconfig 未找到**：请检查输入的板子名称或平台类型是否正确
-- **错误：strip处理失败**：确保交叉编译工具链配置正确
-- **错误：elftombn.py 脚本未找到**：确保tools目录下存在elftombn.py脚本
-- **错误：最终输出文件生成失败**：检查编译过程中的错误信息，可能是配置或依赖问题
+- 安装OpenWrt编译依赖
+- ipq40xx注意固件大小≤512KB
+- 本项目未经充分测试，使用风险自负
