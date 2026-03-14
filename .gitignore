@@ -101,3 +101,4 @@ tools/mbn_tools.pyc
 
 # httpd generated files
 httpd/fsdata.c
+httpd/vendors/debug_output/

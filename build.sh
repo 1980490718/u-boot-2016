@@ -93,6 +93,7 @@ echo "Deep clean by .gitignore rules"
 			arch/arm/dts/dtbtable.S \
 			arch/arm/dts/compressed_dtb/dtbcombined.S \
 			httpd/fsdata.c \
+			httpd/vendors/debug_output \
 			tools/mbn_tools.pyc \
 			u-boot* \
 			tools/gen_eth_addr \

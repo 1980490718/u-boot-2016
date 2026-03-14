@@ -14,12 +14,39 @@
 # files in "flashing.html" file, because web server,
 # after receive POST data, returns this page and stops.
 
-# Vendor specific directory (default: "pig")
+# ===== DEBUG MODE CONFIGURATION =====
+# Set debug_mode to 1 to enable debug output and retain intermediate files
+# Set debug_mode to 0 to disable debug output (no intermediate files saved)
+debug_mode=1
+# ====================================
+
+# Parse arguments (command line argument overrides the default setting)
 vendor_dir=${1:-pig}
+
+# Check for debug flag in command line (overrides the default setting)
+if [[ "$2" == "-d" || "$2" == "--debug" ]]; then
+    debug_mode=1
+    echo "Debug mode enabled via command line: intermediate files will be retained for inspection"
+elif [ $debug_mode -eq 1 ]; then
+    echo "Debug mode enabled via configuration: intermediate files will be retained for inspection"
+fi
+
+# Vendor specific directory (default: "pig")
 
 # Temporary files
 files_content_tmp="vendors/.files_content"
 files_list_tmp="vendors/.files_list"
+
+# Debug directories for intermediate files
+if [ $debug_mode -eq 1 ]; then
+    debug_dir="vendors/debug_output"
+    minified_dir="$debug_dir/minified"
+    gziped_dir="$debug_dir/gziped"
+    mkdir -p "$minified_dir" "$gziped_dir"
+    echo "Debug output directories:"
+    echo "  - Minified files: $minified_dir"
+    echo "  - Gzip compressed files: $gziped_dir"
+fi
 
 # Enable better error handling
 set -e
@@ -114,9 +141,40 @@ function ascii_to_bytes() {
 }
 
 # Compress data using gzip and convert to hex
+# Returns: compressed data in hex format
+# Also saves compressed file to gziped directory if in debug mode
 function compress_and_convert() {
-	local _file="$1"
-	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
+	local _input_file="$1"
+	local _original_filename="$2"  # Original filename for debug output
+	local _compressed_data
+	local _temp_gz=$(mktemp)
+
+	# Compress to temporary file
+	gzip -c9n "$_input_file" > "$_temp_gz"
+
+	# Convert to hex
+	_compressed_data=$(cat "$_temp_gz" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
+
+	# In debug mode, save the compressed file with original name + .gz
+	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
+		local debug_filename="$(basename "$_original_filename")"
+		# Handle different file extensions
+		case "$debug_filename" in
+			*.html|*.htm|*.css|*.js)
+				debug_filename="${debug_filename}.gz"
+				;;
+			*)
+				debug_filename="${debug_filename}.gz"
+				;;
+		esac
+		cp "$_temp_gz" "$gziped_dir/$debug_filename"
+		# Send debug output to stderr, not stdout, to avoid polluting fsdata.c
+		echo "Debug: Saved gzip compressed file to $gziped_dir/$debug_filename" >&2
+	fi
+
+	# Clean up temp file
+	rm -f "$_temp_gz"
+
 	echo "$_compressed_data"
 }
 
@@ -124,9 +182,11 @@ function compress_and_convert() {
 function minify_html_with_preserved_styling() {
 	local _input_file="$1"
 	local _output_file="$2"
+	local _original_filename="$3"  # Original filename for debug output
 
 	if [ $html_minifier_available -eq 1 ]; then
-		echo "Minifying HTML: $(basename $_input_file)"
+		# Send progress info to stderr
+		echo "Minifying HTML: $(basename $_input_file)" >&2
 
 		# Use node with async/await in an immediately-invoked function
 		node -e "
@@ -173,7 +233,7 @@ function minify_html_with_preserved_styling() {
 
 				// Write the result
 				fs.writeFileSync('$_output_file', result);
-				console.log('HTML minification successful');
+				console.error('HTML minification successful');
 			} catch (e) {
 				console.error('HTML minification failed:', e.message);
 				// Fallback: copy original file
@@ -183,10 +243,18 @@ function minify_html_with_preserved_styling() {
 			console.error('Unhandled error:', e.message);
 			fs.copyFileSync('$_input_file', '$_output_file');
 		});
-		"
+		" 2>/dev/null || true
 	else
 		# No dedicated tool available, copy original file
 		cp "$_input_file" "$_output_file"
+	fi
+
+	# In debug mode, save the minified file with original name (without _minified suffix)
+	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
+		local debug_filename="$(basename "$_original_filename")"
+		cp "$_output_file" "$minified_dir/$debug_filename"
+		# Send debug output to stderr
+		echo "Debug: Saved minified HTML to $minified_dir/$debug_filename" >&2
 	fi
 }
 
@@ -194,9 +262,11 @@ function minify_html_with_preserved_styling() {
 function minify_standalone_js() {
 	local _input_file="$1"
 	local _output_file="$2"
+	local _original_filename="$3"  # Original filename for debug output
 
 	if [ $js_minifier_available -eq 1 ]; then
-		echo "Minifying JS: $(basename $_input_file)"
+		# Send progress info to stderr
+		echo "Minifying JS: $(basename $_input_file)" >&2
 		node -e "
 		try {
 			var Terser = require('terser');
@@ -208,7 +278,7 @@ function minify_standalone_js() {
 			});
 			if (result.code) {
 				fs.writeFileSync('$_output_file', result.code);
-				console.log('JS minification successful');
+				console.error('JS minification successful');
 			} else {
 				throw new Error('Minification failed');
 			}
@@ -216,10 +286,18 @@ function minify_standalone_js() {
 			console.error('JS minification failed:', e.message);
 			fs.copyFileSync('$_input_file', '$_output_file');
 		}
-		"
+		" 2>/dev/null || true
 	else
 		# No dedicated tool available, copy original file
 		cp "$_input_file" "$_output_file"
+	fi
+
+	# In debug mode, save the minified file with original name (without _minified suffix)
+	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
+		local debug_filename="$(basename "$_original_filename")"
+		cp "$_output_file" "$minified_dir/$debug_filename"
+		# Send debug output to stderr
+		echo "Debug: Saved minified JS to $minified_dir/$debug_filename" >&2
 	fi
 }
 
@@ -227,9 +305,11 @@ function minify_standalone_js() {
 function minify_standalone_css() {
 	local _input_file="$1"
 	local _output_file="$2"
+	local _original_filename="$3"  # Original filename for debug output
 
 	if [ $css_minifier_available -eq 1 ]; then
-		echo "Minifying CSS: $(basename $_input_file)"
+		# Send progress info to stderr
+		echo "Minifying CSS: $(basename $_input_file)" >&2
 		node -e "
 		try {
 			var CleanCSS = require('clean-css');
@@ -248,7 +328,7 @@ function minify_standalone_css() {
 			}).minify(content);
 			if (result.styles) {
 				fs.writeFileSync('$_output_file', result.styles);
-				console.log('CSS minification successful');
+				console.error('CSS minification successful');
 			} else {
 				throw new Error('Minification failed');
 			}
@@ -256,10 +336,18 @@ function minify_standalone_css() {
 			console.error('CSS minification failed:', e.message);
 			fs.copyFileSync('$_input_file', '$_output_file');
 		}
-		"
+		" 2>/dev/null || true
 	else
 		# No dedicated tool available, copy original file
 		cp "$_input_file" "$_output_file"
+	fi
+
+	# In debug mode, save the minified file with original name (without _minified suffix)
+	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
+		local debug_filename="$(basename "$_original_filename")"
+		cp "$_output_file" "$minified_dir/$debug_filename"
+		# Send debug output to stderr
+		echo "Debug: Saved minified CSS to $minified_dir/$debug_filename" >&2
 	fi
 }
 
@@ -271,8 +359,11 @@ function print_data_array() {
 	local _file_name_no_ext="${_file_name%\.*}"
 	local _file_content=""
 	local _is_compressed=0
+	local _temp_minified=""
+	local _temp_gz=""
 
-	echo "Processing: $_file_name"
+	# Send progress info to stderr
+	echo "Processing: $_file_name" >&2
 
 	# Open variable declaration
 	echo -n "static const char data_${_file_name_no_ext}_${_file_ext}[] = {" >> "$files_content_tmp"
@@ -291,31 +382,36 @@ function print_data_array() {
 	# Content - Process with dedicated tools and then gzip
 	case "$_file_ext" in
 		css)
-			local _temp_file=$(mktemp)
-			minify_standalone_css "$_file_path" "$_temp_file"
-			_file_content=$(compress_and_convert "$_temp_file")
-			rm -f "$_temp_file"
+			_temp_minified=$(mktemp)
+
+			minify_standalone_css "$_file_path" "$_temp_minified" "$_file_name"
+			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
+
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
 		js)
-			local _temp_file=$(mktemp)
-			minify_standalone_js "$_file_path" "$_temp_file"
-			_file_content=$(compress_and_convert "$_temp_file")
-			rm -f "$_temp_file"
+			_temp_minified=$(mktemp)
+
+			minify_standalone_js "$_file_path" "$_temp_minified" "$_file_name"
+			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
+
 			_is_compressed=1
 			ascii_to_bytes "Content-Type: application/javascript\r\n" >> "$files_content_tmp"
 			;;
 		html|htm)
-			local _temp_file=$(mktemp)
-			minify_html_with_preserved_styling "$_file_path" "$_temp_file"
-			_file_content=$(compress_and_convert "$_temp_file")
-			rm -f "$_temp_file"
+			_temp_minified=$(mktemp)
+
+			minify_html_with_preserved_styling "$_file_path" "$_temp_minified" "$_file_name"
+			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
+
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
 		png|jpg|jpeg|gif|ico|svg)
-			_file_content=$(compress_and_convert "$_file_path")
+			# For images, we still compress but don't process with tools
+			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
+
 			_is_compressed=1
 			case "$_file_ext" in
 				png)  ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp" ;;
@@ -326,7 +422,9 @@ function print_data_array() {
 			esac
 			;;
 		*)
-			_file_content=$(compress_and_convert "$_file_path")
+			# For other files, we compress but don't process with tools
+			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
+
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/plain; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
@@ -351,7 +449,11 @@ function print_data_array() {
 	# Add a newline after each data array
 	echo "" >> "$files_content_tmp"
 
-	echo "Processed: $_file_name"
+	# Clean up temporary files
+	[ -n "$_temp_minified" ] && rm -f "$_temp_minified"
+
+	# Send completion info to stderr
+	echo "Processed: $_file_name" >&2
 }
 
 # $1 -> file path
@@ -368,13 +470,13 @@ function print_data_struct() {
 
 # === Main loop ===
 
-echo "Starting fsdata.c generation for vendor: $vendor_dir"
+echo "Starting fsdata.c generation for vendor: $vendor_dir" >&2
 
 if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	# Remove old fsdata.c
 	if [ -f "fsdata.c" ]; then
 		rm -f "fsdata.c"
-		echo "Removed old fsdata.c"
+		echo "Removed old fsdata.c" >&2
 	fi
 
 	# Create temporary files
@@ -391,7 +493,7 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	done
 
 	if [ $files_processed -eq 0 ]; then
-		echo "Warning: No files found in vendors/$vendor_dir"
+		echo "Warning: No files found in vendors/$vendor_dir" >&2
 		rm -f "$files_content_tmp" "$files_list_tmp"
 		exit 1
 	fi
@@ -407,15 +509,45 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	# Clean up
 	rm -f "$files_content_tmp" "$files_list_tmp"
 
-	echo "Successfully generated fsdata.c with $files_processed files"
-	echo "FS_ROOT: $prev_fsdata_struct"
-	echo "FS_NUMFILES: $files_processed"
+	echo "Successfully generated fsdata.c with $files_processed files" >&2
+	echo "FS_ROOT: $prev_fsdata_struct" >&2
+	echo "FS_NUMFILES: $files_processed" >&2
 
 	# Show file size
 	if [ -f "fsdata.c" ]; then
-		echo "fsdata.c size: $(wc -l < fsdata.c) lines, $(du -h fsdata.c | cut -f1)"
+		echo "fsdata.c size: $(wc -l < fsdata.c) lines, $(du -h fsdata.c | cut -f1)" >&2
+	fi
+
+	# Show compression statistics for debug mode
+	if [ $debug_mode -eq 1 ] && [ -d "$minified_dir" ] && [ -d "$gziped_dir" ]; then
+		echo "" >&2
+		echo "Compression Statistics:" >&2
+		echo "----------------------" >&2
+		for minified_file in "$minified_dir"/*; do
+			if [ -f "$minified_file" ]; then
+				base_filename=$(basename "$minified_file")
+				gz_file="$gziped_dir/${base_filename}.gz"
+				if [ -f "$gz_file" ]; then
+					minified_size=$(stat -c %s "$minified_file" 2>/dev/null || stat -f %z "$minified_file" 2>/dev/null)
+					gz_size=$(stat -c %s "$gz_file" 2>/dev/null || stat -f %z "$gz_file" 2>/dev/null)
+					if [ -n "$minified_size" ] && [ -n "$gz_size" ]; then
+						ratio=$((100 - (gz_size * 100 / minified_size)))
+						printf "%-30s: %6d bytes -> %6d bytes (%d%% reduction)\n" \
+							"$base_filename" "$minified_size" "$gz_size" "$ratio" >&2
+					fi
+				fi
+			fi
+		done
+		echo "" >&2
+		echo "Debug mode: Processed files saved to:" >&2
+		echo "  - Minified files: $minified_dir/ (original filenames)" >&2
+		echo "  - Gzip compressed files: $gziped_dir/ (original filenames + .gz)" >&2
+	fi
+
+	if [ $debug_mode -eq 0 ]; then
+		echo "Debug mode is disabled (set debug_mode=1 at the top of script to enable)" >&2
 	fi
 else
-	echo "Error! Vendor specific directory (vendors/$vendor_dir) doesn't exist!"
+	echo "Error! Vendor specific directory (vendors/$vendor_dir) doesn't exist!" >&2
 	exit 1
 fi
