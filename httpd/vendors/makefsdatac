@@ -110,13 +110,13 @@ files_counter=0
 
 # Change ASCII to bytes, comma separated (e.g. "0x01, 0x02, 0x03...")
 function ascii_to_bytes() {
-	echo -ne "$1" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&, /g;s/, $//'
+	echo -ne "$1" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//'
 }
 
 # Compress data using gzip and convert to hex
 function compress_and_convert() {
 	local _file="$1"
-	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&, /g;s/, $//')
+	local _compressed_data=$(gzip -c9n "$_file" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
 	echo "$_compressed_data"
 }
 
@@ -275,7 +275,7 @@ function print_data_array() {
 	echo "Processing: $_file_name"
 
 	# Open variable declaration
-	echo -ne "static const char data_${_file_name_no_ext}_${_file_ext}[] = {\n" >> "$files_content_tmp"
+	echo -n "static const char data_${_file_name_no_ext}_${_file_ext}[] = {" >> "$files_content_tmp"
 
 	# HTTP header (200 OK or 404 Not Found)
 	if [ "$_file_name_no_ext" == "404" ]; then
@@ -283,10 +283,10 @@ function print_data_array() {
 	else
 		ascii_to_bytes "HTTP/1.0 200 OK\r\n" >> "$files_content_tmp"
 	fi
-	echo "," >> "$files_content_tmp"
+	echo -n "," >> "$files_content_tmp"
 
 	ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"
-	echo "," >> "$files_content_tmp"
+	echo -n "," >> "$files_content_tmp"
 
 	# Content - Process with dedicated tools and then gzip
 	case "$_file_ext" in
@@ -334,19 +334,22 @@ function print_data_array() {
 
 	# Add Content-Encoding header if compressed
 	if [ $_is_compressed -eq 1 ]; then
-		echo "," >> "$files_content_tmp"
+		echo -n "," >> "$files_content_tmp"
 		ascii_to_bytes "Content-Encoding: gzip\r\n" >> "$files_content_tmp"
 	fi
 
-	echo "," >> "$files_content_tmp"
+	echo -n "," >> "$files_content_tmp"
 	ascii_to_bytes "\r\n" >> "$files_content_tmp"
-	echo "," >> "$files_content_tmp"
+	echo -n "," >> "$files_content_tmp"
 
 	# File content
-	echo -ne "$_file_content" >> "$files_content_tmp"
+	echo -n "$_file_content" >> "$files_content_tmp"
 
 	# And close declaration
-	echo -ne ", 0 };\n\n" >> "$files_content_tmp"
+	echo -n ",0};" >> "$files_content_tmp"
+
+	# Add a newline after each data array
+	echo "" >> "$files_content_tmp"
 
 	echo "Processed: $_file_name"
 }
@@ -357,12 +360,8 @@ function print_data_struct() {
 	local _file_name="${1##*/}"
 	local _file_name_no_ext="${_file_name%\.*}"
 
-	echo -ne "const struct fsdata_file file_${_file_name_no_ext}_${_file_ext}[] = {{\n" >> "$files_list_tmp"
-	echo -ne "\t$prev_fsdata_struct,\n" >> "$files_list_tmp"
-	echo -ne "\t\"/$_file_name_no_ext.$_file_ext\",\n" >> "$files_list_tmp"
-	echo -ne "\tdata_${_file_name_no_ext}_${_file_ext},\n" >> "$files_list_tmp"
-	echo -ne "\t(int)sizeof(data_${_file_name_no_ext}_${_file_ext}) - 1\n" >> "$files_list_tmp"
-	echo -ne "}};\n\n" >> "$files_list_tmp"
+	echo -n "const struct fsdata_file file_${_file_name_no_ext}_${_file_ext}[]={{$prev_fsdata_struct,\"/$_file_name_no_ext.$_file_ext\",data_${_file_name_no_ext}_${_file_ext},(int)sizeof(data_${_file_name_no_ext}_${_file_ext})-1}};" >> "$files_list_tmp"
+	echo "" >> "$files_list_tmp"
 
 	prev_fsdata_struct="file_${_file_name_no_ext}_${_file_ext}"
 }
