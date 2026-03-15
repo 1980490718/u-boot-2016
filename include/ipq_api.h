@@ -1,4 +1,4 @@
-#define RESET_BUTTON_PRESSED        0
+#define RESET_BUTTON_PRESSED 0
 
 #ifndef GPIO_PULL_UP
 #ifdef CONFIG_IPQ40XX
@@ -131,6 +131,7 @@ void led_on(const char *gpio_name);
 void led_off(const char *gpio_name);
 void led_init_by_name(const char *gpio_name);
 void led_init(void);
+void btn_init_by_name(const char *gpio_name);
 void btn_init(void);
 void check_button_is_press(void);
 unsigned long get_nor_firmware_combined_size(void);

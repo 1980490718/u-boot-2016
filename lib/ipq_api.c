@@ -20,7 +20,16 @@ static int fdt_get_gpio_number(const char *gpio_name) {
 	int node;
 	unsigned int gpio;
 	char *env_val;
+	/* First check if gpio_name exists as a direct path */
 	node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node >= 0) {
+		gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
+		return gpio;
+	}
+	/* If not found as direct path, also check under /tlmm-gpio/key_gpio path */
+	char full_path[128];
+	snprintf(full_path, sizeof(full_path), "/tlmm-gpio/key_gpio/%s", gpio_name);
+	node = fdt_path_offset(gd->fdt_blob, full_path);
 	if (node < 0) {
 		/* Check environment variable for GPIO number */
 		env_val = getenv(gpio_name);
@@ -176,11 +185,41 @@ static void check_reset_button_status(void) {
 	return;
 }
 
+static bool is_any_button_pressed(char *pressed_button_name, int max_name_len) {
+	int key_gpio_node;
+	int subnode;
+
+	/* Find the key_gpio node */
+	key_gpio_node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/key_gpio");
+	if (key_gpio_node < 0) {
+		/* Fallback to checking reset_key directly if key_gpio path doesn't exist */
+		if (button_is_press("reset_key", RESET_BUTTON_PRESSED)) {
+			strncpy(pressed_button_name, "reset_key", max_name_len-1);
+			pressed_button_name[max_name_len-1] = '\0';
+			return true;
+		}
+		return false;
+	}
+
+	/* Iterate through all subnodes under key_gpio */
+	fdt_for_each_subnode(gd->fdt_blob, subnode, key_gpio_node) {
+		const char *subnode_name = fdt_get_name(gd->fdt_blob, subnode, NULL);
+		if (subnode_name && button_is_press(subnode_name, RESET_BUTTON_PRESSED)) {
+			strncpy(pressed_button_name, subnode_name, max_name_len-1);
+			pressed_button_name[max_name_len-1] = '\0';
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void check_button_is_press(void) {
 	int counter = 0;
-	while (button_is_press("reset_key", RESET_BUTTON_PRESSED)) {
+	char pressed_button_name[64] = {0};
+	while (is_any_button_pressed(pressed_button_name, sizeof(pressed_button_name))) {
 		if(counter == 0)
-			printf("Reset button is pressed for: %2d second(s) ", counter);
+			printf("%s button is pressed for:%2d second(s) ", pressed_button_name, counter);
 		led_blink_then_on("power_led", 1000);
 		counter++;
 		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%2d second(s) ", counter);
@@ -376,6 +415,30 @@ void led_init(void) {
 	mdelay(500);
 }
 
+void btn_init_by_name(const char *gpio_name) {
+	int gpio = fdt_get_gpio_number(gpio_name);
+	if (gpio < 0) {
+		printf("Could not find %s in FDT or environment\n", gpio_name);
+		return;
+	}
+	config_gpio_as_input_with_pullup(gpio);
+	mdelay(50);
+	int value = gpio_get_value(gpio);
+	printf("GPIO %d:%s initial value: %d\n", gpio, gpio_name, value);
+}
+
 void btn_init(void) {
-	led_init_by_name("reset_key");
+	int key_gpio_node;
+	int subnode;
+	key_gpio_node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/key_gpio");
+	if (key_gpio_node < 0) {
+		btn_init_by_name("reset_key");
+		return;
+	}
+	fdt_for_each_subnode(gd->fdt_blob, subnode, key_gpio_node) {
+		const char *subnode_name = fdt_get_name(gd->fdt_blob, subnode, NULL);
+		if (subnode_name) {
+			btn_init_by_name(subnode_name);
+		}
+	}
 }
