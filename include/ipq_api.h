@@ -38,6 +38,7 @@
 #define WEBFAILSAFE_UPGRADE_TYPE_IMG			3
 #define WEBFAILSAFE_UPGRADE_TYPE_CDT			4
 #define WEBFAILSAFE_UPGRADE_TYPE_MIBIB			5
+#define WEBFAILSAFE_UPGRADE_TYPE_PTABLE			6
 
 /* firmware type */
 enum firmware_type_enum {

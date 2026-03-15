@@ -156,8 +156,14 @@ static int httpd_findandstore_firstchunk(void) {
 								printf("Upgrade type: MIBIB\n");
 								webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_MIBIB;
 							} else {
-								print_error("input name not found!");
-								return 0;
+								end = (char *)strstr((char *)start, "name=\"ptable\"");
+								if (end) {
+									printf("Upgrade type: PTABLE\n");
+									webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_PTABLE;
+								} else {
+									print_error("input name not found!");
+									return 0;
+								}
 							}
 						}
 					}

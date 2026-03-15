@@ -24,6 +24,7 @@ static int do_art_upgrade(const ulong size);
 static int do_gpt_upgrade(const ulong size);
 static int do_cdt_upgrade(const ulong size);
 static int do_mibib_upgrade(const ulong size);
+static int do_ptable_upgrade(const ulong size);
 static int execute_command(const char *cmd);
 static void print_upgrade_warning(const char *upgrade_type);
 
@@ -169,6 +170,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		case WEBFAILSAFE_UPGRADE_TYPE_IMG: return do_gpt_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_CDT: return do_cdt_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_MIBIB: return do_mibib_upgrade(size);
+		case WEBFAILSAFE_UPGRADE_TYPE_PTABLE: return do_ptable_upgrade(size);
 		default: printf("\n* Unsupported upgrade type *\n");
 			return -1;
 	}
@@ -322,6 +324,19 @@ static int do_mibib_upgrade(const ulong size) {
 			return -1;
 	}
 	return execute_command(buf);
+}
+
+static int do_ptable_upgrade(const ulong size) {
+	int fw_type = check_fw_type((void *)UPLOAD_ADDR);
+	if (fw_type != FW_TYPE_GPT && fw_type != FW_TYPE_MIBIB) {
+		printf("\n* Uploaded file is not a partition table type. Actual type is %s *\n", fw_type_to_string(fw_type));
+		return -1;
+	}
+	if (fw_type == FW_TYPE_GPT) {
+		return do_gpt_upgrade(size);
+	} else { // fw_type == FW_TYPE_MIBIB
+		return do_mibib_upgrade(size);
+	}
 }
 
 int do_http_progress(const int state) {
