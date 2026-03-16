@@ -73,7 +73,8 @@ jobs:
             gh \
             jq \
             nodejs \
-            npm
+            npm \
+            zopfli
 
       # 2.1 Install Node.js compression tools
       - name: Install Node.js compression tools

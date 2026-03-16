@@ -8,17 +8,24 @@
 # - flashing.hmtl
 # - fail.html
 #
-# Files are processed with dedicated tools and then compressed with gzip -9n.
-# HTML files with embedded JS/CSS are processed with careful preservation of styling.
-# You SHOULDN'T embed addresses of any external
-# files in "flashing.html" file, because web server,
-# after receive POST data, returns this page and stops.
+# Files are processed with dedicated tools and then compressed.
+# Uses zopfli for best gzip-compatible compression (Google's zopfli)
+# Falls back to gzip -9 if zopfli not available
 
 # ===== DEBUG MODE CONFIGURATION =====
 # Set debug_mode to 1 to enable debug output and retain intermediate files
 # Set debug_mode to 0 to disable debug output (no intermediate files saved)
 debug_mode=1
 # ====================================
+
+# ===== COMPRESSION CONFIGURATION =====
+# zopfli iterations: higher = better compression, slower
+#   1-10   = fast, good compression
+#   15-30  = balanced (default)
+#   50-100 = better compression, slower
+#   500+   = extreme compression, very slow
+zopfli_iterations=30
+# =====================================
 
 # Parse arguments (command line argument overrides the default setting)
 vendor_dir=${1:-pig}
@@ -31,6 +38,15 @@ elif [ $debug_mode -eq 1 ]; then
     echo "Debug mode enabled via configuration: intermediate files will be retained for inspection"
 fi
 
+# Check for zopfli iterations override
+if [[ "$2" =~ ^--iterations=[0-9]+$ ]]; then
+    zopfli_iterations=${2#--iterations=}
+    echo "zopfli iterations set to $zopfli_iterations via command line"
+elif [[ "$3" =~ ^--iterations=[0-9]+$ ]]; then
+    zopfli_iterations=${3#--iterations=}
+    echo "zopfli iterations set to $zopfli_iterations via command line"
+fi
+
 # Vendor specific directory (default: "pig")
 
 # Temporary files
@@ -41,11 +57,11 @@ files_list_tmp="vendors/.files_list"
 if [ $debug_mode -eq 1 ]; then
     debug_dir="vendors/debug_output"
     minified_dir="$debug_dir/minified"
-    gziped_dir="$debug_dir/gziped"
-    mkdir -p "$minified_dir" "$gziped_dir"
+    compressed_dir="$debug_dir/compressed"
+    mkdir -p "$minified_dir" "$compressed_dir"
     echo "Debug output directories:"
     echo "  - Minified files: $minified_dir"
-    echo "  - Gzip compressed files: $gziped_dir"
+    echo "  - Compressed files: $compressed_dir"
 fi
 
 # Enable better error handling
@@ -104,6 +120,7 @@ fi
 html_minifier_available=0
 css_minifier_available=0
 js_minifier_available=0
+zopfli_available=0
 
 if [ $node_available -eq 1 ]; then
 	# Check for html-minifier (try both names)
@@ -123,11 +140,49 @@ if [ $node_available -eq 1 ]; then
 	check_node_module "terser" "js_minifier_available"
 fi
 
+# Check for zopfli (Google's gzip optimizer)
+if command -v zopfli >/dev/null 2>&1; then
+    zopfli_available=1
+    echo "zopfli found: $(zopfli --version 2>&1 | head -1)"
+
+    # Test zopfli with a simple file to ensure it works
+    echo "Testing zopfli functionality..."
+    echo "test" > /tmp/zopfli_test.txt
+    if zopfli --i1 /tmp/zopfli_test.txt 2>/dev/null; then
+        if [ -f /tmp/zopfli_test.txt.gz ]; then
+            echo "  ✓ zopfli is functional"
+            rm -f /tmp/zopfli_test.txt.gz
+        else
+            echo "  ⚠ zopfli test failed to create output file"
+            zopfli_available=0
+        fi
+    else
+        echo "  ⚠ zopfli command failed during test"
+        zopfli_available=0
+    fi
+    rm -f /tmp/zopfli_test.txt
+else
+    echo "Warning: zopfli not found, using standard gzip compression"
+    echo "  Install zopfli for better compression (3-8% smaller than gzip -9):"
+    echo "  Ubuntu/Debian: sudo apt-get install zopfli"
+    echo "  macOS: brew install zopfli"
+fi
+
+# Determine compression backend
+compression_backend="gzip"
+if [ $zopfli_available -eq 1 ]; then
+    compression_backend="zopfli"
+fi
+
 # Summary of available tools
 echo "Tool availability:"
 echo "  - HTML Minifier: $([ $html_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
 echo "  - CSS Minifier: $([ $css_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
 echo "  - JS Minifier: $([ $js_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
+echo "  - Compression backend: $compression_backend"
+if [ "$compression_backend" = "zopfli" ]; then
+    echo "    (using zopfli with $zopfli_iterations iterations)"
+fi
 
 # Previous fsdata_file var name
 prev_fsdata_struct="NULL"
@@ -140,22 +195,64 @@ function ascii_to_bytes() {
 	echo -ne "$1" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//'
 }
 
-# Compress data using gzip and convert to hex
+# Compress data using best available method and convert to hex
 # Returns: compressed data in hex format
-# Also saves compressed file to gziped directory if in debug mode
 function compress_and_convert() {
 	local _input_file="$1"
 	local _original_filename="$2"  # Original filename for debug output
 	local _compressed_data
-	local _temp_gz=$(mktemp)
+	local _temp_compressed=$(mktemp)
 
-	# Compress to temporary file
-	gzip -c9n "$_input_file" > "$_temp_gz"
+    # Compress using best available method
+    if [ "$compression_backend" = "zopfli" ] && [ $zopfli_available -eq 1 ]; then
+        if [ $debug_mode -eq 1 ]; then
+            echo "Debug: Using zopfli with $zopfli_iterations iterations for $_original_filename" >&2
+        fi
+
+        # Get original size for comparison
+        local orig_size=$(stat -c%s "$_input_file" 2>/dev/null || stat -f %z "$_input_file" 2>/dev/null)
+
+        # zopfli creates .gz file alongside input
+        zopfli --i$zopfli_iterations "$_input_file" 2>/dev/null
+
+        if [ -f "$_input_file.gz" ]; then
+            mv "$_input_file.gz" "$_temp_compressed"
+
+            # Show compression stats in debug mode
+            if [ $debug_mode -eq 1 ]; then
+                local comp_size=$(stat -c%s "$_temp_compressed" 2>/dev/null || stat -f %z "$_temp_compressed" 2>/dev/null)
+                local saved=$((orig_size - comp_size))
+                local ratio=$((100 - (comp_size * 100 / orig_size)))
+                echo "Debug: zopfli compressed $_original_filename: $orig_size -> $comp_size bytes ($ratio% reduction)" >&2
+            fi
+        else
+            echo "Warning: zopfli failed for $_original_filename, falling back to gzip" >&2
+            gzip -c9n "$_input_file" > "$_temp_compressed"
+        fi
+    else
+        if [ $debug_mode -eq 1 ]; then
+            echo "Debug: Using gzip -9 for $_original_filename" >&2
+        fi
+
+        # Get original size for comparison
+        local orig_size=$(stat -c%s "$_input_file" 2>/dev/null || stat -f %z "$_input_file" 2>/dev/null)
+
+        # Fallback to standard gzip
+        gzip -c9n "$_input_file" > "$_temp_compressed"
+
+        # Show compression stats in debug mode
+        if [ $debug_mode -eq 1 ]; then
+            local comp_size=$(stat -c%s "$_temp_compressed" 2>/dev/null || stat -f %z "$_temp_compressed" 2>/dev/null)
+            local saved=$((orig_size - comp_size))
+            local ratio=$((100 - (comp_size * 100 / orig_size)))
+            echo "Debug: gzip compressed $_original_filename: $orig_size -> $comp_size bytes ($ratio% reduction)" >&2
+        fi
+    fi
 
 	# Convert to hex
-	_compressed_data=$(cat "$_temp_gz" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
+	_compressed_data=$(cat "$_temp_compressed" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
 
-	# In debug mode, save the compressed file with original name + .gz
+	# In debug mode, save the compressed file
 	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
 		local debug_filename="$(basename "$_original_filename")"
 		# Handle different file extensions
@@ -167,13 +264,12 @@ function compress_and_convert() {
 				debug_filename="${debug_filename}.gz"
 				;;
 		esac
-		cp "$_temp_gz" "$gziped_dir/$debug_filename"
-		# Send debug output to stderr, not stdout, to avoid polluting fsdata.c
-		echo "Debug: Saved gzip compressed file to $gziped_dir/$debug_filename" >&2
+		cp "$_temp_compressed" "$compressed_dir/$debug_filename"
+		echo "Debug: Saved compressed file to $compressed_dir/$debug_filename" >&2
 	fi
 
 	# Clean up temp file
-	rm -f "$_temp_gz"
+	rm -f "$_temp_compressed"
 
 	echo "$_compressed_data"
 }
@@ -249,11 +345,10 @@ function minify_html_with_preserved_styling() {
 		cp "$_input_file" "$_output_file"
 	fi
 
-	# In debug mode, save the minified file with original name (without _minified suffix)
+	# In debug mode, save the minified file with original name
 	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
 		local debug_filename="$(basename "$_original_filename")"
 		cp "$_output_file" "$minified_dir/$debug_filename"
-		# Send debug output to stderr
 		echo "Debug: Saved minified HTML to $minified_dir/$debug_filename" >&2
 	fi
 }
@@ -292,11 +387,10 @@ function minify_standalone_js() {
 		cp "$_input_file" "$_output_file"
 	fi
 
-	# In debug mode, save the minified file with original name (without _minified suffix)
+	# In debug mode, save the minified file with original name
 	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
 		local debug_filename="$(basename "$_original_filename")"
 		cp "$_output_file" "$minified_dir/$debug_filename"
-		# Send debug output to stderr
 		echo "Debug: Saved minified JS to $minified_dir/$debug_filename" >&2
 	fi
 }
@@ -342,11 +436,10 @@ function minify_standalone_css() {
 		cp "$_input_file" "$_output_file"
 	fi
 
-	# In debug mode, save the minified file with original name (without _minified suffix)
+	# In debug mode, save the minified file with original name
 	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
 		local debug_filename="$(basename "$_original_filename")"
 		cp "$_output_file" "$minified_dir/$debug_filename"
-		# Send debug output to stderr
 		echo "Debug: Saved minified CSS to $minified_dir/$debug_filename" >&2
 	fi
 }
@@ -360,7 +453,6 @@ function print_data_array() {
 	local _file_content=""
 	local _is_compressed=0
 	local _temp_minified=""
-	local _temp_gz=""
 
 	# Send progress info to stderr
 	echo "Processing: $_file_name" >&2
@@ -379,39 +471,32 @@ function print_data_array() {
 	ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"
 	echo -n "," >> "$files_content_tmp"
 
-	# Content - Process with dedicated tools and then gzip
+	# Content - Process with dedicated tools and then compress
 	case "$_file_ext" in
 		css)
 			_temp_minified=$(mktemp)
-
 			minify_standalone_css "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
-
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
 		js)
 			_temp_minified=$(mktemp)
-
 			minify_standalone_js "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
-
 			_is_compressed=1
 			ascii_to_bytes "Content-Type: application/javascript\r\n" >> "$files_content_tmp"
 			;;
 		html|htm)
 			_temp_minified=$(mktemp)
-
 			minify_html_with_preserved_styling "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
-
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
 		png|jpg|jpeg|gif|ico|svg)
 			# For images, we still compress but don't process with tools
 			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
-
 			_is_compressed=1
 			case "$_file_ext" in
 				png)  ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp" ;;
@@ -424,7 +509,6 @@ function print_data_array() {
 		*)
 			# For other files, we compress but don't process with tools
 			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
-
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/plain; charset=UTF-8\r\n" >> "$files_content_tmp"
 			;;
@@ -512,6 +596,7 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	echo "Successfully generated fsdata.c with $files_processed files" >&2
 	echo "FS_ROOT: $prev_fsdata_struct" >&2
 	echo "FS_NUMFILES: $files_processed" >&2
+	echo "Compression backend: $compression_backend" >&2
 
 	# Show file size
 	if [ -f "fsdata.c" ]; then
@@ -519,33 +604,43 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	fi
 
 	# Show compression statistics for debug mode
-	if [ $debug_mode -eq 1 ] && [ -d "$minified_dir" ] && [ -d "$gziped_dir" ]; then
+	if [ $debug_mode -eq 1 ] && [ -d "$compressed_dir" ]; then
 		echo "" >&2
 		echo "Compression Statistics:" >&2
 		echo "----------------------" >&2
-		for minified_file in "$minified_dir"/*; do
-			if [ -f "$minified_file" ]; then
-				base_filename=$(basename "$minified_file")
-				gz_file="$gziped_dir/${base_filename}.gz"
-				if [ -f "$gz_file" ]; then
-					minified_size=$(stat -c %s "$minified_file" 2>/dev/null || stat -f %z "$minified_file" 2>/dev/null)
-					gz_size=$(stat -c %s "$gz_file" 2>/dev/null || stat -f %z "$gz_file" 2>/dev/null)
-					if [ -n "$minified_size" ] && [ -n "$gz_size" ]; then
-						ratio=$((100 - (gz_size * 100 / minified_size)))
-						printf "%-30s: %6d bytes -> %6d bytes (%d%% reduction)\n" \
-							"$base_filename" "$minified_size" "$gz_size" "$ratio" >&2
+
+		for compressed_file in "$compressed_dir"/*; do
+			if [ -f "$compressed_file" ]; then
+				base_filename=$(basename "$compressed_file" .gz)
+				minified_file="$minified_dir/$base_filename"
+				if [ -f "$minified_file" ]; then
+					minified_size=$(stat -c%s "$minified_file" 2>/dev/null || stat -f %z "$minified_file" 2>/dev/null)
+					compressed_size=$(stat -c%s "$compressed_file" 2>/dev/null || stat -f %z "$compressed_file" 2>/dev/null)
+					if [ -n "$minified_size" ] && [ -n "$compressed_size" ]; then
+						ratio=$((100 - (compressed_size * 100 / minified_size)))
+						printf "  %-30s: %6d bytes -> %6d bytes (%d%% reduction)\n" \
+							"$base_filename" "$minified_size" "$compressed_size" "$ratio" >&2
 					fi
 				fi
 			fi
 		done
+
 		echo "" >&2
 		echo "Debug mode: Processed files saved to:" >&2
 		echo "  - Minified files: $minified_dir/ (original filenames)" >&2
-		echo "  - Gzip compressed files: $gziped_dir/ (original filenames + .gz)" >&2
+		echo "  - Compressed files: $compressed_dir/ (original filenames + .gz)" >&2
 	fi
 
 	if [ $debug_mode -eq 0 ]; then
 		echo "Debug mode is disabled (set debug_mode=1 at the top of script to enable)" >&2
+	fi
+
+	# Show zopfli suggestion if not available
+	if [ $zopfli_available -eq 0 ]; then
+		echo "" >&2
+		echo "Tip: Install zopfli for better compression (3-8% smaller than gzip -9):" >&2
+		echo "  Ubuntu/Debian: sudo apt-get install zopfli" >&2
+		echo "  macOS: brew install zopfli" >&2
 	fi
 else
 	echo "Error! Vendor specific directory (vendors/$vendor_dir) doesn't exist!" >&2

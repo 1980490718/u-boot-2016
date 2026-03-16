@@ -20,7 +20,7 @@
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python2.7 python2.7-dev python2.7-distutils wget cpio flex bison bc rsync nodejs npm gzip
+sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python2.7 python2.7-dev python2.7-distutils wget cpio flex bison bc rsync nodejs npm gzip zopfli
 ```
 
 此外，如果需要使用makefsdatac工具处理Web界面文件，还需要安装以下Node.js模块：
