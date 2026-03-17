@@ -162,3 +162,10 @@ config YT921X_SWITCH
 	help
 	  Enable Motorcomm YT921X switch support.
 	  This adds support for YT9213/YT9214/YT9215/YT9218 switches.
+
+config PHY_MOTORCOMM
+	bool "Motorcomm PHY support"
+	select PHYLIB
+	help
+	  Enable Motorcomm PHY support.
+	  This adds support for YT8511/YT8521/YT8531/YT8531S/YT8821 PHY chips.

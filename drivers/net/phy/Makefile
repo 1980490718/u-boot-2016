@@ -26,3 +26,4 @@ obj-$(CONFIG_PHY_SMSC) += smsc.o
 obj-$(CONFIG_PHY_TERANETICS) += teranetics.o
 obj-$(CONFIG_PHY_TI) += ti.o
 obj-$(CONFIG_PHY_VITESSE) += vitesse.o
+obj-$(CONFIG_PHY_MOTORCOMM) += motorcomm.o
