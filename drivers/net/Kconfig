@@ -156,3 +156,9 @@ endif # QCA8084_PHY
 config IPQ_QTI_BIT_BANGMII
 	bool "Enable MDIO Gpio bit bang support"
 	depends on BITBANGMII
+
+config YT921X_SWITCH
+	bool "Motorcomm YT921X switch support"
+	help
+	  Enable Motorcomm YT921X switch support.
+	  This adds support for YT9213/YT9214/YT9215/YT9218 switches.

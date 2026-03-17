@@ -5,7 +5,7 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-ccflags-y += -I$(srctree)/board/qca/arm/ipq40xx -I$(srctree)/board/qca/arm/common 
+ccflags-y += -I$(srctree)/board/qca/arm/ipq40xx -I$(srctree)/board/qca/arm/common
 ccflags-y += -I$(srctree)/drivers/net/ipq_common
 
 obj-$(CONFIG_PPC4xx_EMAC) += 4xx_enet.o
@@ -115,3 +115,4 @@ obj-$(CONFIG_IPQ_QCA_AQUANTIA_PHY) += ipq_common/ipq_aquantia_phy.o
 obj-$(CONFIG_QCA_AQUANTIA_PHY) += ipq807x/ipq807x_aquantia_phy.o
 obj-$(CONFIG_IPQ6018_QCA_AQUANTIA_PHY) += ipq6018/ipq6018_aquantia_phy.o
 obj-$(CONFIG_IPQ9574_QCA_AQUANTIA_PHY) += ipq9574/ipq9574_aquantia_phy.o
+obj-$(CONFIG_YT921X_SWITCH) += yt921x.o
