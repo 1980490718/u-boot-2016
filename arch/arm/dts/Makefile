@@ -80,6 +80,9 @@ dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-dk01-c1.dtb \
 endif
 
 ifneq ($(CONFIG_IPQ_TINY),y)
+ifeq ($(CONFIG_IPQ5018_MR3000D_CI),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-mr3000d-ci.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \
 			ipq5018-mp03.1-c2.dtb \
@@ -102,6 +105,7 @@ dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-db-mp03.3-c2.dtb \
 			ipq5018-tb-mp04.dtb \
 			ipq5018-mp03.1.dtb
+endif
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-db-mp02.1.dtb \
 				ipq5018-mp02.1.dtb \

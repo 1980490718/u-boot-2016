@@ -61,4 +61,16 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
+
+config 256MB_RAM
+	bool "Board has only 256MB RAM"
+	default n
+	help
+		Select this if your board has only 256MB RAM installed
+
+config IPQ5018_MR3000D_CI
+	bool "For ipq5018 mr3000d ci support"
+	default n
+	help
+		Enable support for ipq5018 mr3000d ci support
 endif
