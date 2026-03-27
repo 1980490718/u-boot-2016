@@ -198,6 +198,7 @@ static int do_firmware_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
 		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 		default: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_NOR || fw_type == FW_TYPE_QSDK || fw_type == FW_TYPE_UBI) {
@@ -232,6 +233,8 @@ static int do_uboot_upgrade(const ulong size) {
 			break;
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
+		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
 			break;
 		default:
@@ -255,6 +258,8 @@ static int do_art_upgrade(const ulong size) {
 			break;
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
+		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
 			break;
 		default:
@@ -278,6 +283,7 @@ static int do_gpt_upgrade(const ulong size) {
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
 		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 		default:
 			printf("\n* Flash type %d is not supported for GPT upgrade! Please return and select upgrade type \"mibib\"\n", qca_smem_flash_info.flash_type);
 			return -1;
@@ -298,6 +304,8 @@ static int do_cdt_upgrade(const ulong size) {
 			break;
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
+		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 			break;
 		default:
@@ -317,6 +325,8 @@ static int do_mibib_upgrade(const ulong size) {
 	switch (qca_smem_flash_info.flash_type) {
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
+		case FLASH_TYPE_NOR:
+		case FLASH_TYPE_QSPI_NAND:
 			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
 			break;
 		default:
