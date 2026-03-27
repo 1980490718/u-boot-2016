@@ -25,7 +25,7 @@
 		i2c0 = "/i2c@78b7000";
 		gmac_gpio = "/gmac_gpio";
 		usb0 = "/xhci@8a00000";
-		pci0 = "/pci@80000000";
+		pci0 = "/pci@a0000000";
 		nand = "/nand-controller@79B0000";
 		power_led = "/tlmm-gpio/led_gpio/led_red";
 		blink_led = "/tlmm-gpio/led_gpio/led_green";
@@ -137,7 +137,7 @@
 			unit = <0>;
 			base = <0x39C00000>;
 			phy_address = <7>;
-			phy_external_link = <1>;
+			phy_external_link = <0>;
 		};
 		gmac2_cfg {
 			unit = <1>;
