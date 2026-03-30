@@ -27,11 +27,15 @@ static int do_mibib_upgrade(const ulong size);
 static int do_ptable_upgrade(const ulong size);
 static int execute_command(const char *cmd);
 static void print_upgrade_warning(const char *upgrade_type);
+static void initialize_phy_link(void);
 
 static int arptimer = 0;
 struct in_addr net_httpd_ip;
 void HttpdStart(void) {
 #ifdef CONFIG_DHCPD
+	/* Initialize PHY link before starting DHCP server */
+	initialize_phy_link();
+	mdelay(1000);
 	dhcpd_ip_settings();
 	mdelay(1500);
 	dhcpd_request_nonblocking();
@@ -106,8 +110,58 @@ void HttpdStart(void) {
 	net_netmask.s_addr = 0xFFFFFF00;
 	uip_setnetmask(ip);
 #endif
+
+#ifndef CONFIG_DHCPD
+	/* For static IP mode, initialize PHY link */
+	initialize_phy_link();
+#endif
 	do_http_progress(WEBFAILSAFE_PROGRESS_START);
 	webfailsafe_is_running = 1;
+}
+
+static void initialize_phy_link(void) {
+	/* Initialize PHY link by sending ARP request */
+	printf("Initializing PHY link with ARP request...\n");
+
+	/* Create a simple ARP request packet */
+	uchar arp_packet[60];
+	memset(arp_packet, 0, sizeof(arp_packet));
+
+	/* Ethernet header */
+	/* Broadcast destination */
+	memset(arp_packet, 0xff, 6);
+	/* Source MAC address */
+	memcpy(arp_packet + 6, uip_ethaddr.addr, 6);
+	/* ARP protocol type */
+	*(u16_t *)(arp_packet + 12) = htons(0x0806); /* ARP */
+
+	/* ARP header */
+	*(u16_t *)(arp_packet + 14) = htons(1);      /* Hardware type: Ethernet */
+	*(u16_t *)(arp_packet + 16) = htons(0x0800); /* Protocol type: IP */
+	*(arp_packet + 18) = 6;                       /* Hardware address length */
+	*(arp_packet + 19) = 4;                       /* Protocol address length */
+	*(u16_t *)(arp_packet + 20) = htons(1);      /* Opcode: ARP Request */
+
+	/* Sender hardware address */
+	memcpy(arp_packet + 22, uip_ethaddr.addr, 6);
+
+	/* Sender IP address */
+	*(u16_t *)(arp_packet + 28) = uip_hostaddr[0];
+	*(u16_t *)(arp_packet + 30) = uip_hostaddr[1];
+
+	/* Target hardware address (unknown) */
+	memset(arp_packet + 32, 0, 6);
+
+	/* Target IP address - use a non-conflicting IP */
+	/* Use 192.168.1.254 which is typically a gateway address */
+	*(u16_t *)(arp_packet + 38) = htons(0xC0A8); /* 192.168 */
+	*(u16_t *)(arp_packet + 40) = htons(0x01FE); /* 1.254 */
+
+	/* Send the ARP request */
+	net_send_packet(arp_packet, sizeof(arp_packet));
+
+	/* Wait for ARP to complete */
+	mdelay(500);
 }
 
 static void reset_webfailsafe_state(void) {
