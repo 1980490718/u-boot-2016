@@ -80,7 +80,7 @@ enum flash_type_enum {
 /* load address */
 #ifndef CONFIG_IPQ40XX
 #define CONFIG_LOADADDR								(unsigned long) 0x44000000 /* console default address */
-#if defined(CONFIG_256MB_RAM)
+#if defined(CONFIG_256MB_RAM) || defined(CONFIG_IPQ_TINY) || defined(CONFIG_IPQ_TINY2) || defined(CONFIG_IPQ_TINY_SPI_NOR)
 #define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				CONFIG_LOADADDR /* For 256MB RAM, use the console default address */
 #else
 #define WEBFAILSAFE_UPLOAD_RAM_ADDRESS				(unsigned long) 0x50000000
