@@ -113,6 +113,9 @@ dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-db-mp02.1.dtb \
 				ipq5018-db-mp03.1.dtb
 endif
 
+ifeq ($(CONFIG_IPQ5332_H3C_NE36PRO),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-h3c-ne36pro.dtb
+else
 ifneq ($(CONFIG_IPQ_TINY),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-emulation.dtb \
 				ipq5332-mi01.2.dtb \
@@ -143,6 +146,7 @@ dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-mi01.3.dtb \
 else
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-mi04.1.dtb \
 				ipq5332-tb-mi05.1.dtb
+endif
 endif
 endif
 

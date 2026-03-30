@@ -60,11 +60,12 @@ cd u-boot-2016
 | IPQ5018 | ipq5018_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq5018_tiny`                |
 | IPQ5018 | ipq5018_tiny_debug          | 公版调试简           |    ---     |    ✓     | `./build.sh ipq5018_tiny_debug`          |
 | IPQ5018 | ipq5018                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq5018`                     |
-| IPQ5332 | ipq5332_tiny                | 公版简               |    ---     |    ?     | `./build.sh ipq5332_tiny`                |
-| IPQ5332 | ipq5332_tiny_nor            | NOR闪存简            |    ---     |    ?     | `./build.sh ipq5332_tiny_nor`            |
-| IPQ5332 | ipq5332_tiny_debug          | 公版调试简           |    ---     |    ?     | `./build.sh ipq5332_tiny_debug`          |
-| IPQ5332 | ipq5332_tiny2               | 公版简2              |    ---     |    ?     | `./build.sh ipq5332_tiny2`               |
-| IPQ5332 | ipq5332                     | 公版基础             |    ---     |    ?     | `./build.sh ipq5332`                     |
+| IPQ5332 | ipq5332_h3c_ne36pro         | H3C NE36PRO          | 0x8060007  |    ✓     | `./build.sh ipq5332_h3c_ne36pro`         |
+| IPQ5332 | ipq5332_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq5332_tiny`                |
+| IPQ5332 | ipq5332_tiny_nor            | NOR闪存简            |    ---     |    ✓     | `./build.sh ipq5332_tiny_nor`            |
+| IPQ5332 | ipq5332_tiny_debug          | 公版调试简           |    ---     |    ✓     | `./build.sh ipq5332_tiny_debug`          |
+| IPQ5332 | ipq5332_tiny2               | 公版简2              |    ---     |    ✓     | `./build.sh ipq5332_tiny2`               |
+| IPQ5332 | ipq5332                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq5332`                     |
 | IPQ6018 | ipq6018_360v6               | 奇虎360v6            | 0x8030200  |    ✓     | `./build.sh ipq6018_360v6`               |
 | IPQ6018 | ipq6018_ax1800pro           | 京东云 AX1800Pro     | 0x8030200  |    ✓     | `./build.sh ipq6018_ax1800pro`           |
 | IPQ6018 | ipq6018_ax5_jdcloud         | 京东云 AX5           | 0x8030200  |    ✓     | `./build.sh ipq6018_ax5_jdcloud`         |

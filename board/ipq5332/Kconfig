@@ -77,4 +77,10 @@ config 256MB_RAM
 	default y
 	help
 		Select this if your board has only 256MB RAM installed
+
+config IPQ5332_H3C_NE36PRO
+	bool "For IPQ5332_H3C_NE36PRO support"
+	default n
+	help
+		Enable support for IPQ5332_H3C_NE36PRO support
 endif
