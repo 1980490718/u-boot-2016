@@ -273,22 +273,19 @@ case $IPQ_TYPE in
 		${CROSS_COMPILE}strip u-boot -o "bin/openwrt-${CONFIG_NAME}-u-boot.elf"
 		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.elf"
 		;;
-	ipq5018|ipq5332|ipq807x)
+	ipq5018|ipq807x)
 		echo "IPQ type $IPQ_TYPE uses MBN v3"
 		${CROSS_COMPILE}strip u-boot -o u-boot.strip
 		python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 3
 		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
 		clean_elftombn_intermediate_files "$CONFIG_NAME"
 		;;
-	ipq6018)
-		echo "IPQ type $IPQ_TYPE uses MBN v6"
-		${CROSS_COMPILE}strip u-boot -o u-boot.strip
-		python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6
-		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
-		clean_elftombn_intermediate_files "$CONFIG_NAME"
-		;;
-	ipq9574)
-		echo "IPQ type $IPQ_TYPE uses MBN v6 with SHA-384"
+	ipq5332|ipq6018|ipq9574)
+		if [ "$IPQ_TYPE" = "ipq5332" ]; then
+			echo "IPQ type $IPQ_TYPE uses MBN v6 with SHA-256"
+		else
+			echo "IPQ type $IPQ_TYPE uses MBN v6 with SHA-384"
+		fi
 		${CROSS_COMPILE}strip u-boot -o u-boot.strip
 		python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6 -a $IPQ_TYPE
 		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
