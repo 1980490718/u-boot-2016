@@ -115,6 +115,8 @@ endif
 
 ifeq ($(CONFIG_IPQ5332_H3C_NE36PRO),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-h3c-ne36pro.dtb
+else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE306),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be306.dtb
 else
 ifneq ($(CONFIG_IPQ_TINY),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-emulation.dtb \
