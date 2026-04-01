@@ -83,4 +83,10 @@ config IPQ5332_H3C_NE36PRO
 	default n
 	help
 		Enable support for IPQ5332_H3C_NE36PRO support
+
+config IPQ5332_XIAOMI_BE306
+	bool "For IPQ5332_XIAOMI_BE306 support"
+	default n
+	help
+		Enable support for IPQ5332_XIAOMI_BE306 support
 endif
