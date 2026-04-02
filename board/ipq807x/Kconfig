@@ -42,17 +42,17 @@ config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
 
-config IPQ807X_AP8220
-	bool "IPQ807x AP8220 board support"
+config IPQ807X_ALIYUN_AP8220
+	bool "IPQ807x ALIYUN AP8220 board support"
 	default n
 	help
-	  Enable support for IPQ807x AP8220 board
+	  Enable support for IPQ807x ALIYUN AP8220 board
 
-config IPQ807X_AX6
-	bool "IPQ807x AX6 board support"
+config IPQ807X_REDMI_AX6
+	bool "IPQ807x REDMI AX6 board support"
 	default n
 	help
-	  Enable support for IPQ807x AX6 board
+	  Enable support for IPQ807x REDMI AX6 board
 
 config IPQ807X_XGLINK_5GCPE
 	bool "IPQ807x XGLINK 5GCPE board support"

@@ -79,8 +79,8 @@ cd u-boot-2016
 | IPQ6018 | ipq6018                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq6018`                     |
 | IPQ806x | ipq806x_standard            | 公版标准             |    ---     |    ?     | `./build.sh ipq806x_standard`            |
 | IPQ806x | ipq806x                     | 公版基础             |    ---     |    ?     | `./build.sh ipq806x`                     |
-| IPQ807x | ipq807x_ap8220              | 阿里云 AP8220        | 0x0801000A |    ✓     | `./build.sh ipq807x_ap8220`              |
-| IPQ807x | ipq807x_ax6                 | 小米 AX3600/红米 AX6 | 0x08010010 |    ✓     | `./build.sh ipq807x_ax6`                 |
+| IPQ807x | ipq807x_aliyun_ap8220       | 阿里云 AP8220        | 0x0801000A |    ✓     | `./build.sh ipq807x_aliyun_ap8220`       |
+| IPQ807x | ipq807x_redmi_ax6           | 小米 AX3600/红米 AX6 | 0x08010010 |    ✓     | `./build.sh ipq807x_redmi_ax6`           |
 | IPQ807x | ipq807x_tiny                | 公版简               |    ---     |    ✓     | `./build.sh ipq807x_tiny`                |
 | IPQ807x | ipq807x_xglink_5gcpe        | XGlink 5GCPE         | 0x08010008 |    ✓     | `./build.sh ipq807x_xglink_5gcpe`        |
 | IPQ807x | ipq807x                     | 公版基础             |    ---     |    ✓     | `./build.sh ipq807x`                     |

@@ -406,7 +406,7 @@ static int do_ptable_upgrade(const ulong size) {
 int do_http_progress(const int state) {
 	switch (state) {
 		case WEBFAILSAFE_PROGRESS_START:
-#if defined(CONFIG_IPQ807X_AP8220)
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
 			led_on("power_led");
 #else
 			led_off("power_led");

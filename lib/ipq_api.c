@@ -225,12 +225,12 @@ void check_button_is_press(void) {
 		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%2d second(s) ", counter);
 		if(counter >= 3){
 			printf("\n");
-#if defined(CONFIG_IPQ807X_AP8220)
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
 			led_on("power_led");
 			led_off("wlan2g_led");
 			led_off("wlan5g_led");
 			led_off("bluetooth_led");
-#elif defined(CONFIG_IPQ807X_AX6)
+#elif defined(CONFIG_IPQ807X_REDMI_AX6)
 			led_off("system_led");
 			led_on("power_led");
 			led_on("blink_led");
@@ -399,12 +399,12 @@ void led_init(void) {
 	led_init_by_name("power_led");
 	led_init_by_name("blink_led");
 	led_init_by_name("system_led");
-#if defined(CONFIG_IPQ807X_AP8220)
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
 	led_init_by_name("wlan2g_led");
 	led_init_by_name("wlan5g_led");
 	led_init_by_name("bluetooth_led");
 #endif
-#if defined(CONFIG_IPQ807X_AX6)
+#if defined(CONFIG_IPQ807X_REDMI_AX6)
 	led_init_by_name("network_blue_led");
 	led_init_by_name("aiot_led");
 #endif

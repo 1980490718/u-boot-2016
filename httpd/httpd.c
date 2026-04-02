@@ -70,7 +70,7 @@ static void httpd_download_progress(void) {
 	}
 	if (post_line_counter == 10) {
 		post_line_counter = 0;
-#if defined(CONFIG_IPQ807X_AP8220)
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
 		led_toggle("wlan2g_led");
 		led_toggle("wlan5g_led");
 		led_off("bluetooth_led");
