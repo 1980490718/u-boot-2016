@@ -183,7 +183,11 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
-/* #define CONFIG_QCA_MMC */
+#if !defined(CONFIG_IPQ807X_ALIYUN_AP8220) && \
+	!defined(CONFIG_IPQ807X_REDMI_AX6) && \
+	!defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+#define CONFIG_QCA_MMC
+#endif
 
 #ifdef CONFIG_QCA_MMC
 #define CONFIG_MMC
