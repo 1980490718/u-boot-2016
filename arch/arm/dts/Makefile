@@ -20,33 +20,31 @@ dtb-$(CONFIG_EXYNOS5) += exynos5250-arndale.dtb \
 	exynos5800-peach-pi.dtb \
 	exynos5422-odroidxu3.dtb
 
+ifeq ($(CONFIG_IPQ807X_ALIYUN_AP8220),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-aliyun-ap8220.dtb
+else ifeq ($(CONFIG_IPQ807X_REDMI_AX6),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-redmi-ax6.dtb
+else ifeq ($(CONFIG_IPQ807X_XGLINK_5GCPE),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-xglink-5gcpe.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk02.dtb \
 	ipq807x-hk06.dtb \
 	ipq807x-hk07.dtb \
 	ipq807x-hk08.dtb \
+	ipq807x-hk09.dtb \
 	ipq807x-hk10.dtb \
 	ipq807x-hk14.dtb \
 	ipq807x-hk11-c1.dtb \
 	ipq807x-ac01.dtb \
 	ipq807x-ac03.dtb \
+	ipq807x-ac04.dtb \
 	ipq807x-oak02.dtb \
 	ipq807x-hk01-c2.dtb \
 	ipq807x-hk01-c4.dtb \
 	ipq807x-hk01-c5.dtb \
 	ipq807x-hk10-c2.dtb \
 	ipq807x-db-hk02.dtb
-
-dtb-$(CONFIG_IPQ807X_AP8220) += ipq807x-ac02.dtb
-
-dtb-$(CONFIG_IPQ807X_AX6) += ipq807x-ac04-c1.dtb
-ifneq ($(CONFIG_IPQ807X_AX6),y)
-dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-ac04.dtb
-endif
-
-dtb-$(CONFIG_IPQ807X_XGLINK_5GCPE) += ipq807x-xglink-5gcpe.dtb
-ifneq ($(CONFIG_IPQ807X_XGLINK_5GCPE),y)
-dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk09.dtb
 endif
 
 dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
