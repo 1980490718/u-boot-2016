@@ -152,26 +152,28 @@ endif
 endif
 endif
 
+ifeq ($(CONFIG_IPQ6018_M2),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-m2.dtb
+else ifeq ($(CONFIG_IPQ6018_360V6),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-360v6.dtb
+else ifeq ($(CONFIG_IPQ6018_AX5_JDCLOUD),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-ax5-jdcloud.dtb
+else ifeq ($(CONFIG_IPQ6018_NN6000),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-nn6000.dtb
+else ifeq ($(CONFIG_IPQ6018_XIAOMI_AX1800),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-xiaomi-ax1800.dtb
+else ifeq ($(CONFIG_IPQ6018_JDCLOUD_AX6600),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-ax6600.dtb
+else ifeq ($(CONFIG_IPQ6018_JDCLOUD_ER1),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-er1.dtb
+else ifeq ($(CONFIG_IPQ6018_AX1800PRO),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-ax1800pro.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-cp02-c1.dtb \
-			ipq6018-cp03-c2.dtb \
+			ipq6018-cp03-c1.dtb \
 			ipq6018-db-cp01.dtb \
 			ipq6018-db-cp02.dtb
-
-dtb-$(CONFIG_IPQ6018_M2) += ipq6018-m2.dtb
-dtb-$(CONFIG_IPQ6018_360V6) += ipq6018-360v6.dtb
-dtb-$(CONFIG_IPQ6018_NN6000) += ipq6018-nn6000.dtb
-ifeq ($(filter y,$(CONFIG_IPQ6018_M2) $(CONFIG_IPQ6018_360V6) $(CONFIG_IPQ6018_AX5_JDCLOUD) $(CONFIG_IPQ6018_NN6000) $(CONFIG_IPQ6018_XIAOMI_AX1800)),)
-dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp03-c1.dtb
-endif
-ifeq ($(CONFIG_IPQ6018_JDCLOUD_AX6600),y)
-dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-ax6600.dtb
-endif
-ifeq ($(CONFIG_IPQ6018_JDCLOUD_ER1),y)
-dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-er1.dtb
-endif
-ifeq ($(CONFIG_IPQ6018_XIAOMI_AX1800),y)
-dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-xiaomi-ax1800.dtb
 endif
 
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-al01-c1.dtb \

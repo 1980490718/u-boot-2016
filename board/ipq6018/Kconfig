@@ -76,6 +76,12 @@ config IPQ6018_NN6000
 	help
 		Enable support for IPQ6018_NN6000 board
 
+config IPQ6018_AX1800PRO
+	bool "IPQ6018 AX1800PRO Board Support"
+	default n
+	help
+		Enable support for IPQ6018_AX1800PRO board
+
 config 256MB_RAM
 	bool "Board has only 256MB RAM"
 	default n
