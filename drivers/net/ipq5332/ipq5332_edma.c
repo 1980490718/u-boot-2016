@@ -1855,7 +1855,9 @@ int ipq5332_edma_init(void *edma_board_cfg)
 	uint16_t phy_chip_id1 = 0, phy_chip_id2 = 0;
 	uint32_t phy_chip_id = 0;
 	int clk[4] = {0};
+#ifdef CONFIG_QCA8084_SWT_MODE
 	int qca8084_swt_enb = 0;
+#endif
 	int qca8084_chip_detect = 0;
 
 #ifdef CONFIG_IPQ5332_QCA8075_PHY
