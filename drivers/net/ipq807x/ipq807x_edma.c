@@ -1760,7 +1760,9 @@ int ipq807x_edma_init(void *edma_board_cfg)
 	uint32_t phy_chip_id, phy_chip_id1, phy_chip_id2;
 	int ret = -1;
 	ipq807x_edma_board_cfg_t ledma_cfg, *edma_cfg;
+#ifdef CONFIG_QCA8075_PHY
 	static int sw_init_done = 0;
+#endif
 	int port_8033 = -1, node, phy_addr, aquantia_port = -1;
 	int mode, phy_node = -1;
 
@@ -1881,6 +1883,7 @@ int ipq807x_edma_init(void *edma_board_cfg)
 				phy_chip_id = (phy_chip_id1 << 16) | phy_chip_id2;
 			}
 			switch(phy_chip_id) {
+#ifdef CONFIG_QCA8075_PHY
 				case QCA8075_PHY_V1_0_5P:
 				case QCA8075_PHY_V1_1_5P:
 				case QCA8075_PHY_V1_1_2P:
@@ -1898,6 +1901,7 @@ int ipq807x_edma_init(void *edma_board_cfg)
 					else if ( mode == PORT_WRAPPER_QSGMII)
 						qca8075_phy_interface_set_mode(0x0, 0x4);
 					break;
+#endif
 #ifdef CONFIG_QCA8033_PHY
 				case QCA8033_PHY:
 					ipq_qca8033_phy_init(&ipq807x_edma_dev[i]->ops[phy_id], phy_addr);
@@ -1921,7 +1925,9 @@ int ipq807x_edma_init(void *edma_board_cfg)
 					break;
 #endif
 				default:
+#ifdef CONFIG_QCA8075_PHY
 					ipq_qca8075_phy_map_ops(&ipq807x_edma_dev[i]->ops[phy_id]);
+#endif
 					break;
 			}
 		}
