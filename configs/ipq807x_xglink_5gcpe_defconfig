@@ -100,9 +100,9 @@ CONFIG_CMD_NET=y
 # Network PHY
 #
 CONFIG_QCA8075_PHY=y
-CONFIG_QCA_AQUANTIA_PHY=y
-CONFIG_QCA8033_PHY=y
-CONFIG_QCA8081_PHY=y
+# CONFIG_QCA_AQUANTIA_PHY is not set
+# CONFIG_QCA8033_PHY is not set
+# CONFIG_QCA8081_PHY is not set
 
 #
 # Misc commands
@@ -230,7 +230,7 @@ CONFIG_IPQ_I2C=y
 # PCI
 #
 # CONFIG_DM_PCI is not set
-CONFIG_PCI_IPQ=y
+# CONFIG_PCI_IPQ is not set
 
 #
 # Pin controllers
