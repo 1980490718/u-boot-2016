@@ -199,7 +199,11 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
+#if !defined(CONFIG_IPQ6018_360V6) && \
+	!defined(CONFIG_IPQ6018_M2) && \
+	!defined(CONFIG_IPQ6018_XIAOMI_AX1800)
 #define CONFIG_QCA_MMC
+#endif
 
 #ifdef CONFIG_QCA_MMC
 #define CONFIG_MMC
