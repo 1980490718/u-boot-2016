@@ -166,6 +166,8 @@ else ifeq ($(CONFIG_IPQ6018_JDCLOUD_ER1),y)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-er1.dtb
 else ifeq ($(CONFIG_IPQ6018_AX1800PRO),y)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-ax1800pro.dtb
+else ifeq ($(CONFIG_IPQ6018_PHILIPS_LY1800),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-philips-ly1800.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-cp02-c1.dtb \
