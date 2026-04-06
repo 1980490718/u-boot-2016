@@ -255,7 +255,7 @@
 				oe = <GPIO_OE_ENABLE>;
 			};
 			led_green {
-				gpio = <35>;
+				gpio = <37>;
 				func = <0>;
 				out = <GPIO_OUT_LOW>;
 				drvstr = <GPIO_8MA>;
@@ -265,6 +265,13 @@
 		};
 
 		key_gpio {
+			wps {
+				gpio = <35>;
+				func = <0>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_UP>;
+				oe = <GPIO_OE_DISABLE>;
+			};
 			reset {
 				gpio = <34>;
 				func = <0>;
