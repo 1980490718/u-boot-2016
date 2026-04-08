@@ -20,6 +20,8 @@ dtb-$(CONFIG_EXYNOS5) += exynos5250-arndale.dtb \
 	exynos5800-peach-pi.dtb \
 	exynos5422-odroidxu3.dtb
 
+dtb-$(CONFIG_IPQ807X_SOFTBANK_AIR5) += ipq807x-softbank-air5.dtb
+
 ifeq ($(CONFIG_IPQ807X_ALIYUN_AP8220),y)
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-aliyun-ap8220.dtb
 else ifeq ($(CONFIG_IPQ807X_REDMI_AX6),y)

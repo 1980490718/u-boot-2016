@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2024, OpenWrt Community. All rights reserved.
+ *
+ * Device: SoftBank Air5 (IPQ8072A)
+ * SoC: Qualcomm IPQ8072A (IPQ807x family)
+ * Flash: W25R512NWEIQ 64MB 1.8V SPI-NOR (replaces original GD25LQ32C 4MB)
+ * Switch: QCA8075 ESS (5-port PSGMII)
+ * Wi-Fi: QCN5024 (2.4GHz 4x4) + QCN5054 (5GHz 4x4)
+ * UART: ttyMSM0, 115200n8
+ *
+ * Boot layout (64MB W25R512NWEIQ):
+ *   0x00000000 - 0x000FFFFF : SBL/TZ/RPM/U-Boot chain (1MB, original boot chain area)
+ *   0x00100000 - 0x003FFFFF : U-Boot environment + padding (3MB)
+ *   0x00400000 - end        : OpenWrt FIT image (kernel + dtb + rootfs)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "ipq807x-soc.dtsi"
+#include <dt-bindings/qcom/gpio-ipq807x.h>
+
+/ {
+	machid = <0x08010500>;
+	config_name = "config@softbank-air5", "config-softbank-air5";
+
+	aliases {
+		console = "/serial@78B3000";
+		uart0 = "/serial@78B3000";
+	};
+
+	/*
+	 * QCA8075 ESS 5-port PSGMII switch
+	 * All 4 LAN ports + 1 WAN port via PSGMII
+	 */
+	ess-switch {
+		switch_mac_mode = <0x5>;   /* PSGMII */
+		switch_mac_mode1 = <0xFF>; /* not used */
+		switch_mac_mode2 = <0xFF>; /* not used */
+		port_phyinfo {
+			port@0 {
+				phy_address = <0>;
+				phy_type = <1>; /* QCA8075 internal PHY */
+			};
+			port@1 {
+				phy_address = <1>;
+				phy_type = <1>;
+			};
+			port@2 {
+				phy_address = <2>;
+				phy_type = <1>;
+			};
+			port@3 {
+				phy_address = <3>;
+				phy_type = <1>;
+			};
+			port@4 {
+				phy_address = <4>;
+				phy_type = <1>;
+			};
+		};
+	};
+};

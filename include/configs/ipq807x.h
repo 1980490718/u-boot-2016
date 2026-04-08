@@ -152,6 +152,30 @@ extern loff_t board_env_size;
 #define CONFIG_ENV_SIZE_MAX		(256 << 10) /* 256 KB */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE_MAX + (1024 << 10))
 
+#ifdef CONFIG_SOFTBANK_AIR5_BOOT
+/*
+ * SoftBank Air5: Environment stored in APPSBLENV partition (from smeminfo)
+ * SPI-NOR partition layout (W25R512NWEIQ 64MB 1.8V):
+ *   0x00000000 + 0x00040000 : SBL1
+ *   0x00040000 + 0x00010000 : MIBIB
+ *   0x00050000 + 0x00160000 : SEE (TZ)
+ *   0x001B0000 + 0x00010000 : EVCFG
+ *   0x001C0000 + 0x00020000 : RPM
+ *   0x001E0000 + 0x00010000 : CDT
+ *   0x001F0000 + 0x00010000 : APPSBLENV  <-- U-Boot environment here
+ *   0x00200000 + 0x000A0000 : APPSBL (U-Boot binary)
+ *   0x002A0000 + 0x00040000 : ART
+ *   0x002E0000 + 0x00010000 : OEM
+ *   0x002F0000 + 0x00020000 : CRASH
+ *   0x00400000 - end        : OpenWrt FIT image (kernel+dtb)
+ */
+#undef CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_IS_IN_SPI_FLASH	1
+#undef CONFIG_ENV_OFFSET
+#define CONFIG_ENV_OFFSET		0x001F0000
+#undef CONFIG_ENV_RANGE
+#define CONFIG_ENV_RANGE		(64 * 1024)
+#else
 #define CONFIG_ENV_IS_IN_NAND		1
 #define CONFIG_FLASH_PROTECT
 #define CONFIG_CMD_FLASHWRITE
@@ -249,6 +273,11 @@ extern loff_t board_env_size;
 #define CONFIG_SYS_MEMTEST_END		CONFIG_SYS_MEMTEST_START + 0x100
 
 /* NSS firmware loaded using bootm */
+#ifdef CONFIG_SOFTBANK_AIR5_BOOT
+/* SoftBank Air5: boot OpenWrt FIT directly from SPI-NOR 0x00400000 */
+#define CONFIG_BOOTCOMMAND  "bootopenwrt"
+#define CONFIG_BOOTARGS     "console=ttyMSM0,115200n8 rootwait"
+#else
 #define CONFIG_BOOTCOMMAND  "bootipq"
 #define CONFIG_BOOTARGS "console=ttyMSM0,115200n8"
 #define QCA_ROOT_FS_PART_NAME "rootfs"

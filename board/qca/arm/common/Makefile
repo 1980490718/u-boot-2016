@@ -1,4 +1,5 @@
 obj-y := cmd_bootqca.o
+obj-$(CONFIG_SOFTBANK_AIR5_BOOT) += cmd_bootopenwrt.o
 obj-y += cmd_blowsecfuse.o
 obj-y += cmd_sec_auth.o
 ifndef CONFIG_CMD_DISABLE_EXECTZT

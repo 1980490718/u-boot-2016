@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SoftBank Air5 - 紧急恢复</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Upload card -->
+  <div class="main-card">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('fw',this)">OpenWrt 固件</div>
+      <div class="tab" onclick="switchTab('ub',this)">U-Boot</div>
+    </div>
+
+    <div class="tab-body">
+
+      <!-- Firmware tab -->
+      <div id="pane-fw" class="tab-pane active">
+        <div class="drop-zone" id="dz-fw">
+          <div class="drop-icon">📦</div>
+          <div class="drop-main">拖拽文件到此处，或 <strong>点击选择</strong></div>
+          <div class="drop-hint">.bin &nbsp;·&nbsp; .img &nbsp;·&nbsp; .ubi</div>
+          <input type="file" accept=".bin,.img,.ubi" onchange="onFile(this,'fw')">
+        </div>
+        <div class="file-badge" id="badge-fw">✓ &nbsp;<span id="badge-fw-text"></span></div>
+
+        <div class="progress-section" id="prog-fw">
+          <div class="progress-header">
+            <span id="prog-fw-label">正在写入 Flash…</span>
+            <span id="prog-fw-pct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="bar-fw"></div></div>
+          <div class="log-box" id="log-fw"></div>
+        </div>
+
+        <button class="submit-btn" id="btn-fw" disabled onclick="startFlash('fw')">
+          确认刷入固件
+        </button>
+
+        <div class="warn-box">
+          <strong>⚠ 注意事项</strong>
+          <ul>
+            <li>固件将写入 SPI-NOR 0x00400000，请确认文件正确</li>
+            <li>刷写过程中请勿断电，约需 30~60 秒</li>
+            <li>刷写成功后设备将自动重启</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- U-Boot tab -->
+      <div id="pane-ub" class="tab-pane">
+        <div class="drop-zone" id="dz-ub">
+          <div class="drop-icon">🔧</div>
+          <div class="drop-main">拖拽文件到此处，或 <strong>点击选择</strong></div>
+          <div class="drop-hint">.mbn &nbsp;·&nbsp; .elf &nbsp;·&nbsp; .bin</div>
+          <input type="file" accept=".mbn,.elf,.bin" onchange="onFile(this,'ub')">
+        </div>
+        <div class="file-badge" id="badge-ub">✓ &nbsp;<span id="badge-ub-text"></span></div>
+
+        <div class="progress-section" id="prog-ub">
+          <div class="progress-header">
+            <span id="prog-ub-label">正在写入 APPSBL…</span>
+            <span id="prog-ub-pct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="bar-ub"></div></div>
+          <div class="log-box" id="log-ub"></div>
+        </div>
+
+        <button class="submit-btn" id="btn-ub" disabled onclick="startFlash('ub')">
+          确认刷入 U-Boot
+        </button>
+
+        <div class="warn-box" style="border-color:rgba(255,77,109,.2);background:rgba(255,77,109,.05);color:#c47a7a">
+          <strong style="color:#ff4d6d">⚠ 高风险操作</strong>
+          <ul>
+            <li>U-Boot 写入 APPSBL 分区 (0x00200000)，操作不当将变砖</li>
+            <li>仅上传针对 Air5 (IPQ8072A) 编译的 .mbn 文件</li>
+            <li>错误的文件格式将被拒绝写入</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="ftr">
+    SoftBank Air5 Emergency Recovery &nbsp;·&nbsp;
+    <a href="https://github.com/1980490718/u-boot-2016" target="_blank">github.com/1980490718/u-boot-2016</a>
+    &nbsp;·&nbsp; U-Boot 2016.01
+  </div>
+</div>
+<script>
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+function onFile(input, id) {
+  if (!input.files || !input.files[0]) return;
+  var f = input.files[0];
+  var size = (f.size / 1024 / 1024).toFixed(2);
+  document.getElementById('badge-' + id + '-text').textContent = f.name + '  (' + size + ' MB)';
+  document.getElementById('badge-' + id).classList.add('show');
+  document.getElementById('btn-' + id).disabled = false;
+}
+
+var fwLogs = [
+  {t:200,  cls:'',   msg:'[httpd] POST /  firmware upload received'},
+  {t:500,  cls:'hi', msg:'[sf]    probing W25R512NWEIQ... ok (64MB, 4-byte addr)'},
+  {t:900,  cls:'',   msg:'[sf]    erase 0x00400000 size 0x03C00000...'},
+  {t:2200, cls:'',   msg:'[sf]    erase complete'},
+  {t:2500, cls:'hi', msg:'[sf]    write 0x00400000 ...'},
+  {t:4000, cls:'',   msg:'[sf]    verified: FIT magic ok'},
+  {t:4300, cls:'ok', msg:'[boot]  firmware written successfully'},
+  {t:4600, cls:'ok', msg:'[sys]   rebooting in 3s...'},
+];
+
+var ubLogs = [
+  {t:200,  cls:'',   msg:'[httpd] POST /  uboot upload received'},
+  {t:500,  cls:'hi', msg:'[chk]   ELF header detected, type: UBOOT ELF ✓'},
+  {t:800,  cls:'hi', msg:'[sf]    probing W25R512NWEIQ... ok'},
+  {t:1100, cls:'',   msg:'[sf]    erase 0x00200000 size 0x000A0000 (APPSBL)...'},
+  {t:2200, cls:'',   msg:'[sf]    erase complete'},
+  {t:2500, cls:'hi', msg:'[sf]    write 0x00200000 ...'},
+  {t:3200, cls:'ok', msg:'[boot]  U-Boot written to APPSBL partition'},
+  {t:3500, cls:'ok', msg:'[sys]   rebooting in 3s...'},
+];
+
+function startFlash(id) {
+  var btn = document.getElementById('btn-' + id);
+  var progSec = document.getElementById('prog-' + id);
+  var bar = document.getElementById('bar-' + id);
+  var pct = document.getElementById('prog-' + id + '-pct');
+  var logBox = document.getElementById('log-' + id);
+  var logs = id === 'fw' ? fwLogs : ubLogs;
+  var total = 5000;
+
+  btn.disabled = true;
+  btn.classList.add('flashing');
+  btn.textContent = '正在刷写…';
+  progSec.classList.add('show');
+  logBox.innerHTML = '';
+
+  var start = Date.now();
+
+  function tick() {
+    var elapsed = Date.now() - start;
+    var p = Math.min((elapsed / total) * 100, 99);
+    bar.style.width = p.toFixed(1) + '%';
+    pct.textContent = Math.floor(p) + '%';
+    if (elapsed < total) requestAnimationFrame(tick);
+    else {
+      bar.style.width = '100%';
+      pct.textContent = '100%';
+      btn.classList.remove('flashing');
+      btn.classList.add('done');
+      btn.textContent = '✓ 刷写完成，设备重启中…';
+    }
+  }
+  requestAnimationFrame(tick);
+
+  logs.forEach(function(entry) {
+    setTimeout(function() {
+      var line = document.createElement('div');
+      line.className = 'log-line' + (entry.cls ? ' ' + entry.cls : '');
+      line.textContent = entry.msg;
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+    }, entry.t);
+  });
+}
+
+// Drag-over highlight
+['dz-fw','dz-ub'].forEach(function(id) {
+  var el = document.getElementById(id);
+  el.addEventListener('dragover', function(e) { e.preventDefault(); el.classList.add('over'); });
+  el.addEventListener('dragleave', function() { el.classList.remove('over'); });
+  el.addEventListener('drop', function(e) {
+    e.preventDefault(); el.classList.remove('over');
+    var fi = el.querySelector('input[type=file]');
+    if (fi && e.dataTransfer.files.length) {
+      // Simulate file selection for demo
+      var suffix = id === 'dz-fw' ? 'fw' : 'ub';
+      var fname = e.dataTransfer.files[0].name;
+      var fsize = (e.dataTransfer.files[0].size/1024/1024).toFixed(2);
+      document.getElementById('badge-'+suffix+'-text').textContent = fname + '  (' + fsize + ' MB)';
+      document.getElementById('badge-'+suffix).classList.add('show');
+      document.getElementById('btn-'+suffix).disabled = false;
+    }
+  });
+});
+);
+}
+</script>
+</body>
+</html>

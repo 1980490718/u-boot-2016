@@ -59,3 +59,26 @@ config IPQ807X_XGLINK_5GCPE
 	default n
 	help
 	  Enable support for IPQ807x XGLINK 5GCPE board
+	  
+config IPQ807X_SOFTBANK_AIR5
+	bool "IPQ807x SoftBank Air5 board support"
+	default n
+	help
+	  Enable support for SoftBank Air5 (IPQ8072A) board.
+	  Uses W25R512NWEIQ 64MB SPI-NOR flash.
+
+config SOFTBANK_AIR5_BOOT
+	bool "SoftBank Air5 direct OpenWrt boot"
+	depends on IPQ807X_SOFTBANK_AIR5
+	default n
+	help
+	  Enable Air5-specific boot command (bootopenwrt) and
+	  web failsafe recovery via built-in httpd.
+	  Replaces bootipq with direct FIT image boot from 0x00400000.
+
+config DISABLE_SIGNED_BOOT
+	bool "Disable Qualcomm signed boot verification"
+	default n
+	help
+	  Skip SCM-based signature verification on APPSBL load.
+	  Required for custom U-Boot on devices without secure boot fuses blown.

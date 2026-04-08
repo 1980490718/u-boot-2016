@@ -154,7 +154,7 @@ jobs:
           export PYTHON=$(which python)
           echo "Using Python: $PYTHON"
           $PYTHON --version
-          IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq806x" "ipq807x" "ipq9574")
+          IPQ_TYPES=("ipq807x")
           for ipq_type in "${IPQ_TYPES[@]}"; do
             echo "================================================"
             echo "Building U-Boot for IPQ type: $ipq_type"

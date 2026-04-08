@@ -232,6 +232,20 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 
 static int do_firmware_upgrade(const ulong size) {
 	char buf[576];
+#ifdef CONFIG_SOFTBANK_AIR5_BOOT
+	/*
+	 * SoftBank Air5: no SMEM available (X55 removed), use fixed SPI-NOR offset.
+	 * FIT image always lives at 0x00400000, size up to ~60MB.
+	 * Erase region = from 0x00400000 to end of flash (0x04000000 - 0x00400000).
+	 */
+	print_upgrade_warning("FIRMWARE (Air5 SPI-NOR)");
+	sprintf(buf,
+		"sf probe && "
+		"sf erase 0x00400000 0x03C00000 && "
+		"sf write 0x%lx 0x00400000 0x%lx",
+		(unsigned long)UPLOAD_ADDR, size);
+	return execute_command(buf);
+#else
 	switch (qca_smem_flash_info.flash_type) {
 		case FLASH_TYPE_MMC:
 		case FLASH_TYPE_NOR_PLUS_EMMC: {
@@ -274,6 +288,7 @@ static int do_firmware_upgrade(const ulong size) {
 		}
 	}
 	return execute_command(buf);
+#endif /* CONFIG_SOFTBANK_AIR5_BOOT */
 }
 
 static int do_uboot_upgrade(const ulong size) {
@@ -283,6 +298,18 @@ static int do_uboot_upgrade(const ulong size) {
 		return -1;
 	}
 	print_upgrade_warning("U-BOOT");
+#ifdef CONFIG_SOFTBANK_AIR5_BOOT
+	/*
+	 * SoftBank Air5: write to APPSBL partition at 0x00200000 (size 0xA0000).
+	 * smeminfo: APPSBL = 0x00200000 + 0x000A0000
+	 */
+	sprintf(buf,
+		"sf probe && "
+		"sf erase 0x00200000 0x000A0000 && "
+		"sf write 0x%lx 0x00200000 0x%lx",
+		(unsigned long)UPLOAD_ADDR, size);
+	return execute_command(buf);
+#else
 	switch (qca_smem_flash_info.flash_type) {
 		case FLASH_TYPE_MMC:
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR);
@@ -299,6 +326,7 @@ static int do_uboot_upgrade(const ulong size) {
 			printf("\n* Unsupported flash type for U-Boot *\n");
 			return -1;
 	}
+#endif /* CONFIG_SOFTBANK_AIR5_BOOT */	
 	return execute_command(buf);
 }
 

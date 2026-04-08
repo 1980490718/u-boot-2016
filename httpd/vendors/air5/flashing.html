@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>正在刷写...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);min-height:100vh;display:flex;justify-content:center;align-items:center;color:#e0e0e0}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:3rem 2.5rem;text-align:center;width:90%;max-width:420px;backdrop-filter:blur(10px)}
+h2{font-size:1.4rem;color:#7eb8f7;margin-bottom:1rem;letter-spacing:1px}
+p{font-size:.88rem;color:#8899bb;line-height:1.7;margin-bottom:1.5rem}
+.spinner{width:48px;height:48px;border:4px solid rgba(52,152,219,.2);border-top:4px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.warn{font-size:.78rem;color:#ffd580;background:rgba(255,165,0,.08);border:1px solid rgba(255,165,0,.2);border-radius:8px;padding:.8rem 1rem}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="spinner"></div>
+  <h2>正在写入 Flash...</h2>
+  <p>固件正在写入 SPI-NOR，请耐心等待。<br>此过程约需 30~60 秒。</p>
+  <div class="warn">⚠ 请勿断开电源或网线，写入完成后设备将自动重启</div>
+</div>
+</body>
+</html>
