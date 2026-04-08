@@ -177,6 +177,7 @@ extern loff_t board_env_size;
 #define CONFIG_ENV_RANGE		(64 * 1024)
 #else
 #define CONFIG_ENV_IS_IN_NAND		1
+#endif
 #define CONFIG_FLASH_PROTECT
 #define CONFIG_CMD_FLASHWRITE
 
