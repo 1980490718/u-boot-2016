@@ -281,6 +281,7 @@ extern loff_t board_env_size;
 #else
 #define CONFIG_BOOTCOMMAND  "bootipq"
 #define CONFIG_BOOTARGS "console=ttyMSM0,115200n8"
+#endif
 #define QCA_ROOT_FS_PART_NAME "rootfs"
 
 #define CONFIG_BOOTDELAY	2
