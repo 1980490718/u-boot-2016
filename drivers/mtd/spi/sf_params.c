@@ -151,6 +151,7 @@ const struct spi_flash_params spi_flash_params_table[] = {
 	{"W25Q64DW",	   0xef6017, 0x0,	64 * 1024,   128, RD_FULL,	    WR_QPP | SECT_4K},
 	{"W25Q128FW",	   0xef6018, 0x0,	64 * 1024,   256, RD_FULL,	    WR_QPP | SECT_4K},
 	{"W25Q256JW",	   0xef6019, 0x0,	64 * 1024,   512, RD_FULL,	    WR_QPP | SECT_4K},
+	{"W25Q512NW",	   0xef6020, 0x0,	64 * 1024,	1024, RD_FULL,	    WR_QPP | SECT_4K},
 #endif
 #else	/* CONFIG_IPQ_TINY_SPI_NOR: Add only 16M flash with Minimum Sector Size of 4K */
 	{"GD25LB128D",	   0xc86018, 0x0,	 4 * 1024,   4096, RD_NORM,		     SECT_4K},
