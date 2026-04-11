@@ -8,6 +8,7 @@
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+from __future__ import print_function
 # GNU General Public License for more details.
 #
 
@@ -102,4 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
