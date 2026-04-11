@@ -9,6 +9,42 @@ export STAGING_DIR=$(realpath .)/../staging_dir/
 export HOSTLDFLAGS=-L$STAGING_DIR/usr/lib\ -znow\ -zrelro\ -pie
 export TARGETCC=arm-openwrt-linux-gcc
 
+# Function to detect and select appropriate Python version
+detect_python() {
+	# Check for specific Python 3 versions first
+	for cmd in python3.11 python3.10 python3.9 python3.8 python3.7 python3.6 python3.5 python3; do
+		if command -v $cmd &> /dev/null; then
+			version=$($cmd -c "import sys; print(sys.version_info.major)")
+			if [ "$version" = "3" ]; then
+				echo "$cmd"
+				return
+			fi
+		fi
+	done
+	# Check for Python 2.7 specifically
+	if command -v python2.7 &> /dev/null; then
+		echo "python2.7"
+		return
+	fi
+	# Check for general python command
+	if command -v python &> /dev/null; then
+		version=$(python -c "import sys; print(sys.version_info.major)")
+		if [ "$version" = "3" ]; then
+			echo "python"
+		else
+			echo "python2.7"
+		fi
+	else
+		echo "Error: No Python interpreter found" >&2
+		exit 1
+	fi
+}
+
+# Store detected Python command
+PYTHON_CMD=$(detect_python)
+PYTHON_VERSION=$($PYTHON_CMD -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || echo "unknown")
+echo "Using Python command: $PYTHON_CMD (version $PYTHON_VERSION)"
+
 # Create bin directory if it doesn't exist
 ensure_bin_directory() {
 	if [ ! -d "bin" ]; then
@@ -276,7 +312,13 @@ case $IPQ_TYPE in
 	ipq5018|ipq807x)
 		echo "IPQ type $IPQ_TYPE uses MBN v3"
 		${CROSS_COMPILE}strip u-boot -o u-boot.strip
-		python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 3
+		if $PYTHON_CMD -c "import sys; sys.exit(0 if sys.version_info.major == 3 else 1)" 2>/dev/null; then
+			# Use Python 3 version if available
+			$PYTHON_CMD tools/elftombn_py3.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 3
+		else
+			# Fall back to Python 2.7 version
+			$PYTHON_CMD tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 3
+		fi
 		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
 		clean_elftombn_intermediate_files "$CONFIG_NAME"
 		;;
@@ -287,7 +329,13 @@ case $IPQ_TYPE in
 			echo "IPQ type $IPQ_TYPE uses MBN v6 with SHA-384"
 		fi
 		${CROSS_COMPILE}strip u-boot -o u-boot.strip
-		python2.7 tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6 -a $IPQ_TYPE
+		if $PYTHON_CMD -c "import sys; sys.exit(0 if sys.version_info.major == 3 else 1)" 2>/dev/null; then
+			# Use Python 3 version if available
+			$PYTHON_CMD tools/elftombn_py3.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6 -a $IPQ_TYPE
+		else
+			# Fall back to Python 2.7 version
+			$PYTHON_CMD tools/elftombn.py -f ./u-boot.strip -o "bin/openwrt-${CONFIG_NAME}-u-boot.mbn" -v 6 -a $IPQ_TYPE
+		fi
 		OUTPUT_FILE="bin/openwrt-${CONFIG_NAME}-u-boot.mbn"
 		clean_elftombn_intermediate_files "$CONFIG_NAME"
 		;;

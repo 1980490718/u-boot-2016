@@ -20,6 +20,10 @@
 *.bin
 *.patch
 *.cfgtmp
+__pycache__/
+*.pyc
+*.pyo
+
 
 # host programs on Cygwin
 *.exe
