@@ -12,18 +12,18 @@
 
 ## 系统要求
 
-- Ubuntu 20.04 LTS (推荐)
+- Ubuntu 20.04 LTS 或更高版本
 
 ## 依赖要求
 
-首次构建前，请安装以下依赖（注意：必须使用Python 2.7，因为u-boot-2016自带的脚本仅兼容python2.7运行elftombn.py）：
+首次构建前，请安装以下依赖(Python3/2.7 自适应，默认推荐安装Python3)
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python2.7 python2.7-dev python2.7-distutils wget cpio flex bison bc rsync nodejs npm gzip zopfli
+sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python3 python3-dev python3-distutils wget cpio flex bison bc rsync nodejs npm gzip zopfli
 ```
 
-此外，如果需要使用makefsdatac工具处理Web界面文件，还需要安装以下Node.js模块：
+此外，如果需要使用makefsdatac工具处理Web界面文件，还推荐安装以下Node.js模块：
 
 ```bash
 npm install -g html-minifier-terser clean-css terser
