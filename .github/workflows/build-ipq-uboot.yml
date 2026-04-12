@@ -1,243 +1,183 @@
-# This workflow builds IPQ U-Boot with Python 2.7
-# Updated to address Node.js 20 deprecation warnings and improve release display
-
-name: Build IPQ U-Boot with Python 2.7
+name: Build U-Boot for IPQ Devices
 
 on:
   push:
-    branches: ["main", "master"]
   pull_request:
-    branches: ["main", "master"]
   workflow_dispatch:
-
-env:
-  # Force use of Node.js 24 to address deprecation warnings
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-  # Source code configuration
-  UBOOT_REPO_PATH: u-boot-2016
-
-  # Toolchain configuration
-  TOOLCHAIN_REPO_URL: https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git
-  TOOLCHAIN_BASE_DIR: /home/runner/work/staging_dir
-  TOOLCHAIN_SUBDIR: toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
-  TOOLCHAIN_PATH: /home/runner/work/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin
-
-  # Python configuration
-  MINICONDA_URL: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-  PYTHON_ENV_NAME: py27
-  PYTHON_VERSION: 2.7
-  PIP_INSTALL_URL: https://bootstrap.pypa.io/pip/2.7/get-pip.py
-
-  # Time configuration
-  TIMEZONE: Asia/Shanghai
-  TIMESTAMP_FORMAT: "%Y%m%d-%H%M%S"
-  RELEASE_TAG_FORMAT: "%Y.%m.%d"
-
-  # Build configuration
-  ARCH: arm
-  CROSS_COMPILE: arm-openwrt-linux-
-
-permissions:
-  contents: write
+    inputs:
+      ipq_type:
+        description: 'Please select the IPQ type(s) to build. for example: ipq6018,ipq807x,all = all types.'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ipq40xx
+          - ipq5018
+          - ipq5332
+          - ipq6018
+          - ipq806x
+          - ipq807x
+          - ipq9574
 
 jobs:
-  build-ipq-uboot:
+  build:
     runs-on: ubuntu-latest
 
+    env:
+      TZ: Asia/Shanghai
+      NODE_VERSION: '24'
+      SHOULD_RUN_STEP: "github.event_name != 'workflow_dispatch' || inputs.ipq_type == 'all' || inputs.ipq_type == matrix.ipq_type"
+      TOOLCHAIN: "https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git"
+      DEPENDENCIES: "build-essential libncurses5-dev gawk git gettext libssl-dev python3 wget cpio flex bison bc rsync zopfli device-tree-compiler"
+
+    strategy:
+      matrix:
+        ipq_type: ['ipq40xx', 'ipq5018', 'ipq5332', 'ipq6018', 'ipq806x', 'ipq807x', 'ipq9574']
+      fail-fast: false
+
+    if: github.event_name != 'workflow_dispatch' || inputs.ipq_type == 'all'
+
     steps:
-      # 1. Checkout source code
-      - name: Checkout U-Boot repository
-        uses: actions/checkout@v4.2.2
-        with:
-          path: ${{ env.UBOOT_REPO_PATH }}
-          fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # 2. Install system dependencies
-      - name: Install system dependencies
+      - name: Show current timezone and time
         run: |
+          echo "Current timezone: $(timedatectl show -p Timezone --value)"
+          echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ${{ env.DEPENDENCIES }}
+
+      - name: Install Node.js packages(minifier, css, js, terser) for Web interface compression
+        run: sudo npm install -g html-minifier-terser clean-css terser
+
+      - name: Clone Toolchain to staging_dir
+        run: |
+          git clone --depth=1 ${{ env.TOOLCHAIN }} ../staging_dir
+          echo "Clone Toolchain to staging_dir"
+          ls -la ../staging_dir/
+          if [ -d "../staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin" ]; then
+            echo "Toolchain bin path verified"
+          else
+            echo "Warning: Expected path not found"
+            find ../staging_dir -name "*gcc*" | head -10
+          fi
+
+      - name: Build ${{ matrix.ipq_type }} U-Boot
+        if: |
+          ${{ env.SHOULD_RUN_STEP }}
+        run: ./build.sh ${{ matrix.ipq_type }}
+
+      - name: Upload compiled artifacts (bin directory)
+        if: |
+          ${{ env.SHOULD_RUN_STEP }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: u-boot-${{ matrix.ipq_type }}
+          path: bin/
+          retention-days: 30
+
+      - name: Show bin directory content
+        if: |
+          ${{ env.SHOULD_RUN_STEP }}
+        run: |
+          echo " ${{ matrix.ipq_type }} Build completed!"
+          ls -la bin/ || echo "bin directory is empty"
+
+  release:
+    name: Create Release
+    needs: build
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Shanghai
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI and jq
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends git build-essential flex bison m4 libssl-dev libncurses5-dev libncursesw5-dev zlib1g-dev \
-            libc6-dev curl wget lsb-release device-tree-compiler libfdt-dev gzip gh jq nodejs npm zopfli
+          sudo apt-get install -y gh jq
 
-      # 3. Install Node.js compression tools
-      - name: Install Node.js compression tools
-        working-directory: ${{ github.workspace }}
-        run: |
-          npm install html-minifier-terser clean-css terser
-          ln -sf node_modules/html-minifier-terser node_modules/html-minifier
-          echo "NODE_PATH=${{ github.workspace }}/node_modules" >> $GITHUB_ENV
-          node -e "try { require('html-minifier-terser'); console.log('√ html-minifier-terser available'); } catch(e) { console.log('× html-minifier-terser not available:', e.message); }"
-          node -e "try { require('clean-css'); console.log('√ clean-css available'); } catch(e) { console.log('× clean-css not available:', e.message); }"
-          node -e "try { require('terser'); console.log('√ terser available'); } catch(e) { console.log('× terser not available:', e.message); }"
-
-      # 4. Install Miniconda and Python 2.7
-      - name: Install Miniconda and Python 2.7
-        run: |
-          wget ${{ env.MINICONDA_URL }} -O miniconda.sh
-          bash miniconda.sh -b -p $HOME/miniconda
-          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-          $HOME/miniconda/bin/conda create -n ${{ env.PYTHON_ENV_NAME }} python=${{ env.PYTHON_VERSION }} -y
-          # Activate environment and install pip
-          source $HOME/miniconda/bin/activate ${{ env.PYTHON_ENV_NAME }}
-          # Download and install pip
-          wget ${{ env.PIP_INSTALL_URL }} -O get-pip.py
-          python get-pip.py
-          rm get-pip.py
-          # Verify installation
-          echo "Python version:"
-          python --version
-          echo "Pip version:"
-          pip --version
-          # Add Python path to GITHUB_PATH
-          echo "$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin" >> $GITHUB_PATH
-
-      # 5. Clone toolchain repository
-      - name: Clone toolchain repository
-        run: |
-          mkdir -p ${{ env.TOOLCHAIN_BASE_DIR }}
-          cd ${{ env.TOOLCHAIN_BASE_DIR }}/..
-          git clone ${{ env.TOOLCHAIN_REPO_URL }} staging_dir
-
-      # 6. Set up toolchain environment
-      - name: Set up toolchain environment
-        run: |
-          echo "${{ env.TOOLCHAIN_PATH }}" >> $GITHUB_PATH
-          echo "CROSS_COMPILE=${{ env.CROSS_COMPILE }}" >> $GITHUB_ENV
-          echo "ARCH=${{ env.ARCH }}" >> $GITHUB_ENV
-          ${{ env.TOOLCHAIN_PATH }}/${{ env.CROSS_COMPILE }}gcc --version
-
-      # 7. Set timezone and prepare build
-      - name: Set timezone and prepare build
-        id: setup
-        run: |
-          cd ${{ env.UBOOT_REPO_PATH }}
-          sudo ln -sf /usr/share/zoneinfo/${{ env.TIMEZONE }} /etc/localtime
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          echo "-g${COMMIT_HASH}" > .scmversion
-          TODAY_ISO=$(TZ=${{ env.TIMEZONE }} date +"%Y-%m-%d")
-          BUILD_DATE=$(TZ=${{ env.TIMEZONE }} date +"${{ env.RELEASE_TAG_FORMAT }}")
-          echo "TODAY_ISO=${TODAY_ISO}" >> $GITHUB_ENV
-          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
-          echo "COMMIT_HASH=${COMMIT_HASH}" >> $GITHUB_ENV
-
-      # 8. Get commit information for today
-      - name: Get commit information
-        id: commits
-        working-directory: ${{ env.UBOOT_REPO_PATH }}
-        run: |
-          COMMITS=$(git log --since="${{ env.TODAY_ISO }} 00:00:00" \
-            --until="${{ env.TODAY_ISO }} 23:59:59" \
-            --pretty="- ****%h****: %s - %an" 2>/dev/null || echo "No commits today")
-          DETAILED_LOG=$(git log --since="${{ env.TODAY_ISO }} 00:00:00" \
-            --until="${{ env.TODAY_ISO }} 23:59:59" \
-            --pretty="#### Commit: %h%n****Author:**** %an <%ae>%n****Date:**** %ai%n****Subject:**** %s%n**Details:**%n%n%b%n---%n" \
-            2>/dev/null || echo "No commits found today")
-          CHANGED_FILES=$(git log --since="${{ env.TODAY_ISO }} 00:00:00" \
-            --until="${{ env.TODAY_ISO }} 23:59:59" \
-            --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || echo "No file changes detected")
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "detailed_log<<EOF" >> $GITHUB_OUTPUT
-          echo "$DETAILED_LOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      # 9. Build U-Boot
-      - name: Build U-Boot for all IPQ platforms
-        run: |
-          cd ${{ env.UBOOT_REPO_PATH }}
-          export PATH="$HOME/miniconda/envs/${{ env.PYTHON_ENV_NAME }}/bin:$PATH"
-          export PYTHON=$(which python)
-          echo "Using Python: $PYTHON"
-          $PYTHON --version
-          IPQ_TYPES=("ipq40xx" "ipq5018" "ipq5332" "ipq6018" "ipq806x" "ipq807x" "ipq9574")
-          for ipq_type in "${IPQ_TYPES[@]}"; do
-            echo "================================================"
-            echo "Building U-Boot for IPQ type: $ipq_type"
-            echo "================================================"
-            ./build.sh "$ipq_type"
-          done
-
-      # 10. Package U-Boot files
-      - name: Package U-Boot binaries
-        id: package
-        run: |
-          cd ${{ env.UBOOT_REPO_PATH }}/bin
-          TIMESTAMP=$(date +"${{ env.TIMESTAMP_FORMAT }}")
-          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-          for file in openwrt-*-u-boot.*; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file" | cut -d. -f1)
-              zip -9 "${filename}-${TIMESTAMP}.zip" "$file"
-            fi
-          done
-          zip -9 "all-ipq-uboot-${TIMESTAMP}.zip" openwrt-*-u-boot.*
-          ls -la *.zip
-
-      # 11. Upload build artifacts
-      - name: Upload U-Boot binaries as artifacts
-        uses: actions/upload-artifact@v4.6.2
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: uboot-binaries-${{ env.TIMESTAMP }}
-          path: ${{ env.UBOOT_REPO_PATH }}/bin/*.zip
-          if-no-files-found: error
-          retention-days: 90
-          compression-level: 0
-          overwrite: true
+          path: artifacts
+          pattern: u-boot-*
+          merge-multiple: true
 
-      # 12. Clean up today's releases and tags
-      - name: Delete ALL releases and tags created today
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      - name: Confirm current timezone is Asia/Shanghai
+        run: |
+          echo "Current timezone: $(timedatectl show -p Timezone --value)"
+          echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+
+      - name: Set TODAY and BUILD_TIME environment variables
+        run: |
+          echo "TODAY=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(date '+%H:%M:%S')" >> $GITHUB_ENV
+          echo "FULL_BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+
+      - name: Check and delete all published content on Releases page
+        run: |
+          echo "Check Releases page today (${{ env.TODAY }})..."
+          echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+
+          # Calculate today's 00:00:00 and 23:59:59 timestamps (UTC)
+          TODAY_START="${{ env.TODAY }} 00:00:00"
+          TODAY_END="${{ env.TODAY }} 23:59:59"
+          echo "Today's time range: $TODAY_START - $TODAY_END"
+
+          # View all releases for debugging
+          echo "All Releases list:"
+          gh release list --limit 10
+
+          # Get JSON formatted releases data
+          RELEASE_JSON=$(gh release list --limit 100 --json tagName,createdAt)
+          echo "JSON output (first 1000 characters):"
+          echo "$RELEASE_JSON" | head -c 1000
+
+          # Filter today's releases between today's start and end timestamps
+          echo "Filter today's Releases:"
+          # Use startswith to match date
+          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" '.[] | select(.createdAt | startswith($date)) | .tagName')
+          echo "Today's Tags: $TODAY_TAGS"
+
+          if [ -n "$TODAY_TAGS" ]; then
+            echo "Found published Releases today, deleting all..."
+            echo "$TODAY_TAGS"
+            echo "$TODAY_TAGS" | xargs -I {} gh release delete {} --yes --cleanup-tag
+            echo "All today's Releases deleted completed!"
+          else
+            echo "Releases page today is empty"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd ${{ env.UBOOT_REPO_PATH }}
-          TODAY="${{ env.TODAY_ISO }}"
-          NEW_TAG="v${{ env.BUILD_DATE }}"
-          echo "Searching for releases created on $TODAY..."
-          # Use gh CLI to directly get releases list (pure API, no git dependency)
-          gh release list --limit 100 --json tagName,createdAt | \
-            jq -r --arg date "$TODAY" '.[] | select(.createdAt | startswith($date)) | .tagName' | \
-            while read tag; do
-              if [ -n "$tag" ]; then
-                echo "Deleting release and tag: $tag"
-                gh release delete "$tag" --cleanup-tag --yes 2>/dev/null || \
-                gh release delete "$tag" --yes 2>/dev/null
-              fi
-            done
-          # Delete remote tag (no need for local git repo)
-          echo "Checking for leftover tag: $NEW_TAG"
-          if gh release view "$NEW_TAG" 2>/dev/null; then
-            echo "Deleting leftover tag via API"
-            gh release delete "$NEW_TAG" --cleanup-tag --yes 2>/dev/null || true
-          fi
-          echo "√ Cleanup completed"
 
-      # 13. Create GitHub Release
-      - name: Create GitHub Release
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        uses: softprops/action-gh-release@v2.2.1
+      - name: Create new GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: v${{ env.BUILD_DATE }}
-          name: "IPQ U-Boot Build ${{ env.BUILD_DATE }}"
+          tag_name: v${{ env.TODAY }}
+          name: v${{ env.TODAY }}
           body: |
-            ### Daily Commits
-            ${{ steps.commits.outputs.detailed_log }}
-            ##### Changed Files
-            ```
-            ${{ steps.commits.outputs.changed_files }}
-            ```
-            ##### Build Information
-            Actions Run ID: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          files: |
-            ${{ env.UBOOT_REPO_PATH }}/bin/*.zip
+            Compiled U-Boot IPQ platforms:
+            Build Time：${{ env.FULL_BUILD_TIME }} ${{ env.TZ }}
+            Types：ipq40xx、ipq5018、ipq5332、ipq6018、ipq806x、ipq807x、ipq9574
+          files: artifacts/*
           draft: false
           prerelease: false
-          fail_on_unmatched_files: true
-          generate_release_notes: false
-          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
