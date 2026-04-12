@@ -80,6 +80,8 @@ endif
 ifneq ($(CONFIG_IPQ_TINY),y)
 ifeq ($(CONFIG_IPQ5018_MR3000D_CI),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-mr3000d-ci.dtb
+else ifeq ($(CONFIG_IPQ5018_GL_B3000),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-gl-b3000.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \
