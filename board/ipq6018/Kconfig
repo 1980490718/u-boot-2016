@@ -88,6 +88,12 @@ config IPQ6018_PHILIPS_LY1800
 	help
 		Enable support for IPQ6018_PHILIPS_LY1800 board
 
+config IPQ6018_GL_AXT1800
+	bool "IPQ6018 GL AXT1800 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_GL_AXT1800 board
+
 config 256MB_RAM
 	bool "Board has only 256MB RAM"
 	default n
