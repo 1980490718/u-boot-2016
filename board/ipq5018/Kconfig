@@ -73,4 +73,11 @@ config IPQ5018_MR3000D_CI
 	default n
 	help
 		Enable support for ipq5018 mr3000d ci support
+
+config IPQ5018_GL_B3000
+	bool "For ipq5018 gl b3000 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 gl b3000 support
 endif
