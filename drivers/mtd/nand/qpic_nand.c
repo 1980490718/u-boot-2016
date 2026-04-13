@@ -431,8 +431,8 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 	},
 	{
 		.id = { 0xA1, 0xA5 },
-		.page_size = 2176,
-		.erase_blk_size = 0x00022000,
+		.page_size = 2048,
+		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
 		.no_of_blocks = 1024,
 		.spare_size = 128,
@@ -447,8 +447,8 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 	},
 	{
 		.id = { 0xA1, 0xB6 },
-		.page_size = 2176,
-		.erase_blk_size = 0x00022000,
+		.page_size = 2048,
+		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
 		.no_of_blocks = 2048,
 		.spare_size = 128,
@@ -463,8 +463,8 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 	},
 	{
 		.id = { 0xA1, 0xE4 },// 3.3V 1Gb Fudan Micro SPI NAND
-		.page_size = 2112,
-		.erase_blk_size = 0x00021000,
+		.page_size = 2048,
+		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
 		.no_of_blocks = 1024,
 		.spare_size = 64,
