@@ -101,4 +101,11 @@ config IPQ5018_PZ_L8
 	default n
 	help
 		Enable support for ipq5018 pz l8 support
+
+config IPQ5018_CMCC_RAX3000Q
+	bool "For ipq5018 cmcc rax3000q support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 cmcc rax3000q support
 endif
