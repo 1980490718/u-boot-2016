@@ -87,6 +87,8 @@ dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-cucc-vs010.dtb
 else ifeq ($(CONFIG_IPQ5018_RUIJIE_MA3063),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-ruijie-ma3063-mp03.5-c1.dtb
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-ruijie-ma3063-mp02.1.dtb
+else ifeq ($(CONFIG_IPQ5018_PZ_L8),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-pz-l8.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \

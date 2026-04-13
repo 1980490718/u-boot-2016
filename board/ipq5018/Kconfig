@@ -94,4 +94,11 @@ config IPQ5018_RUIJIE_MA3063
 	default n
 	help
 		Enable support for ipq5018 ruijie ma3063 support
+
+config IPQ5018_PZ_L8
+	bool "For ipq5018 pz l8 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 pz l8 support
 endif
