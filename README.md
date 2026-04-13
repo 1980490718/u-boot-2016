@@ -56,6 +56,7 @@ cd u-boot-2016
 | IPQ40xx | ipq40xx_p2w_r619ac          | P2W R619AC                        | 0x8010006  |    ✓     | `./build.sh ipq40xx_p2w_r619ac`          |
 | IPQ40xx | ipq40xx_thinkplus_fogpod800 | ThinkPlus FogPod800               | 0x8010100  |    ✓     | `./build.sh ipq40xx_thinkplus_fogpod800` |
 | IPQ40xx | ipq40xx                     | 公版基础                          |    ---     |    ✓     | `./build.sh ipq40xx`                     |
+| IPQ5018 | ipq5018_cucc_vs010          | 中国联通 CUCC VS010               | 0x8040000  |    ×     | `./build.sh ipq5018_cucc_vs010`          |
 | IPQ5018 | ipq5018_gl_b3000            | GLINET GL-B3000                   | 0x8040804  |    ×     | `./build.sh ipq5018_gl_b3000`            |
 | IPQ5018 | ipq5018_mr3000d_ci          | CMCC MR3000D-CI                   | 0x8040802  |    ✓     | `./build.sh ipq5018_mr3000d_ci`          |
 | IPQ5018 | ipq5018_tiny                | 公版简                            |    ---     |    ✓     | `./build.sh ipq5018_tiny`                |
