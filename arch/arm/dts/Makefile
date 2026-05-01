@@ -91,6 +91,8 @@ else ifeq ($(CONFIG_IPQ5018_PZ_L8),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-pz-l8.dtb
 else ifeq ($(CONFIG_IPQ5018_CMCC_RAX3000Q),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-cmcc-rax3000q.dtb
+else ifeq ($(CONFIG_IPQ5018_SKSPRUCE_AP8330C),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-skspruce-ap8330c.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \
