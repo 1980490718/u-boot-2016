@@ -108,4 +108,10 @@ config IPQ5018_CMCC_RAX3000Q
 	default n
 	help
 		Enable support for ipq5018 cmcc rax3000q support
+
+config IPQ5018_SKSPRUCE_AP8330C
+	bool "For ipq5018 skspruce ap8330c support"
+	default n
+	help
+		Enable support for ipq5018 skspruce ap8330c support
 endif

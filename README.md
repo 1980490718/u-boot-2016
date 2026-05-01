@@ -62,6 +62,7 @@ cd u-boot-2016
 | IPQ5018 | ipq5018_mr3000d_ci          | CMCC MR3000D-CI                   |       0x8040802        |    ✓     | `./build.sh ipq5018_mr3000d_ci`          |
 | IPQ5018 | ipq5018_pz_l8               | CMCC PZ-L8                        |       0x8040000        |    ×     | `./build.sh ipq5018_pz_l8`               |
 | IPQ5018 | ipq5018_ruijie_ma3063       | 锐捷 RG-MA3063                    | 0x8040000<br>0x8040004 |    ×     | `./build.sh ipq5018_ruijie_ma3063`       |
+| IPQ5018 | ipq5018_skspruce_ap8330c    | 西加云杉 SKSPRUCE AP8330C         |       0x8040202        |    ×     | `./build.sh ipq5018_skspruce_ap8330c`    |
 | IPQ5018 | ipq5018_tiny                | 公版简                            |          ---           |    ✓     | `./build.sh ipq5018_tiny`                |
 | IPQ5018 | ipq5018_tiny_debug          | 公版调试简                        |          ---           |    ✓     | `./build.sh ipq5018_tiny_debug`          |
 | IPQ5018 | ipq5018                     | 公版基础                          |          ---           |    ✓     | `./build.sh ipq5018`                     |
