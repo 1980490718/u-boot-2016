@@ -32,6 +32,12 @@ config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
 
+config IPQ6018_DPTECH_AP3000_2C
+	bool "IPQ6018 DPTECH AP3000-2C Board Support"
+	default n
+	help
+		Enable support for IPQ6018 DPTECH AP3000-2C board
+
 config IPQ6018_M2
 	bool "IPQ6018 M2 Board"
 	select 256MB_RAM
