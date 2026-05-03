@@ -77,6 +77,7 @@ cd u-boot-2016
 | IPQ6018 | ipq6018_360v6               | 奇虎360v6                         |       0x8030200        |    ✓     | `./build.sh ipq6018_360v6`               |
 | IPQ6018 | ipq6018_ax1800pro           | 京东云 AX1800Pro                  |       0x8030200        |    ✓     | `./build.sh ipq6018_ax1800pro`           |
 | IPQ6018 | ipq6018_ax5_jdcloud         | 京东云 AX5                        |       0x8030200        |    ✓     | `./build.sh ipq6018_ax5_jdcloud`         |
+| IPQ6018 | ipq6018_dptech_ap3000_2c    | 迪普 DPtech AP3000-2C             |       0x8030200        |    ✓     | `./build.sh ipq6018_dptech_ap3000_2c`    |
 | IPQ6018 | ipq6018_glinet_axt1800      | GLINET<br>GL-AXT1800<br>GL-AX1800 |       0x8030200        |    ✓     | `./build.sh ipq6018_glinet_axt1800`      |
 | IPQ6018 | ipq6018_philips_ly1800      | 飞利浦 LY1800<br>双渔 Y6010       |       0x8030000        |    ✓     | `./build.sh ipq6018_philips_ly1800`      |
 | IPQ6018 | ipq6018_jdcloud_ax6600      | 京东云 AX6600                     |       0x8030201        |    ✓     | `./build.sh ipq6018_jdcloud_ax6600`      |

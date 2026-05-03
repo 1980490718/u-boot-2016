@@ -185,6 +185,8 @@ else ifeq ($(CONFIG_IPQ6018_PHILIPS_LY1800),y)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-philips-ly1800.dtb
 else ifeq ($(CONFIG_IPQ6018_GL_AXT1800),y)
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-gl-axt1800.dtb
+else ifeq ($(CONFIG_IPQ6018_DPTECH_AP3000_2C),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-dptech-ap3000-2c.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-cp02-c1.dtb \
