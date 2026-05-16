@@ -1,5 +1,16 @@
 if ARCH_IPQ40xx
 
+config BOARD_DISPLAY_NAME
+	string "Name to display in U-Boot boot message"
+	depends on OF_CONTROL
+	help
+		Define the product name to display in U-Boot startup message.
+		This will appear in the 'Model:' line of the boot output.
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+	default y
+
 config SYS_CPU
 	default "ipq40xx"
 
