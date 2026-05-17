@@ -1,4 +1,4 @@
-# U-Boot 2016 构建说明
+# U-Boot 2016 说明
 
 ## 项目简介
 
@@ -7,19 +7,24 @@
 - 集成U-Boot的webfailsafe模式
 - 集成DHCP服务
 - 集成Web页面修改环境变量
-- 支持U-Boot/固件/CDT/MIBIB/GPT/ART的更新
+- 支持U-Boot更新、固件更新、CDT更新、MIBIB更新、GPT更新、ART更新、initramfs启动进行调试和恢复
 - 支持在环境变量中自定义reset_key=<GPIO_NUM>，（覆盖模式）以方便在没有添加支持的设备上启用按压reset按键进入uboot的webfailsafe模式进行相应的升级操作
--  设置方法：①ttl下输入'setenv reset_key x && saveenv'
--          ②或者环境变量页面变量名框中输入'reset_key',变量值框中输入'x'，然后点'修改变量'重启后永久生效
--          注：'x'为你已知的gpio值。
+  - 设置方法：①ttl下输入
+  - 'setenv reset_key x && saveenv'
+  - 设置方法：②或者环境变量页面变量名框中输入'reset_key',变量值框中输入'x'，然后点'修改变量'重启后永久生效
+  - 注：'x'为你已知的gpio值。
 - 支持在环境变量中自定义config_name=<config@xxx>，（覆盖模式）以方便夸机型，夸型号，夸固件进行测试
--  设置方法：①ttl下输入‘setenv config_name config@x && saveenv’
--          ②或者环境变量页面变量名框中输入'config_name',在变量值框中输入'config@xxx'，然后点‘修改变量’重启后永久生效
--  取消覆盖的变量名以及值reset_key/config_name，在ttl下输入'setenv reset_key''saveenv' / 'setenv config_name''saveenv'重启生效
+  - 设置方法：①ttl下输入‘setenv config_name config@x && saveenv’
+  - 设置方法：②或者环境变量页面变量名框中输入'config_name',在变量值框中输入'config@xxx'，然后点‘修改变量’重启后永久生效
+  - 取消覆盖的变量名以及值reset_key/config_name，在ttl下输入'setenv reset_key''saveenv' / 'setenv config_name''saveenv'重启即调用dtb中的默认条目
 
 ## 系统要求
 
 - Ubuntu 20.04 LTS 或更高版本
+- 现代浏览器（用于访问Webfailsafe界面）
+  - 为优化web页面占用大小以及降低对设备资源的使用，HTTP页面采用zopfli的极限压缩gz格式
+  - 推荐浏览器：Chrome 60+、Firefox 55+、Safari 11+、Edge 15+
+  - 部分旧版浏览器可能无法正确处理并显示压缩的页面内容，不兼容IE浏览器，请使用支持gzip自解压缩的最新版本的现代浏览器
 
 ## 依赖要求
 
@@ -30,7 +35,7 @@ sudo apt-get update
 sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev python3 wget cpio flex bison bc rsync nodejs npm gzip zopfli device-tree-compiler
 ```
 
-此外，如果需要使用makefsdatac工具处理Web界面文件，还推荐安装以下Node.js模块：
+makefsdatac脚本处理Web界面文件，需要用的Node.js工具，以及该工具的以下组件：
 
 ```bash
 npm install -g html-minifier-terser clean-css terser
@@ -42,13 +47,13 @@ npm install -g html-minifier-terser clean-css terser
 git clone https://github.com/1980490718/u-boot-2016.git
 git clone https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git staging_dir
 cd u-boot-2016
-./build.sh clean          # 首次构建前清理
+./build.sh clean
 ```
 
-### 构建命令
+### 编译命令
 
 ```bash
-./build.sh [platform]     # 构建平台所有板子
+./build.sh [platform]     # 编译平台所有板子
 ./build.sh [board]        # 构建单个板子
 ./build.sh clean          # 深度清理
 ./build.sh clean_all      # 仅清理输出文件
@@ -56,7 +61,7 @@ cd u-boot-2016
 
 ## 支持的平台以及设备型号
 
-|  平台   | 配置\_defconfig             | 设备型号(配置)                    |         machid         | 是否测试 | 编译命令示例                             |
+|  平台   | 配置\_defconfig             | 设备型号(配置)                    |         machid         | 是否测试 | 编译命令                             |
 | :-----: | --------------------------- | :-------------------------------- | :--------------------: | :------: | ---------------------------------------- |
 | IPQ40xx | ipq40xx_aliyun_ap4220       | 阿里云 AP4220                     |       0x9000010        |    ✓     | `./build.sh ipq40xx_aliyun_ap4220`       |
 | IPQ40xx | ipq40xx_standard            | 公版标准                          |          ---           |    ✓     | `./build.sh ipq40xx_standard`            |
@@ -128,30 +133,21 @@ CROSS_COMPILE=arm-openwrt-linux-
 STAGING_DIR=../staging_dir/
 ```
 
-### 重要提示
+### 报错处理
 
-- 安装 OpenWrt 编译依赖
-- ipq40xx 注意 uboot 大小 ≤ 512KB
+- httpd/fs.c:54:20: fatal error: fsdata.c": No such fil or directory 请检查是否安装了NodeJS,以及Node的子模块：html-minifier-terser clean-css terser
 
 ### 许可证
 
-本项目使用 GPLv2 开源。
-
-### 你可以自由地
-
+- 本项目使用 GPLv2 开源。
+- 详细条款请查看项目根目录下的 LICENSE 文件
 - 复制、分发、展示本代码
 - 修改本代码并分发修改后的版本
 - 将本代码用于商业用途，包括销售、出租等
-
-### 但必须遵守 GPLv2 的核心要求
-
-- 分发本代码或修改版本时，必须同样以 GPLv2 开源
-- 保留原始版权声明和许可证声明
-- 注明你对代码所做的修改
-
-### 详细条款请查看项目根目录下的 LICENSE 文件
+- 任何借鉴、复刻、二次开发本代码的行为、必须注明出处并同样以 GPLv2 开源以及保留原始版权声明和许可证声明
 
 ### 免责声明
 
 - 本项目未经充分测试，使用风险自负。
 - 作者及本项目源码不承担任何因直接间接使用本代码而产生的损失或损害责任，包括但不限于硬件损坏、数据丢失、设备故障等。
+- 本项目仅供学习和研究使用，禁止用于任何侵犯他人利益的用途。
