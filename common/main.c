@@ -92,6 +92,12 @@ void main_loop(void)
 #ifdef CONFIG_HTTPD
 	check_button_is_press();
 #endif
+#ifdef CONFIG_BOARD_DISPLAY_NAME
+	const char *env_config = getenv("config_name");
+	if (env_config && strlen(env_config) > 0) {
+		printf("##Using 'config_name=%s' from environment variable\n", env_config);
+	}
+#endif
 	s = bootdelay_process();
 #ifndef CONFIG_REDUCE_FOOTPRINT
 	if (cli_process_fdt(&s))

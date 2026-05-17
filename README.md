@@ -8,7 +8,14 @@
 - 集成DHCP服务
 - 集成Web页面修改环境变量
 - 支持U-Boot/固件/CDT/MIBIB/GPT/ART的更新
-- 支持在环境变量中自定义reset_key=<GPIO_NUM>，以方便在没有添加支持的设备上启用按压reset按键进入uboot的webfailsafe模式进行相应的升级操作
+- 支持在环境变量中自定义reset_key=<GPIO_NUM>，（覆盖模式）以方便在没有添加支持的设备上启用按压reset按键进入uboot的webfailsafe模式进行相应的升级操作
+-  设置方法：①ttl下输入'setenv reset_key x && saveenv'
+-          ②或者环境变量页面变量名框中输入'reset_key',变量值框中输入'x'，然后点'修改变量'重启后永久生效
+-          注：'x'为你已知的gpio值。
+- 支持在环境变量中自定义config_name=<config@xxx>，（覆盖模式）以方便夸机型，夸型号，夸固件进行测试
+-  设置方法：①ttl下输入‘setenv config_name config@x && saveenv’
+-          ②或者环境变量页面变量名框中输入'config_name',在变量值框中输入'config@xxx'，然后点‘修改变量’重启后永久生效
+-  取消覆盖的变量名以及值reset_key/config_name，在ttl下输入'setenv reset_key''saveenv' / 'setenv config_name''saveenv'重启生效
 
 ## 系统要求
 
