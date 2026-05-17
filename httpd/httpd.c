@@ -161,8 +161,14 @@ static int httpd_findandstore_firstchunk(void) {
 									printf("Upgrade type: PTABLE\n");
 									webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_PTABLE;
 								} else {
-									print_error("input name not found!");
-									return 0;
+									end = (char *)strstr((char *)start, "name=\"initramfs\"");
+									if (end) {
+										printf("Upgrade type: INITRAMFS\n");
+										webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS;
+									} else {
+										print_error("input name not found!");
+										return 0;
+									}
 								}
 							}
 						}
@@ -191,6 +197,10 @@ static int httpd_findandstore_firstchunk(void) {
 					file_too_big = 1;
 				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_MIBIB) && (hs->upload_total > WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES)) {
 					print_file_size_error(WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
+					webfailsafe_upload_failed = 1;
+					file_too_big = 1;
+				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS) && (hs->upload_total > (60 * 1024 * 1024))) {
+					print_file_size_error(60 * 1024 * 1024);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 				}

@@ -265,23 +265,30 @@ void check_button_is_press(void) {
 int check_fw_type(void *address) {
 	typedef unsigned int u32;
 	typedef unsigned short u16;
-	u32 *sign_flas=(u32 *)(address+0x5c);
-	u16 *sign_55aa=(u16 *)(address+0x1fe);
-	u32 *sign_doodfeed=(u32 *)address;
-	u32 *sign_ubi=(u32 *)address;
-	u32 *sign_cdt=(u32 *)address;
-	u32 *sign_elf=(u32 *)address;
-	u32 *sign_mibib=(u32 *)address;
 
-	if (*sign_flas==0x73616c46) return FW_TYPE_QSDK;
-	else if (*sign_ubi==0x23494255) return FW_TYPE_UBI;
-	else if (*sign_doodfeed==0xedfe0dd0) return FW_TYPE_NOR;
-	else if (*sign_55aa==0xaa55) return FW_TYPE_GPT;
-	else if (*sign_cdt==0x00544443) return FW_TYPE_CDT;
-	else if (*sign_elf==0x464c457f) return FW_TYPE_ELF;
-	else if (*sign_mibib==0xfe569fac) return FW_TYPE_MIBIB;
-	else return -1;
-	return 0;
+	u32 *ptr_flas		= (u32 *)((uintptr_t)address + 0x5c);
+	u16 *ptr_55aa		= (u16 *)((uintptr_t)address + 0x1fe);
+	u32 *ptr_doodfeed	= (u32 *)address;
+	u32 *ptr_ubi		= (u32 *)address;
+	u32 *ptr_cdt		= (u32 *)address;
+	u32 *ptr_elf		= (u32 *)address;
+	u32 *ptr_mibib		= (u32 *)address;
+
+	if (*ptr_flas == 0x73616c46) return FW_TYPE_QSDK;
+	if (*ptr_ubi == 0x23494255) return FW_TYPE_UBI;
+	if (*ptr_doodfeed == 0xedfe0dd0) {
+		u8 *byte_addr = (u8 *)address;
+		if (byte_addr[0x0b] == 0x38 && byte_addr[0x13] == 0x28 && byte_addr[0x17] == 0x11) {
+			return FW_TYPE_INITRAMFS;
+		}
+		return FW_TYPE_NOR;
+	}
+	if (*ptr_55aa == 0xaa55) return FW_TYPE_GPT;
+	if (*ptr_cdt == 0x00544443) return FW_TYPE_CDT;
+	if (*ptr_elf == 0x464c457f) return FW_TYPE_ELF;
+	if (*ptr_mibib == 0xfe569fac) return FW_TYPE_MIBIB;
+
+	return -1;
 }
 
 /* Get the size information from the smem table (in bytes) */
