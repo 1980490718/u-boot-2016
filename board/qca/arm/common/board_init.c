@@ -647,6 +647,13 @@ void init_config_list(void)
 
 void add_config_list_from_fdt(void)
 {
+#ifdef CONFIG_BOARD_DISPLAY_NAME
+	const char *env_config = getenv("config_name");
+	if (env_config && strlen(env_config) > 0) {
+		add_config_entry(env_config);
+		return;
+	}
+#endif
 	int i, strings_count;
 	const char *config = NULL;
 
