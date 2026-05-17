@@ -39,6 +39,7 @@
 #define WEBFAILSAFE_UPGRADE_TYPE_CDT			4
 #define WEBFAILSAFE_UPGRADE_TYPE_MIBIB			5
 #define WEBFAILSAFE_UPGRADE_TYPE_PTABLE			6
+#define WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS		7
 
 /* firmware type */
 enum firmware_type_enum {
@@ -49,6 +50,7 @@ enum firmware_type_enum {
 	FW_TYPE_CDT		= 4,
 	FW_TYPE_ELF		= 5,
 	FW_TYPE_MIBIB	= 6,
+	FW_TYPE_INITRAMFS	= 7,
 };
 
 /* flash type from "arch/arm/include/asm/arch-qca-common/smem.h"

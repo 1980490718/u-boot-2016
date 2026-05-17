@@ -25,6 +25,7 @@ static int do_gpt_upgrade(const ulong size);
 static int do_cdt_upgrade(const ulong size);
 static int do_mibib_upgrade(const ulong size);
 static int do_ptable_upgrade(const ulong size);
+static int do_initramfs_boot(const ulong size);
 static int execute_command(const char *cmd);
 static void print_upgrade_warning(const char *upgrade_type);
 static void initialize_phy_link(void);
@@ -211,6 +212,7 @@ static const char *fw_type_to_string(int fw_type) {
 		case FW_TYPE_CDT: return "CDT";
 		case FW_TYPE_ELF: return "ELF";
 		case FW_TYPE_MIBIB: return "MIBIB";
+		case FW_TYPE_INITRAMFS: return "INITRAMFS";
 		default: return "UNKNOWN";
 	}
 }
@@ -225,6 +227,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		case WEBFAILSAFE_UPGRADE_TYPE_CDT: return do_cdt_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_MIBIB: return do_mibib_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_PTABLE: return do_ptable_upgrade(size);
+		case WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS: return do_initramfs_boot(size);
 		default: printf("\n* Unsupported upgrade type *\n");
 			return -1;
 	}
@@ -413,6 +416,24 @@ static int do_ptable_upgrade(const ulong size) {
 	} else { // fw_type == FW_TYPE_MIBIB
 		return do_mibib_upgrade(size);
 	}
+}
+
+static int do_initramfs_boot(const ulong size) {
+	char buf[576];
+	int fw_type = check_fw_type((void *)UPLOAD_ADDR);
+	if (fw_type != FW_TYPE_INITRAMFS) {
+		printf("\n* Uploaded file is not INITRAMFS type. Actual type is %s *\n", fw_type_to_string(fw_type));
+		return -1;
+	}
+	print_upgrade_warning("INITRAMFS");
+	sprintf(buf, "bootm 0x%lx", UPLOAD_ADDR);
+
+	int ret = execute_command(buf);
+	if (ret != 0) {
+		printf("\n* INITRAMFS boot failed *\n");
+		return -1;
+	}
+	return 0;
 }
 
 int do_http_progress(const int state) {
