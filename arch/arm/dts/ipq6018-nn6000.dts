@@ -47,7 +47,7 @@
 				phy_type = <MALIBU_PHY_TYPE>;
 			};
 			port@2 {
-				phy_address = <2>;
+				phy_address = <4>;
 				phy_type = <MALIBU_PHY_TYPE>;
 			};
 			port@3 {
@@ -55,7 +55,7 @@
 				phy_type = <MALIBU_PHY_TYPE>;
 			};
 			port@4 {
-				phy_address = <4>;
+				phy_address = <2>;
 				phy_type = <MALIBU_PHY_TYPE>;
 			};
 		};
