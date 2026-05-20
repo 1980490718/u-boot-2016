@@ -85,7 +85,9 @@ p {
 	text-decoration: underline
 }
 
-.backup-input-group {
+.backup-input-group,
+.env-input-group,
+.mac-input-group {
 	display: flex;
 	gap: 2rem;
 	justify-content: center;
@@ -93,20 +95,32 @@ p {
 	margin-top: 3rem
 }
 
-.backup-input-group>div {
+.backup-input-group>div,
+.env-input-group>div,
+.mac-input-group>div {
 	display: flex;
 	flex-direction: column;
 	flex: 1 1 250px;
 	max-width: 350px
 }
 
-.backup-input-group label {
+.backup-input-group label,
+.env-input-group label {
 	margin-bottom: 3rem;
 	font-weight: 500;
 	color: #2c3e50
 }
 
-.backup-input-group input[type=text] {
+.mac-input-group label {
+	margin-bottom: 0;
+	font-weight: 500;
+	color: #2c3e50
+}
+
+/* 合并输入框样式 */
+.backup-input-group input[type=text],
+.env-input-group input[type=text],
+.mac-input-group input[type=text] {
 	padding: .8rem;
 	border: 1px solid #ddd;
 	border-radius: 4px;
@@ -114,7 +128,22 @@ p {
 	box-sizing: border-box
 }
 
-.backup-input-group input[type=text]:focus {
+.backup-input-group input[type=text]:focus,
+.env-input-group input[type=text]:focus,
+.mac-input-group input[type=text]:focus {
+	outline: none;
+	border-color: #3498db
+}
+
+.mac-input-group select {
+	padding: .8rem;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	transition: border-color .3s ease;
+	box-sizing: border-box
+}
+
+.mac-input-group select:focus {
 	outline: none;
 	border-color: #3498db
 }
@@ -123,39 +152,6 @@ p {
 	display: flex;
 	justify-content: center;
 	margin: 3rem 0
-}
-
-.env-input-group {
-	display: flex;
-	gap: 2rem;
-	justify-content: center;
-	flex-wrap: wrap
-}
-
-.env-input-group>div {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 250px;
-	max-width: 350px
-}
-
-.env-input-group label {
-	margin-bottom: 3rem;
-	font-weight: 500;
-	color: #2c3e50
-}
-
-.env-input-group input[type=text] {
-	padding: .8rem;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	transition: border-color .3s ease;
-	box-sizing: border-box
-}
-
-.env-input-group input[type=text]:focus {
-	outline: none;
-	border-color: #3498db
 }
 
 .error {
@@ -220,10 +216,7 @@ p {
 	flex: 1;
 	padding: 0 0 0 1rem;
 	position: relative;
-	max-height: 1200px;
-	height: 100%;
-	max-width: 1200px;
-	width: 100%
+	overflow-y: auto
 }
 
 .main-content h2 {
@@ -257,42 +250,6 @@ p {
 .env-input-group,
 .mac-input-group {
 	margin-top: 3rem
-}
-
-.mac-input-group {
-	display: flex;
-	gap: 2rem;
-	justify-content: center;
-	flex-wrap: wrap;
-	margin-top: 3rem
-}
-
-.mac-input-group>div {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 250px;
-	max-width: 350px
-}
-
-.mac-input-group label {
-	margin-bottom: 0;
-	font-weight: 500;
-	color: #2c3e50
-}
-
-.mac-input-group select,
-.mac-input-group input[type=text] {
-	padding: .8rem;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	transition: border-color .3s ease;
-	box-sizing: border-box
-}
-
-.mac-input-group select:focus,
-.mac-input-group input[type=text]:focus {
-	outline: none;
-	border-color: #3498db
 }
 
 .sidebar {
@@ -377,7 +334,8 @@ p {
 		flex-direction: column;
 		width: 95%;
 		max-height: none;
-		height: 1000px;
+		height: auto;
+		min-height: 100vh;
 		padding: 15px
 	}
 
