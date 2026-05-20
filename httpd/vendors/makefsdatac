@@ -327,8 +327,11 @@ function minify_html_with_preserved_styling() {
 					}
 				});
 
-				// Write the result
-				fs.writeFileSync('$_output_file', result);
+				// Additional processing to ensure single line output
+				let finalResult = result.replace(/\r\n|\n|\r/g, '').trim();
+				finalResult = finalResult.replace(/>(\s+)([a-zA-Z0-9])/g, '>\$2');
+				finalResult = finalResult.replace(/>(\s+)</g, '><');
+				fs.writeFileSync('$_output_file', finalResult);
 				console.error('HTML minification successful');
 			} catch (e) {
 				console.error('HTML minification failed:', e.message);
@@ -338,8 +341,7 @@ function minify_html_with_preserved_styling() {
 		})().catch(e => {
 			console.error('Unhandled error:', e.message);
 			fs.copyFileSync('$_input_file', '$_output_file');
-		});
-		" 2>/dev/null || true
+		});" 2>/dev/null || true
 	else
 		# No dedicated tool available, copy original file
 		cp "$_input_file" "$_output_file"
