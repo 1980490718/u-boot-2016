@@ -16,6 +16,7 @@
 #include <stdio_dev.h>
 #include <exports.h>
 #include <environment.h>
+#include <webterm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -498,6 +499,10 @@ void putc(const char c)
 		return;
 #endif
 
+#ifdef CONFIG_HTTPD
+	webterm_putc(c);
+#endif
+
 	if (!gd->have_console)
 		return pre_console_putc(c);
 
@@ -543,6 +548,10 @@ void puts(const char *s)
 #ifdef CONFIG_DISABLE_CONSOLE
 	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
 		return;
+#endif
+
+#ifdef CONFIG_HTTPD
+	webterm_capture_output(s);
 #endif
 
 	if (!gd->have_console)

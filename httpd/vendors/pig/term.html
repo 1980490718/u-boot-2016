@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Web终端</title>
+	<link rel="stylesheet" href="style.css">
+	<style>
+		/* 终端页面独立样式 - 不影响 style.css */
+		.terminal-container {
+			background: #0c0c0c;
+			border-radius: 8px;
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.terminal-output {
+			background: #300a24;
+			padding: 15px;
+			max-width: 910px;
+			width: 100%;
+			overflow-y: auto;
+			white-space: pre-wrap;
+			word-wrap: break-word;
+			line-height: 1.2;
+			min-height: 475px;
+			max-height: 475px;
+		}
+
+		.terminal-output::-webkit-scrollbar {
+			width: 8px;
+		}
+
+		.terminal-output::-webkit-scrollbar-track {
+			background: #1e1e1e;
+		}
+
+		.terminal-output::-webkit-scrollbar-thumb {
+			background: #4ecb71;
+			border-radius: 4px;
+		}
+
+		.terminal-input-line {
+			background: #3a142e;
+			border-top: 1px solid #3a142e;
+			padding: 5px;
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+
+		/* 合并公共文字样式 */
+		.terminal-prompt,
+		.terminal-input,
+		.terminal-output {
+			color: #ffffff;
+			font-family: monospace;
+			font-size: 13px;
+		}
+
+		.terminal-prompt {
+			font-weight: bold;
+		}
+
+		.terminal-input {
+			flex: 1;
+			background: rgba(48, 10, 36, 0);
+			border: none;
+			outline: none;
+		}
+
+		.terminal-input::placeholder {
+			color: #5a5a5a;
+		}
+
+		/* 合并按钮公共样式 */
+		.terminal-btn,
+		.terminal-clear {
+			border: none;
+			font-family: monospace;
+			font-size: 12px;
+			font-weight: bold;
+			padding: 5px 15px;
+			border-radius: 4px;
+			cursor: pointer;
+			transition: background-color 0.3s;
+			background: #5a5a5a;
+			color: #ffffff;
+		}
+
+		/* 按钮激活状态 */
+		.terminal-btn.active,
+		.terminal-clear.active {
+			background: #3498db;
+			color: #ffffff;
+		}
+
+		/* 激活按钮悬停 */
+		.terminal-btn.active:hover,
+		.terminal-clear.active:hover {
+			background: #2980b9;
+		}
+
+		/* 激活按钮按下 */
+		.terminal-btn.active:active,
+		.terminal-clear.active:active {
+			background: #2573a7;
+		}
+
+		/* 非激活按钮悬停 */
+		.terminal-btn:hover:not(.active),
+		.terminal-clear:hover:not(.active) {
+			background: #6a6a6a;
+		}
+
+		.terminal-output-wrapper {
+			position: relative;
+			flex: 1;
+		}
+
+		.terminal-status-bottom {
+			position: absolute;
+			bottom: 0px;
+			right: 15px;
+			color: #cccccc;
+			font-size: .75rem;
+			z-index: 10;
+		}
+
+		h3 {
+			color: #2980b9;
+			font-size: 2.5rem;
+			margin: 0 auto 1rem;
+			white-space: nowrap;
+			text-align: center;
+		}
+
+		h3::after {
+			content: "";
+			display: block;
+			width: 100%;
+			height: .2px;
+			background: #e2e2e2;
+			margin: .5rem auto 0;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="main-container">
+		<div class="sidebar">
+			<ul class="sidebar-nav">
+				<li class="sidebar-nav-item"><a href="index.html">固件更新</a></li>
+				<li class="sidebar-nav-item"><a href="uboot.html">U-BOOT更新</a></li>
+				<li class="sidebar-nav-item"><a href="art.html">ART更新</a></li>
+				<li class="sidebar-nav-item"><a href="cdt.html">CDT更新</a></li>
+				<li class="sidebar-nav-item"><a href="ptable.html">PTABLE更新</a></li>
+				<li class="sidebar-nav-item"><a href="initramfs.html">INITRAMFS启动</a></li>
+				<li class="sidebar-nav-item"><a href="env.html">变量管理</a></li>
+				<li class="sidebar-nav-item active"><a>Web终端</a></li>
+			</ul>
+		</div>
+		<div class="main-content">
+			<div class="card">
+				<h3>Web终端</h3>
+				<div class="terminal-container">
+					<div class="terminal-output-wrapper">
+						<div class="terminal-output" id="terminalOutput"></div>
+						<span class="terminal-status-bottom" id="connectionStatus">● 已连接</span>
+					</div>
+					<div class="terminal-input-line">
+						<span class="terminal-prompt">#</span>
+						<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令并按回车执行" autofocus>
+						<button class="terminal-btn" id="sendBtn">发送</button>
+						<button class="terminal-btn terminal-clear" id="clearBtn">清屏</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		// 配置
+		const POLL_INTERVAL = 30000;
+		let pollTimer = null;
+
+		const terminalOutput = document.getElementById('terminalOutput');
+		const terminalInput = document.getElementById('terminalInput');
+		const sendBtn = document.getElementById('sendBtn');
+		const clearBtn = document.getElementById('clearBtn');
+		const connectionStatus = document.getElementById('connectionStatus');
+
+		// 显示欢迎信息
+		function showWelcome() {
+			terminalOutput.textContent = '终端已就绪。输入命令并按回车键或点击发送按钮执行。\n\n';
+		}
+
+		// 更新终端状态信息
+		function updateTerminalStatus(isConnected) {
+			const statusMsg = isConnected ? '终端已就绪。输入命令并按回车键或点击发送按钮执行。\n' : '终端未就绪，请检查连接状态！\n';
+			let currentContent = terminalOutput.textContent;
+
+			// 移除现有的状态消息
+			currentContent = currentContent.replace('终端已就绪。输入命令并按回车键或点击发送按钮执行。\n', '').replace('终端未就绪，请检查连接状态！\n', '').trim();
+
+			// 设置新内容
+			terminalOutput.textContent = currentContent ? statusMsg + currentContent : statusMsg;
+		}
+
+		// 获取输出
+		async function fetchOutput() {
+			try {
+				const response = await fetch('/webterm/data', {
+					cache: 'no-cache',
+					headers: { 'Cache-Control': 'no-cache' }
+				});
+
+				const isConnected = response.ok;
+				const text = isConnected ? await response.text() : '';
+
+				if (isConnected && text && text.length > 0) {
+					terminalOutput.textContent += text;
+					terminalOutput.scrollTop = terminalOutput.scrollHeight;
+					updateButtonStyles();
+				}
+
+				// 更新连接状态
+				connectionStatus.textContent = isConnected ? '● 已连接' : '● 连接错误';
+				connectionStatus.style.color = isConnected ? '#4ecb71' : '#e74c3c';
+				updateTerminalStatus(isConnected);
+			} catch (error) {
+				connectionStatus.textContent = '● 连接失败';
+				connectionStatus.style.color = '#e74c3c';
+				updateTerminalStatus(false);
+			}
+		}
+
+		// 发送命令
+		async function sendCommand() {
+			const command = terminalInput.value.trim();
+			if (!command) return;
+
+			// 禁用输入和按钮
+			[terminalInput, sendBtn].forEach(el => el.disabled = true);
+
+			try {
+				const response = await fetch('/webterm/cmd', {
+					method: 'POST',
+					headers: { 'Content-Type': 'text/plain' },
+					body: command
+				});
+
+				if (!response.ok) {
+					terminalOutput.textContent += `\n[错误] 发送失败: HTTP ${response.status}\n`;
+					terminalOutput.scrollTop = terminalOutput.scrollHeight;
+					updateTerminalStatus(false);
+				} else {
+					terminalInput.value = '';
+					setTimeout(fetchOutput, 100);
+				}
+			} catch (error) {
+				terminalOutput.textContent += `\n[错误] ${error.message}\n`;
+				terminalOutput.scrollTop = terminalOutput.scrollHeight;
+				updateTerminalStatus(false);
+			} finally {
+				// 恢复输入和按钮
+				[terminalInput, sendBtn].forEach(el => el.disabled = false);
+				terminalInput.focus();
+				updateButtonStyles();
+			}
+		}
+
+		// 清屏 - 只清空前端显示，不请求服务器
+		function clearTerminal() {
+			terminalOutput.textContent = '';
+			updateButtonStyles();
+		}
+		// 启动轮询
+		function startPolling() {
+			if (pollTimer) clearInterval(pollTimer);
+			pollTimer = setInterval(fetchOutput, POLL_INTERVAL);
+		}
+
+		// 停止轮询
+		function stopPolling() {
+			if (pollTimer) {
+				clearInterval(pollTimer);
+				pollTimer = null;
+			}
+		}
+
+		// 更新按钮样式
+		function updateButtonStyles() {
+			// 发送按钮：当输入框有内容时激活
+			sendBtn.classList.toggle('active', terminalInput.value.trim().length > 0);
+			// 清屏按钮：当输出框有内容时激活
+			clearBtn.classList.toggle('active', terminalOutput.textContent.trim().length > 0);
+		}
+
+		// 事件绑定
+		Object.entries({
+			input: updateButtonStyles,
+			keypress: (e) => e.key === 'Enter' && sendCommand()
+		}).forEach(([event, handler]) => terminalInput.addEventListener(event, handler));
+
+		[sendBtn, clearBtn].forEach((btn, i) => btn.addEventListener('click', [sendCommand, clearTerminal][i]));
+
+		// 初始化
+		showWelcome();
+		updateButtonStyles();
+		startPolling();
+		setTimeout(fetchOutput, 100);
+
+		// 页面关闭时停止轮询
+		window.addEventListener('beforeunload', stopPolling);
+	</script>
+	<div class="additional-links">
+		<p class="link-tip">您可以在右方链接中了解本项目的更多信息:<a href="https://github.com/1980490718/u-boot-2016" target="_blank">GitHub</a> | Version:</p>
+	</div>
+</body>
+</html>

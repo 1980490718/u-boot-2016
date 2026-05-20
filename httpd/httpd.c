@@ -2,6 +2,7 @@
 #include "httpd.h"
 #include "fs.h"
 #include "fsdata.h"
+#include <webterm.h>
 #include <asm/gpio.h>
 #include <ipq_api.h>
 #ifdef CONFIG_CMD_SETENV_WEB
@@ -291,6 +292,10 @@ void httpd_appcall(void) {
 			}
 			if (uip_newdata() && hs->state == STATE_NONE) {
 				if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T && (uip_appdata[3] == ISO_space || uip_appdata[3] == ISO_tab)) {
+					if (strncmp((char *)&uip_appdata[4], "/webterm", 8) == 0) {
+						webterm_http_handler();
+						return;
+					}
 #ifdef CONFIG_CMD_SETENV_WEB
 					/* Handle environment variable API request */
 					if (strncmp((char *)&uip_appdata[4], "/setenv", 7) == 0) {
@@ -310,6 +315,11 @@ void httpd_appcall(void) {
 #endif
 					hs->state = STATE_FILE_REQUEST;
 				} else if (uip_appdata[0] == ISO_P && uip_appdata[1] == ISO_O && uip_appdata[2] == ISO_S && uip_appdata[3] == ISO_T && (uip_appdata[4] == ISO_space || uip_appdata[4] == ISO_tab)) {
+					/* Check for web terminal requests first */
+					if (strncmp((char *)&uip_appdata[5], "/webterm", 8) == 0) {
+						webterm_http_handler();
+						return;
+					}
 #ifdef CONFIG_CMD_SETENV_WEB
 					/* Handle environment variable API request */
 					if (strncmp((char *)uip_appdata, "POST /setenv", 12) == 0) {
@@ -328,6 +338,38 @@ void httpd_appcall(void) {
 					return;
 					}
 #endif
+					if (hs->state == STATE_NONE) {
+						char *start = NULL;
+						char *end = NULL;
+						uip_appdata[uip_len] = '\0';
+						start = (char *)strstr((char*)uip_appdata, "Content-Length:");
+						if (start) {
+							start += sizeof("Content-Length:");
+							end = (char *)strstr(start, eol);
+							if (end) {
+								hs->upload_total = atoi(start);
+							} else {
+								print_error("couldn't find \"Content-Length\"!");
+								httpd_state_reset();
+								uip_abort();
+								return;
+							}
+						} else {
+							print_error("couldn't find \"Content-Length\"!");
+							httpd_state_reset();
+							uip_abort();
+							return;
+						}
+						if (hs->upload_total < 10240) {
+							/* Allow webterm command requests which are typically small */
+							if (strncmp((char *)&uip_appdata[5], "/webterm/cmd", 12) != 0) {
+								print_error("request for upload < 10 KB data!");
+								httpd_state_reset();
+								uip_abort();
+								return;
+							}
+						}
+					}
 					hs->state = STATE_UPLOAD_REQUEST;
 					led_off("blink_led");
 				}
