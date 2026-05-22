@@ -205,14 +205,13 @@ void printChecksumMd5(int address, unsigned int size) {}
 
 static const char *fw_type_to_string(int fw_type) {
 	switch (fw_type) {
-		case FW_TYPE_NOR: return "NOR";
+		case FW_TYPE_FIT: return "FIT";
 		case FW_TYPE_GPT: return "GPT";
 		case FW_TYPE_QSDK: return "QSDK";
 		case FW_TYPE_UBI: return "UBI";
 		case FW_TYPE_CDT: return "CDT";
 		case FW_TYPE_ELF: return "ELF";
 		case FW_TYPE_MIBIB: return "MIBIB";
-		case FW_TYPE_INITRAMFS: return "INITRAMFS";
 		default: return "UNKNOWN";
 	}
 }
@@ -239,7 +238,7 @@ static int do_firmware_upgrade(const ulong size) {
 		case FLASH_TYPE_MMC:
 		case FLASH_TYPE_NOR_PLUS_EMMC: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-			if (fw_type == FW_TYPE_NOR) {
+			if (fw_type == FW_TYPE_FIT) {
 				print_upgrade_warning("FIRMWARE");
 				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:HLOS 0x%lx 0x600000 && flash rootfs 0x%lx 0x%lx && mmc read 0x%lx 0x622 0x200 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && flash 0:BOOTCONFIG 0x%lx 0x40000 && flash 0:BOOTCONFIG1 0x%lx 0x40000",
 						UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR + 0x600000, (size - 0x600000), UPLOAD_ADDR, UPLOAD_ADDR + 0x80, UPLOAD_ADDR + 0x94, UPLOAD_ADDR + 0xA8, UPLOAD_ADDR, UPLOAD_ADDR);
@@ -260,9 +259,9 @@ static int do_firmware_upgrade(const ulong size) {
 		case FLASH_TYPE_NOR_PLUS_NAND:
 		default: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-			if (fw_type == FW_TYPE_NOR || fw_type == FW_TYPE_QSDK || fw_type == FW_TYPE_UBI) {
+			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK || fw_type == FW_TYPE_UBI) {
 				print_upgrade_warning("FIRMWARE");
-				if (fw_type == FW_TYPE_NOR) {
+				if (fw_type == FW_TYPE_FIT) {
 					sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
 				} else if (fw_type == FW_TYPE_QSDK) {
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
@@ -421,8 +420,8 @@ static int do_ptable_upgrade(const ulong size) {
 static int do_initramfs_boot(const ulong size) {
 	char buf[576];
 	int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-	if (fw_type != FW_TYPE_INITRAMFS) {
-		printf("\n* Uploaded file is not INITRAMFS type. Actual type is %s *\n", fw_type_to_string(fw_type));
+	if (fw_type != FW_TYPE_FIT) {
+		printf("\n* Uploaded file is not FIT firmware type. Actual type is %s *\n", fw_type_to_string(fw_type));
 		return -1;
 	}
 	print_upgrade_warning("INITRAMFS");
