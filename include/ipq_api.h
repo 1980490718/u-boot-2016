@@ -43,14 +43,13 @@
 
 /* firmware type */
 enum firmware_type_enum {
-	FW_TYPE_NOR		= 0,
+	FW_TYPE_FIT		= 0,
 	FW_TYPE_GPT		= 1,
 	FW_TYPE_QSDK	= 2,
 	FW_TYPE_UBI		= 3,
 	FW_TYPE_CDT		= 4,
 	FW_TYPE_ELF		= 5,
 	FW_TYPE_MIBIB	= 6,
-	FW_TYPE_INITRAMFS	= 7,
 };
 
 /* flash type from "arch/arm/include/asm/arch-qca-common/smem.h"

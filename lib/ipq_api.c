@@ -276,13 +276,7 @@ int check_fw_type(void *address) {
 
 	if (*ptr_flas == 0x73616c46) return FW_TYPE_QSDK;
 	if (*ptr_ubi == 0x23494255) return FW_TYPE_UBI;
-	if (*ptr_doodfeed == 0xedfe0dd0) {
-		u8 *byte_addr = (u8 *)address;
-		if (byte_addr[0x0b] == 0x38 && byte_addr[0x13] == 0x28 && byte_addr[0x17] == 0x11) {
-			return FW_TYPE_INITRAMFS;
-		}
-		return FW_TYPE_NOR;
-	}
+	if (*ptr_doodfeed == 0xedfe0dd0) return FW_TYPE_FIT;
 	if (*ptr_55aa == 0xaa55) return FW_TYPE_GPT;
 	if (*ptr_cdt == 0x00544443) return FW_TYPE_CDT;
 	if (*ptr_elf == 0x464c457f) return FW_TYPE_ELF;
