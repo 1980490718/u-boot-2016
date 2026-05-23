@@ -127,6 +127,12 @@ enum flash_type_enum {
 #define NOR_FIRMWARE_SIZE	get_nor_firmware_combined_size()
 
 /* function declarations */
+struct fw_info {
+    int type;
+    unsigned int hlos_size;  // HLOS actual size (bytes)
+};
+
+struct fw_info check_fw_type_ex(void *address);
 int check_fw_type(void *address);
 void led_toggle(const char *gpio_name);
 void led_on(const char *gpio_name);
@@ -148,4 +154,31 @@ unsigned long get_firmware_size(void);
 unsigned long get_cdt_size(void);
 unsigned long get_mibib_size(void);
 unsigned long get_hlos_offset(void);
+unsigned long get_hlos_1_offset(void);
+unsigned long get_rootfs_offset(void);
+unsigned long get_rootfs_1_offset(void);
+unsigned long get_hlos_size(void);
+unsigned long get_hlos_1_size(void);
+unsigned long get_rootfs_size(void);
+unsigned long get_rootfs_1_size(void);
+unsigned long get_bootconfig_size(void);
+unsigned long get_bootconfig_offset(void);
+unsigned long get_bootconfig1_offset(void);
+unsigned long get_bootconfig_offset_blocks(void);
+unsigned long get_bootconfig_size_blocks(void);
 unsigned long get_nor_firmware_combined_size(void);
+
+/* eMMC partition boundary functions */
+unsigned long get_hlos_start_block(void);
+unsigned long get_hlos_end_block(void);
+unsigned long get_hlos_1_start_block(void);
+unsigned long get_hlos_1_end_block(void);
+unsigned long get_rootfs_start_block(void);
+unsigned long get_rootfs_end_block(void);
+unsigned long get_rootfs_1_start_block(void);
+unsigned long get_rootfs_1_end_block(void);
+
+/* eMMC partition management functions */
+int emmc_calculate_firmware_distribution(unsigned long firmware_size,
+		unsigned long hlos_max_size, unsigned long rootfs_max_size,
+		unsigned long *hlos_part_size, unsigned long *rootfs_part_size);
