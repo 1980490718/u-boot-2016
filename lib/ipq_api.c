@@ -262,9 +262,14 @@ void check_button_is_press(void) {
 	return;
 }
 
-int check_fw_type(void *address) {
+struct fw_info check_fw_type_ex(void *address) {
 	typedef unsigned int u32;
 	typedef unsigned short u16;
+
+	struct fw_info info = {
+		.type = -1,
+		.hlos_size = 12 * 1024 * 1024  // Default 12MB
+	};
 
 	u32 *ptr_flas		= (u32 *)((uintptr_t)address + 0x5c);
 	u16 *ptr_55aa		= (u16 *)((uintptr_t)address + 0x1fe);
@@ -274,15 +279,52 @@ int check_fw_type(void *address) {
 	u32 *ptr_elf		= (u32 *)address;
 	u32 *ptr_mibib		= (u32 *)address;
 
-	if (*ptr_flas == 0x73616c46) return FW_TYPE_QSDK;
-	if (*ptr_ubi == 0x23494255) return FW_TYPE_UBI;
-	if (*ptr_doodfeed == 0xedfe0dd0) return FW_TYPE_FIT;
-	if (*ptr_55aa == 0xaa55) return FW_TYPE_GPT;
-	if (*ptr_cdt == 0x00544443) return FW_TYPE_CDT;
-	if (*ptr_elf == 0x464c457f) return FW_TYPE_ELF;
-	if (*ptr_mibib == 0xfe569fac) return FW_TYPE_MIBIB;
+	// Detect HLOS size magic number positions
+	u32 *ptr_hlos_4m	= (u32 *)((uintptr_t)address + 0x400000);
+	u32 *ptr_hlos_6m	= (u32 *)((uintptr_t)address + 0x600000);
+	u32 *ptr_hlos_8m	= (u32 *)((uintptr_t)address + 0x800000);
+	u32 *ptr_hlos_12m	= (u32 *)((uintptr_t)address + 0xC00000);
+	u32 *ptr_hlos_14m	= (u32 *)((uintptr_t)address + 0xE00000);
+	u32 *ptr_hlos_16m	= (u32 *)((uintptr_t)address + 0x1000000);
 
-	return -1;
+	const u32 MAGIC_HSQS = 0x73717368;  // "hsqs"
+
+	// Detect actual HLOS size in ascending order
+	if (*ptr_hlos_4m == MAGIC_HSQS) {
+		info.hlos_size = 4 * 1024 * 1024;
+	}
+	else if (*ptr_hlos_6m == MAGIC_HSQS) {
+		info.hlos_size = 6 * 1024 * 1024;
+	}
+	else if (*ptr_hlos_8m == MAGIC_HSQS) {
+		info.hlos_size = 8 * 1024 * 1024;
+	}
+	else if (*ptr_hlos_12m == MAGIC_HSQS) {
+		info.hlos_size = 12 * 1024 * 1024;
+	}
+	else if (*ptr_hlos_14m == MAGIC_HSQS) {
+		info.hlos_size = 14 * 1024 * 1024;
+	}
+	else if (*ptr_hlos_16m == MAGIC_HSQS) {
+		info.hlos_size = 16 * 1024 * 1024;
+	}
+
+	// Detect firmware type
+	if (*ptr_flas == 0x73616c46) info.type			= FW_TYPE_QSDK;
+	else if (*ptr_ubi == 0x23494255) info.type		= FW_TYPE_UBI;
+	else if (*ptr_doodfeed == 0xedfe0dd0) info.type	= FW_TYPE_FIT;
+	else if (*ptr_55aa == 0xaa55) info.type			= FW_TYPE_GPT;
+	else if (*ptr_cdt == 0x00544443) info.type		= FW_TYPE_CDT;
+	else if (*ptr_elf == 0x464c457f) info.type		= FW_TYPE_ELF;
+	else if (*ptr_mibib == 0xfe569fac) info.type	= FW_TYPE_MIBIB;
+	else info.type = -1;
+
+	return info;
+}
+
+int check_fw_type(void *address) {
+	struct fw_info info = check_fw_type_ex(address);
+	return info.type;
 }
 
 /* Get the size information from the smem table (in bytes) */
@@ -329,6 +371,7 @@ DEFINE_GET_SIZE_FUNC(get_uboot_size, "0:APPSBL")
 DEFINE_GET_SIZE_FUNC(get_art_size, "0:ART")
 DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
+DEFINE_GET_SIZE_FUNC(get_bootconfig_size, "0:BOOTCONFIG")
 
 /* Function to get firmware size supporting multiple rootfs partition names */
 unsigned long get_firmware_size(void) {
@@ -375,6 +418,50 @@ unsigned long get_nor_firmware_combined_size(void) {
 
 /* api for partition offset start */
 DEFINE_GET_OFFSET_FUNC(get_hlos_offset, "0:HLOS")
+DEFINE_GET_OFFSET_FUNC(get_hlos_1_offset, "0:HLOS_1")
+DEFINE_GET_OFFSET_FUNC(get_rootfs_offset, "rootfs")
+DEFINE_GET_OFFSET_FUNC(get_rootfs_1_offset, "rootfs_1")
+DEFINE_GET_SIZE_FUNC(get_hlos_size, "0:HLOS")
+DEFINE_GET_SIZE_FUNC(get_hlos_1_size, "0:HLOS_1")
+DEFINE_GET_SIZE_FUNC(get_rootfs_size, "rootfs")
+DEFINE_GET_SIZE_FUNC(get_rootfs_1_size, "rootfs_1")
+DEFINE_GET_OFFSET_FUNC(get_bootconfig_offset, "0:BOOTCONFIG")
+DEFINE_GET_OFFSET_FUNC(get_bootconfig1_offset, "0:BOOTCONFIG1")
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
+/* Get the firmware type from the smem table */
+#define PART_SIZE_BYTES(part)     get_smem_table_size_bytes(part)
+#define PART_START_BLOCK(part)    get_smem_table_offset(part)
+#define PART_END_BLOCK(part)      (PART_START_BLOCK(part) + (PART_SIZE_BYTES(part) / 512) - 1)
+
+/* Calculate how to distribute firmware between HLOS and rootfs partitions */
+int emmc_calculate_firmware_distribution(unsigned long firmware_size,
+		unsigned long hlos_max_size, unsigned long rootfs_max_size,
+		unsigned long *hlos_part_size, unsigned long *rootfs_part_size) {
+	*hlos_part_size = (firmware_size < hlos_max_size) ? firmware_size : hlos_max_size;
+	unsigned long remaining = (firmware_size > *hlos_part_size) ? (firmware_size - *hlos_part_size) : 0;
+	*rootfs_part_size = (remaining < rootfs_max_size) ? remaining : rootfs_max_size;
+	return 0;
+}
+
+unsigned long get_bootconfig_offset_blocks(void) { return get_bootconfig_offset() / 512; }
+unsigned long get_bootconfig_size_blocks(void)   { return get_bootconfig_size() / 512; }
+
+unsigned long get_hlos_size_bytes(void)     { return PART_SIZE_BYTES("0:HLOS"); }
+unsigned long get_hlos_start_block(void)    { return PART_START_BLOCK("0:HLOS"); }
+unsigned long get_hlos_end_block(void)      { return PART_END_BLOCK("0:HLOS"); }
+
+unsigned long get_hlos_1_size_bytes(void)   { return PART_SIZE_BYTES("0:HLOS_1"); }
+unsigned long get_hlos_1_start_block(void)  { return PART_START_BLOCK("0:HLOS_1"); }
+unsigned long get_hlos_1_end_block(void)    { return PART_END_BLOCK("0:HLOS_1"); }
+
+unsigned long get_rootfs_size_bytes(void)   { return PART_SIZE_BYTES("rootfs"); }
+unsigned long get_rootfs_start_block(void)  { return PART_START_BLOCK("rootfs"); }
+unsigned long get_rootfs_end_block(void)    { return PART_END_BLOCK("rootfs"); }
+
+unsigned long get_rootfs_1_size_bytes(void) { return PART_SIZE_BYTES("rootfs_1"); }
+unsigned long get_rootfs_1_start_block(void){ return PART_START_BLOCK("rootfs_1"); }
+unsigned long get_rootfs_1_end_block(void)  { return PART_END_BLOCK("rootfs_1"); }
+#endif /* CONFIG_EFI_PARTITION && CONFIG_PARTITIONS && CONFIG_CMD_MMC */
 
 void led_init_by_name(const char *gpio_name) {
 	int node;

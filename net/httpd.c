@@ -232,26 +232,79 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 	}
 }
 
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
+/* Update BOOTCONFIG partition */
+static int update_bootconfig(void) {
+	char buf[256];
+	/* Read BOOTCONFIG partition using dynamic offset and size */
+	sprintf(buf, "mmc read 0x%lx 0x%lx 0x%lx", UPLOAD_ADDR, get_bootconfig_offset_blocks(), get_bootconfig_size_blocks());
+	if (execute_command(buf) != 0) {
+		printf("\n* Failed to read BOOTCONFIG *\n");
+		return -1;
+	}
+	/* Clear specific bytes */
+	sprintf(buf, "mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1",
+		UPLOAD_ADDR + 0x80, UPLOAD_ADDR + 0x94, UPLOAD_ADDR + 0xA8);
+	execute_command(buf);
+	/* Write back to BOOTCONFIG and BOOTCONFIG1 partitions with dynamic size */
+	sprintf(buf, "flash 0:BOOTCONFIG 0x%lx 0x%lx && flash 0:BOOTCONFIG1 0x%lx 0x%lx", UPLOAD_ADDR, get_bootconfig_size(), UPLOAD_ADDR, get_bootconfig_size());
+	if (execute_command(buf) != 0) {
+		printf("\n* Failed to write BOOTCONFIG *\n");
+		return -1;
+	}
+	return 0;
+}
+#endif
+
 static int do_firmware_upgrade(const ulong size) {
-	char buf[576];
+	char buf[512];
 	switch (qca_smem_flash_info.flash_type) {
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
 		case FLASH_TYPE_MMC:
 		case FLASH_TYPE_NOR_PLUS_EMMC: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_FIT) {
 				print_upgrade_warning("FIRMWARE");
-				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:HLOS 0x%lx 0x600000 && flash rootfs 0x%lx 0x%lx && mmc read 0x%lx 0x622 0x200 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && flash 0:BOOTCONFIG 0x%lx 0x40000 && flash 0:BOOTCONFIG1 0x%lx 0x40000",
-						UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR + 0x600000, (size - 0x600000), UPLOAD_ADDR, UPLOAD_ADDR + 0x80, UPLOAD_ADDR + 0x94, UPLOAD_ADDR + 0xA8, UPLOAD_ADDR, UPLOAD_ADDR);
+				/* Call extended check_fw_type to get both type and HLOS size */
+				struct fw_info info = check_fw_type_ex((void*)UPLOAD_ADDR);
+				unsigned long actual_hlos_size = (unsigned long)info.hlos_size;
+				unsigned long hlos_size = get_hlos_size();
+				unsigned long rootfs_size = get_rootfs_size();
+				/* Calculate rootfs size based on actual HLOS size */
+				unsigned long actual_rootfs_size = (size > actual_hlos_size) ? (size - actual_hlos_size) : 0;
+				/* Limit actual sizes to partition capacities */
+				if(actual_hlos_size > hlos_size) actual_hlos_size = hlos_size;
+				if(actual_rootfs_size > rootfs_size) actual_rootfs_size = rootfs_size;
+				/* Verify partition sizes are not zero */
+				if(actual_hlos_size == 0 && actual_rootfs_size == 0) {
+					printf("Error: Both HLOS and rootfs partition sizes are zero\n");
+					return -1;
+				}
+				sprintf(buf, "flash 0:HLOS 0x%lx 0x%lx && flash rootfs 0x%lx 0x%lx && flash 0:HLOS_1 0x%lx 0x%lx && flash rootfs_1 0x%lx 0x%lx",
+				UPLOAD_ADDR, actual_hlos_size,
+				UPLOAD_ADDR + actual_hlos_size, actual_rootfs_size,
+				UPLOAD_ADDR, actual_hlos_size,
+				UPLOAD_ADDR + actual_hlos_size, actual_rootfs_size);
+				/* Print detected HLOS size info */
+				//printf("Detected HLOS size: 0x%lx, Calculated rootfs size: 0x%lx\n", actual_hlos_size, actual_rootfs_size);
+				/* Execute flash command first */
+				if(execute_command(buf) != 0) {
+					printf("Failed to execute flash command\n");
+					return -1;
+				}
+				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
-				sprintf(buf, "imxtract 0x%lx %s && mmc dev 0 && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx %s && flash rootfs $fileaddr $filesize && imxtract 0x%lx %s && flash 0:WIFIFW $fileaddr $filesize && flasherase rootfs_data && mmc read 0x%lx 0x622 0x200 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && mw.b 0x%lx 0x00 0x1 && flash 0:BOOTCONFIG 0x%lx 0x40000 && flash 0:BOOTCONFIG1 0x%lx 0x40000",
-						UPLOAD_ADDR, HLOS_NAME, UPLOAD_ADDR, ROOTFS_NAME, UPLOAD_ADDR, WIFIFW_NAME, UPLOAD_ADDR, UPLOAD_ADDR + 0x80, UPLOAD_ADDR + 0x94, UPLOAD_ADDR + 0xA8, UPLOAD_ADDR, UPLOAD_ADDR);
+				sprintf(buf, "imxtract 0x%lx %s && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx %s && flash rootfs $fileaddr $filesize && imxtract 0x%lx %s && flash 0:WIFIFW $fileaddr $filesize && flasherase rootfs_data",
+					UPLOAD_ADDR, HLOS_NAME, UPLOAD_ADDR, ROOTFS_NAME, UPLOAD_ADDR, WIFIFW_NAME);
+				return update_bootconfig();
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
 				return -1;
 			}
 			break;
 		}
+#endif
 		case FLASH_TYPE_NAND:
 		case FLASH_TYPE_SPI:
 		case FLASH_TYPE_NOR:
