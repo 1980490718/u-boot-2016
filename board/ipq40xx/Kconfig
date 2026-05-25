@@ -1,5 +1,16 @@
 if ARCH_IPQ40xx
 
+config BOARD_DISPLAY_NAME
+	string "Name to display in U-Boot boot message"
+	depends on OF_CONTROL
+	help
+		Define the product name to display in U-Boot startup message.
+		This will appear in the 'Model:' line of the boot output.
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+	default y
+
 config SYS_CPU
 	default "ipq40xx"
 
@@ -24,4 +35,22 @@ config PCI_IPQ
 config BOARD_TYPES
 	bool "Support board_type member in global data"
 	default y
+
+config IPQ40XX_ALIYUN_AP4220
+	bool "For ipq40xx aliyun ap4220 support"
+	default n
+		help
+			Enable support for ipq40xx aliyun ap4220 board.
+
+config IPQ40XX_THINKPLUS_FOGPOD800
+	bool "For ipq40xx thinkplus fogpod800 support"
+	default n
+		help
+			Enable support for ipq40xx thinkplus fogpod800 board.
+
+config IPQ40XX_P2W_R619AC
+	bool "For ipq40xx p2w r619ac support"
+	default n
+		help
+			Enable support for ipq40xx p2w r619ac board.
 endif

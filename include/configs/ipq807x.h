@@ -183,7 +183,11 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
-/* #define CONFIG_QCA_MMC */
+#if !defined(CONFIG_IPQ807X_ALIYUN_AP8220) && \
+	!defined(CONFIG_IPQ807X_REDMI_AX6) && \
+	!defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+#define CONFIG_QCA_MMC
+#endif
 
 #ifdef CONFIG_QCA_MMC
 #define CONFIG_MMC
@@ -323,7 +327,6 @@ extern loff_t board_env_size;
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO			1
 #define CONFIG_IPQ_ETH_INIT_DEFER
-#define CONFIG_HTTPD
 
 /*
  * CRASH DUMP ENABLE

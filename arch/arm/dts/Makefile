@@ -20,6 +20,13 @@ dtb-$(CONFIG_EXYNOS5) += exynos5250-arndale.dtb \
 	exynos5800-peach-pi.dtb \
 	exynos5422-odroidxu3.dtb
 
+ifeq ($(CONFIG_IPQ807X_ALIYUN_AP8220),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-aliyun-ap8220.dtb
+else ifeq ($(CONFIG_IPQ807X_REDMI_AX6),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-redmi-ax6.dtb
+else ifeq ($(CONFIG_IPQ807X_XGLINK_5GCPE),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-xglink-5gcpe.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk02.dtb \
 	ipq807x-hk06.dtb \
@@ -38,6 +45,7 @@ dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-hk01.dtb \
 	ipq807x-hk01-c5.dtb \
 	ipq807x-hk10-c2.dtb \
 	ipq807x-db-hk02.dtb
+endif
 
 dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
 	ipq806x-ap160.dtb \
@@ -48,6 +56,13 @@ dtb-$(CONFIG_ARCH_IPQ806x) += ipq806x-ap148.dtb \
 	ipq806x-ap145_1xx.dtb \
 	ipq806x-ak01.dtb
 
+ifeq ($(CONFIG_IPQ40XX_ALIYUN_AP4220),y)
+dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-aliyun-ap4220.dtb
+else ifeq ($(CONFIG_IPQ40XX_THINKPLUS_FOGPOD800),y)
+dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-thinkplus-fogpod800.dtb
+else ifeq ($(CONFIG_IPQ40XX_P2W_R619AC),y)
+dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-p2w-r619ac.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-dk01-c1.dtb \
 		ipq40xx-dk01-c2.dtb \
 		ipq40xx-dk04-c1.dtb \
@@ -60,8 +75,27 @@ dtb-$(CONFIG_ARCH_IPQ40xx) += ipq40xx-dk01-c1.dtb \
 		ipq40xx-dk07-c4.dtb \
 		ipq40xx-dk01-s1.dtb \
 		ipq40xx-dk06-c1.dtb
+endif
 
 ifneq ($(CONFIG_IPQ_TINY),y)
+ifeq ($(CONFIG_IPQ5018_MR3000D_CI),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-mr3000d-ci.dtb
+else ifeq ($(CONFIG_IPQ5018_GL_B3000),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-gl-b3000.dtb
+else ifeq ($(CONFIG_IPQ5018_CUCC_VS010),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-cucc-vs010.dtb
+else ifeq ($(CONFIG_IPQ5018_RUIJIE_MA3063),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-ruijie-ma3063-mp03.5-c1.dtb
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-ruijie-ma3063-mp02.1.dtb
+else ifeq ($(CONFIG_IPQ5018_PZ_L8),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-pz-l8.dtb
+else ifeq ($(CONFIG_IPQ5018_CMCC_RAX3000Q),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-cmcc-rax3000q.dtb
+else ifeq ($(CONFIG_IPQ5018_SKSPRUCE_AP8330C),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-skspruce-ap8330c.dtb
+else ifeq ($(CONFIG_IPQ5018_MR3000D_04),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-mr3000d-04.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \
 			ipq5018-mp03.1-c2.dtb \
@@ -84,6 +118,7 @@ dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-db-mp03.3-c2.dtb \
 			ipq5018-tb-mp04.dtb \
 			ipq5018-mp03.1.dtb
+endif
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-db-mp02.1.dtb \
 				ipq5018-mp02.1.dtb \
@@ -91,6 +126,11 @@ dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-db-mp02.1.dtb \
 				ipq5018-db-mp03.1.dtb
 endif
 
+ifeq ($(CONFIG_IPQ5332_H3C_NE36PRO),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-h3c-ne36pro.dtb
+else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE306),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be306.dtb
+else
 ifneq ($(CONFIG_IPQ_TINY),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-emulation.dtb \
 				ipq5332-mi01.2.dtb \
@@ -123,13 +163,37 @@ dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-mi04.1.dtb \
 				ipq5332-tb-mi05.1.dtb
 endif
 endif
+endif
 
+ifeq ($(CONFIG_IPQ6018_M2),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-m2.dtb
+else ifeq ($(CONFIG_IPQ6018_360V6),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-360v6.dtb
+else ifeq ($(CONFIG_IPQ6018_AX5_JDCLOUD),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-ax5-jdcloud.dtb
+else ifeq ($(CONFIG_IPQ6018_NN6000),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-nn6000.dtb
+else ifeq ($(CONFIG_IPQ6018_XIAOMI_AX1800),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-xiaomi-ax1800.dtb
+else ifeq ($(CONFIG_IPQ6018_JDCLOUD_AX6600),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-ax6600.dtb
+else ifeq ($(CONFIG_IPQ6018_JDCLOUD_ER1),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-jdcloud-er1.dtb
+else ifeq ($(CONFIG_IPQ6018_AX1800PRO),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-ax1800pro.dtb
+else ifeq ($(CONFIG_IPQ6018_PHILIPS_LY1800),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-philips-ly1800.dtb
+else ifeq ($(CONFIG_IPQ6018_GL_AXT1800),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-gl-axt1800.dtb
+else ifeq ($(CONFIG_IPQ6018_DPTECH_AP3000_2C),y)
+dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-dptech-ap3000-2c.dtb
+else
 dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-cp02-c1.dtb \
 			ipq6018-cp03-c1.dtb \
-			ipq6018-cp03-c2.dtb \
 			ipq6018-db-cp01.dtb \
 			ipq6018-db-cp02.dtb
+endif
 
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-al01-c1.dtb \
 			ipq9574-al02-c1.dtb \

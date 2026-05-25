@@ -20,6 +20,9 @@
 *.bin
 *.patch
 *.cfgtmp
+__pycache__/
+*.pyc
+*.pyo
 
 # host programs on Cygwin
 *.exe
@@ -35,6 +38,15 @@
 /System.map
 /u-boot*
 /boards.cfg
+/combined_dtb.lds
+/dtb_combined
+/dtb_combined.bin.gz
+/dtb_combined.map
+
+#
+# bin folder
+#
+/bin/
 
 #
 # git files that we don't want to ignore even it they are dot-files
@@ -84,3 +96,8 @@ GTAGS
 *.orig
 *~
 \#*#
+
+# Exclude file
+arch/arm/dts/dtbtable.S
+arch/arm/dts/compressed_dtb/dtbcombined.S
+tools/mbn_tools.pyc

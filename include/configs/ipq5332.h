@@ -510,9 +510,13 @@ extern loff_t board_env_size;
 #define CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
 
 #ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+#ifdef CONFIG_IPQ5332_XIAOMI_BE306
+#define CONFIG_NAME_MAX_ENTRIES	10
+#define CONFIG_NAME_MAX_LEN	64
+#else
 #define CONFIG_NAME_MAX_ENTRIES	6
 #define CONFIG_NAME_MAX_LEN	32
 #endif
-#define CONFIG_HTTPD
+#endif
 
 #endif /* _IPQ5332_H */

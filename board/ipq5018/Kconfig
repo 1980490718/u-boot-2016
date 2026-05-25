@@ -1,5 +1,16 @@
 if ARCH_IPQ5018
 
+config BOARD_DISPLAY_NAME
+	string "Name to display in U-Boot boot message"
+	depends on OF_CONTROL
+	help
+		Define the product name to display in U-Boot startup message.
+		This will appear in the 'Model:' line of the boot output.
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+	default y
+
 config SYS_CPU
        default "ipq5018"
 
@@ -61,4 +72,63 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
+
+config 256MB_RAM
+	bool "Board has only 256MB RAM"
+	default n
+	help
+		Select this if your board has only 256MB RAM installed
+
+config IPQ5018_MR3000D_04
+	bool "For ipq5018 mr3000d 04 support"
+	default n
+	help
+		Enable support for ipq5018 mr3000d 04 support
+
+config IPQ5018_MR3000D_CI
+	bool "For ipq5018 mr3000d ci support"
+	default n
+	help
+		Enable support for ipq5018 mr3000d ci support
+
+config IPQ5018_GL_B3000
+	bool "For ipq5018 gl b3000 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 gl b3000 support
+
+config IPQ5018_CUCC_VS010
+	bool "For ipq5018 cucc vs010 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 cucc vs010 support
+
+config IPQ5018_RUIJIE_MA3063
+	bool "For ipq5018 ruijie ma3063 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 ruijie ma3063 support
+
+config IPQ5018_PZ_L8
+	bool "For ipq5018 pz l8 support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 pz l8 support
+
+config IPQ5018_CMCC_RAX3000Q
+	bool "For ipq5018 cmcc rax3000q support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for ipq5018 cmcc rax3000q support
+
+config IPQ5018_SKSPRUCE_AP8330C
+	bool "For ipq5018 skspruce ap8330c support"
+	default n
+	help
+		Enable support for ipq5018 skspruce ap8330c support
 endif

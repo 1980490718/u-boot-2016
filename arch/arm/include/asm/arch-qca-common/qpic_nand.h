@@ -224,7 +224,6 @@
  * |      |    |    |    |    |     |     |	|
  * |______|____|____|____|____|_____|_____|_____|
  *
- *
  * NOTE: RSVD = Reserved.
  *
  * After power-up the device is in "locked" state i.e feature bits

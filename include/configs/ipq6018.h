@@ -199,7 +199,12 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
+#if !defined(CONFIG_IPQ6018_360V6) && \
+	!defined(CONFIG_IPQ6018_M2) && \
+	!defined(CONFIG_IPQ6018_XIAOMI_AX1800) && \
+	!defined(CONFIG_IPQ6018_DPTECH_AP3000_2C)
 #define CONFIG_QCA_MMC
+#endif
 
 #ifdef CONFIG_QCA_MMC
 #define CONFIG_MMC
@@ -335,7 +340,6 @@ extern loff_t board_env_size;
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO			1
 #define CONFIG_IPQ_ETH_INIT_DEFER
-#define CONFIG_HTTPD
 
 /*
  * CRASH DUMP ENABLE
@@ -380,8 +384,13 @@ extern loff_t board_env_size;
 #define CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
 
 #ifdef CONFIG_LIST_OF_CONFIG_NAMES_SUPPORT
+#ifdef CONFIG_IPQ6018_DPTECH_AP3000_2C
+#define CONFIG_NAME_MAX_ENTRIES 4
+#define CONFIG_NAME_MAX_LEN 64
+#else
 #define CONFIG_NAME_MAX_ENTRIES	2
 #define CONFIG_NAME_MAX_LEN	32
+#endif
 #endif
 
 #endif /* _IPQ6018_H */

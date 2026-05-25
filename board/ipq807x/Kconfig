@@ -1,3 +1,14 @@
+config BOARD_DISPLAY_NAME
+	string "Name to display in U-Boot boot message"
+	depends on OF_CONTROL
+	help
+		Define the product name to display in U-Boot startup message.
+		This will appear in the 'Model:' line of the boot output.
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+	default y
+
 config SYS_CPU
        default "ipq807x"
 
@@ -41,3 +52,21 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
+
+config IPQ807X_ALIYUN_AP8220
+	bool "IPQ807x ALIYUN AP8220 board support"
+	default n
+	help
+	  Enable support for IPQ807x ALIYUN AP8220 board
+
+config IPQ807X_REDMI_AX6
+	bool "IPQ807x REDMI AX6 board support"
+	default n
+	help
+	  Enable support for IPQ807x REDMI AX6 board
+
+config IPQ807X_XGLINK_5GCPE
+	bool "IPQ807x XGLINK 5GCPE board support"
+	default n
+	help
+	  Enable support for IPQ807x XGLINK 5GCPE board

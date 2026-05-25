@@ -1,5 +1,16 @@
 if ARCH_IPQ6018
 
+config BOARD_DISPLAY_NAME
+	string "Name to display in U-Boot boot message"
+	depends on OF_CONTROL
+	help
+		Define the product name to display in U-Boot startup message.
+		This will appear in the 'Model:' line of the boot output.
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+	default y
+
 config SYS_CPU
        default "ipq6018"
 
@@ -31,4 +42,78 @@ config LIST_OF_CONFIG_NAMES_SUPPORT
 config LIST_FUSE
 	bool "Enable fuse list command"
 	default n
+
+config IPQ6018_DPTECH_AP3000_2C
+	bool "IPQ6018 DPTECH AP3000-2C Board Support"
+	default n
+	help
+		Enable support for IPQ6018 DPTECH AP3000-2C board
+
+config IPQ6018_M2
+	bool "IPQ6018 M2 Board"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for IPQ6018_M2 board
+
+config IPQ6018_360V6
+	bool "IPQ6018 360V6 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_360V6 board
+
+config IPQ6018_AX5_JDCLOUD
+	bool "IPQ6018 AX5 JDCloud Board Support"
+	default n
+	help
+		Enable support for IPQ6018_AX5_JDCLOUD board
+
+config IPQ6018_JDCLOUD_AX6600
+	bool "IPQ6018 JDCloud AX6600 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_JDCLOUD_AX6600 board
+
+config IPQ6018_JDCLOUD_ER1
+	bool "IPQ6018 JDCloud ER1 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_JDCLOUD_ER1 board
+
+config IPQ6018_XIAOMI_AX1800
+	bool "IPQ6018 Xiaomi AX1800 Board Support"
+	select 256MB_RAM
+	default n
+	help
+		Enable support for IPQ6018_XIAOMI_AX1800 board
+
+config IPQ6018_NN6000
+	bool "IPQ6018 NN6000 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_NN6000 board
+
+config IPQ6018_AX1800PRO
+	bool "IPQ6018 AX1800PRO Board Support"
+	default n
+	help
+		Enable support for IPQ6018_AX1800PRO board
+
+config IPQ6018_PHILIPS_LY1800
+	bool "IPQ6018 PHILIPS LY1800 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_PHILIPS_LY1800 board
+
+config IPQ6018_GL_AXT1800
+	bool "IPQ6018 GL AXT1800 Board Support"
+	default n
+	help
+		Enable support for IPQ6018_GL_AXT1800 board
+
+config 256MB_RAM
+	bool "Board has only 256MB RAM"
+	default n
+	help
+	  Select this if your board has only 256MB RAM installed
 endif
