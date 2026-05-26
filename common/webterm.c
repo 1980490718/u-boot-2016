@@ -241,6 +241,16 @@ void webterm_reset(void)
 	last_read_position = 0;
 }
 
+/* Function to check if a command is a network command that might affect HTTPD */
+static int is_network_command(const char *cmd) {
+	return (strstr(cmd, "tftp") != NULL ||
+	       strstr(cmd, "ping") != NULL ||
+	       strstr(cmd, "bootp") != NULL ||
+	       strstr(cmd, "dhcp") != NULL ||
+	       strstr(cmd, "rarp") != NULL ||
+	       strstr(cmd, "nfs") != NULL);
+}
+
 /* Execute command and capture output */
 void webterm_execute_command(const char *cmd)
 {
@@ -249,8 +259,17 @@ void webterm_execute_command(const char *cmd)
 	snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", cmd);
 	webterm_capture_output(cmd_echo);
 
+	// Check if this is a network command that might affect HTTPD
+	int is_network_cmd = is_network_command(cmd);
+
 	// Execute the command (output will be captured automatically)
 	run_command(cmd, 0);
+
+	// If it was a network command, HTTPD will be restarted automatically
+	// by the net_loop cleanup code
+	if (is_network_cmd) {
+		webterm_capture_output("Network command completed.\n");
+	}
 }
 
 /* Handle web terminal HTTP requests */
@@ -332,6 +351,9 @@ void webterm_http_handler(void)
 					nl = strchr(body_copy, '\r');
 					if (nl) *nl = '\0';
 
+					// Check if this is a network command that affects HTTPD
+					int is_network_cmd = is_network_command(body_copy);
+
 					// Add the command to webterm output (plain text format)
 					char cmd_echo[512];
 					snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", body_copy);
@@ -339,6 +361,11 @@ void webterm_http_handler(void)
 
 					// Execute the command (output will be captured automatically)
 					run_command(body_copy, 0);
+
+					// If it was a network command, inform user that HTTPD will be restored
+					if (is_network_cmd) {
+						webterm_capture_output("Network command completed.\n");
+					}
 
 					free(body_copy);
 				}

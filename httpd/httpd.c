@@ -2,6 +2,11 @@
 #include "httpd.h"
 #include "fs.h"
 #include "fsdata.h"
+#include "uip_arp.h"
+#include <common.h>
+#include <net.h>
+#include <watchdog.h>
+#include "../net/httpd.h"
 #include <webterm.h>
 #include <asm/gpio.h>
 #include <ipq_api.h>
@@ -573,4 +578,38 @@ void httpd_appcall(void) {
 			uip_abort();
 			break;
 	}
+}
+
+void httpd_poll(void) {
+	int i;
+	ulong now = get_timer(0);
+
+	if (!webfailsafe_is_running)
+		return;
+
+	for (i = 0; i < UIP_CONNS; i++) {
+		uip_periodic(i);
+		if (uip_len > 0) {
+			uip_arp_out();
+			NetSendHttpd();
+		}
+	}
+
+	static ulong arptimer = 0;
+	if (get_timer(arptimer) >= 1000) {
+		uip_arp_timer();
+		arptimer = now;
+	}
+
+	if ((now % 8) == 0) {
+		WATCHDOG_RESET();
+	}
+}
+
+void httpd_stop(void) {
+	webfailsafe_is_running = 0;
+}
+
+int httpd_is_running(void) {
+	return webfailsafe_is_running;
 }

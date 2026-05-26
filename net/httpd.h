@@ -5,6 +5,9 @@ void HttpdStart(void);
 void HttpdStop(void);
 void HttpdDone(void);
 void HttpdHandler(void);
+void NetSendHttpd(void);
+void NetReceiveHttpd(volatile uchar *inpkt, int len);
+void httpd_set_eth_reinit_needed(int needed);
 
 /* board specific implementation */
 extern int do_http_upgrade(const ulong size, const int upgrade_type);

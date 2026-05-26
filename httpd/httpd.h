@@ -46,6 +46,8 @@
 #ifndef __HTTPD_H__
 #define __HTTPD_H__
 
+#include "uipopt.h"
+
 void httpd_init(void);
 void httpd_appcall(void);
 
@@ -80,5 +82,10 @@ struct httpd_state {
 //#define FS_STATISTICS 1
 
 extern struct httpd_state *hs;
+extern int httpd_running;
+
+void httpd_poll(void);
+void httpd_stop(void);
+int httpd_is_running(void);
 
 #endif /* __HTTPD_H__ */
