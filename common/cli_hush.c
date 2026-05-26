@@ -130,6 +130,10 @@
 #ifdef __U_BOOT__
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_HTTPD
+#include "../httpd/httpd.h"
+#endif
+
 #define EXIT_SUCCESS 0
 #define EOF -1
 #define syntax() syntax_err()
@@ -3171,6 +3175,11 @@ static int parse_stream_outer(struct in_str *inp, int flag)
 	int code = 1;
 #endif
 	do {
+#ifdef CONFIG_HTTPD
+		if (httpd_is_running()) {
+			httpd_poll();
+		}
+#endif
 		ctx.type = flag;
 		initialize_context(&ctx);
 		update_ifs_map();

@@ -16,6 +16,10 @@
 #include <fdtdec.h>
 #include <malloc.h>
 
+#ifdef CONFIG_HTTPD
+#include "../httpd/httpd.h"
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /*
@@ -204,6 +208,9 @@ err:
 void cli_loop(void)
 {
 #ifdef CONFIG_SYS_HUSH_PARSER
+#ifdef CONFIG_HTTPD
+	httpd_poll();
+#endif
 	parse_file_outer();
 	/* This point is never reached */
 	for (;;);

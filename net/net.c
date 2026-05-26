@@ -412,6 +412,14 @@ int net_loop(enum proto_t protocol)
 {
 	int ret = -EINVAL;
 
+	/* Save HTTPD running state before network operation */
+#ifdef CONFIG_HTTPD
+	extern int httpd_was_running_before;
+	if (protocol != HTTPD && webfailsafe_is_running) {
+		httpd_was_running_before = 1;
+	}
+#endif
+
 	net_restarted = 0;
 	net_dev_exists = 0;
 	net_try_count = 1;
@@ -732,6 +740,22 @@ done:
 	net_set_udp_handler(NULL);
 	net_set_icmp_handler(NULL);
 #endif
+
+	/* Restart HTTPD if it was running before and we just finished a network operation */
+#ifdef CONFIG_HTTPD
+	extern int httpd_was_running_before;
+	if (httpd_was_running_before && protocol != HTTPD) {
+		httpd_was_running_before = 0;
+		/* Set flag to indicate ethernet needs reinit when restarting HTTPD */
+		extern void httpd_set_eth_reinit_needed(int);
+		httpd_set_eth_reinit_needed(1);
+		/* Small delay to allow network cleanup */
+		mdelay(100);
+		HttpdStart();
+		/* Reset the flag after restart */
+		httpd_set_eth_reinit_needed(0);
+	}
+#endif
 	return ret;
 }
 
@@ -798,8 +822,11 @@ int net_start_again(void)
 
 /**********************************************************************/
 /*
- *	Miscelaneous bits.
+ * Miscellaneous bits.
  */
+
+/* Global variable to track if HTTPD was running before network operation */
+int httpd_was_running_before = 0;
 
 static void dummy_handler(uchar *pkt, unsigned dport,
 			struct in_addr sip, unsigned sport,
@@ -1140,7 +1167,6 @@ void net_process_received_packet(uchar *in_packet, int len)
 #if defined(CONFIG_HTTPD)
 	if(webfailsafe_is_running){
 		NetReceiveHttpd(in_packet,len);
-		return;
 	}
 #endif
 #ifdef CONFIG_API

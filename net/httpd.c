@@ -32,7 +32,24 @@ static void initialize_phy_link(void);
 
 static int arptimer = 0;
 struct in_addr net_httpd_ip;
+
+/* Flag to track if we need to reinitialize ethernet after network operations */
+static int httpd_needs_eth_reinit = 0;
+
+/* Function to set the reinit flag */
+void httpd_set_eth_reinit_needed(int needed) {
+	httpd_needs_eth_reinit = needed;
+}
 void HttpdStart(void) {
+	/* Reinitialize ethernet if needed (e.g., after network operations like tftp) */
+	if (httpd_needs_eth_reinit) {
+		eth_halt();
+		if (eth_init() < 0) {
+			printf("Failed to initialize ethernet\n");
+			return;
+		}
+	}
+
 #ifdef CONFIG_DHCPD
 	/* Initialize PHY link before starting DHCP server */
 	initialize_phy_link();
@@ -70,6 +87,15 @@ void HttpdStart(void) {
 	net_netmask.s_addr = dhcpd_svr_cfg.netmask.s_addr;
 	uip_setnetmask(ip);
 #else
+	/* Reinitialize ethernet if needed (e.g., after network operations like tftp) */
+	if (httpd_needs_eth_reinit) {
+		eth_halt();
+		if (eth_init() < 0) {
+			printf("Failed to initialize ethernet\n");
+			return;
+		}
+	}
+
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];
 	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
