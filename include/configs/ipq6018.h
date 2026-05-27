@@ -202,7 +202,8 @@ extern loff_t board_env_size;
 #if !defined(CONFIG_IPQ6018_360V6) && \
 	!defined(CONFIG_IPQ6018_M2) && \
 	!defined(CONFIG_IPQ6018_XIAOMI_AX1800) && \
-	!defined(CONFIG_IPQ6018_DPTECH_AP3000_2C)
+	!defined(CONFIG_IPQ6018_DPTECH_AP3000_2C) && \
+	!defined(CONFIG_IPQ6018_ZXELINK_W212X)
 #define CONFIG_QCA_MMC
 #endif
 
