@@ -252,7 +252,10 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		case WEBFAILSAFE_UPGRADE_TYPE_CDT: return do_cdt_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_MIBIB: return do_mibib_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_PTABLE: return do_ptable_upgrade(size);
-		case WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS: return do_initramfs_boot(size);
+		case WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS:
+			/* Copy initramfs data from upload address to ram boot address using memmove to handle potential overlaps */
+			memmove((void *)RAM_BOOT_ADDR, (void *)UPLOAD_ADDR, size);
+			return do_initramfs_boot(size);
 		default: printf("\n* Unsupported upgrade type *\n");
 			return -1;
 	}
@@ -498,13 +501,13 @@ static int do_ptable_upgrade(const ulong size) {
 
 static int do_initramfs_boot(const ulong size) {
 	char buf[576];
-	int fw_type = check_fw_type((void *)UPLOAD_ADDR);
+	int fw_type = check_fw_type((void *)RAM_BOOT_ADDR);
 	if (fw_type != FW_TYPE_FIT) {
 		printf("\n* Uploaded file is not FIT firmware type. Actual type is %s *\n", fw_type_to_string(fw_type));
 		return -1;
 	}
 	print_upgrade_warning("INITRAMFS");
-	sprintf(buf, "bootm 0x%lx", UPLOAD_ADDR);
+	sprintf(buf, "bootm 0x%lx", RAM_BOOT_ADDR);
 
 	int ret = execute_command(buf);
 	if (ret != 0) {
