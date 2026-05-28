@@ -95,6 +95,13 @@ enum flash_type_enum {
 /* simplify the WEBFAILSAFE_UPLOAD_RAM_ADDRESS as UPLOAD_ADDR */
 #define UPLOAD_ADDR									WEBFAILSAFE_UPLOAD_RAM_ADDRESS
 
+/* RAM boot address for initramfs */
+#ifdef CONFIG_IPQ40XX
+#define RAM_BOOT_ADDR								(unsigned long) 0x84000000
+#else
+#define RAM_BOOT_ADDR								(unsigned long) 0x44000000
+#endif
+
 /* extract file name from oem binary */
 #define HLOS_NAME									"hlos-0cc33b23252699d495d79a843032498bfa593aba"
 #define ROOTFS_NAME									"rootfs-f3c50b484767661151cfb641e2622703e45020fe"
