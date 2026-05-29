@@ -131,4 +131,10 @@ config IPQ5018_SKSPRUCE_AP8330C
 	default n
 	help
 		Enable support for ipq5018 skspruce ap8330c support
+
+config IPQ5018_JDCLOUD_AX3000
+	bool "For ipq5018 jdcoud ax3000 support"
+	default n
+	help
+		Enable support for ipq5018 jdcoud ax3000 support
 endif

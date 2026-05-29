@@ -71,6 +71,7 @@ cd u-boot-2016
 | IPQ5018 | ipq5018_cmcc_rax3000q       | CMCC RAX3000Q                     |       0x8040000        |    ×     | `./build.sh ipq5018_cmcc_rax3000q`       |
 | IPQ5018 | ipq5018_cucc_vs010          | CUCC VS010                        |       0x8040000        |    ✓     | `./build.sh ipq5018_cucc_vs010`          |
 | IPQ5018 | ipq5018_gl_b3000            | GLINET GL-B3000                   |       0x8040004        |    ×     | `./build.sh ipq5018_gl_b3000`            |
+| IPQ5018 | ipq5018_jdcloud_ax3000      | JDCloud AX3000(RE-OS-03U)         |       0x8040104        |    ✓     | `./build.sh ipq5018_jdcloud_ax3000`      |
 | IPQ5018 | ipq5018_mr3000d_04          | CMCC MR3000D-04                   |       0x8040702        |    ✓     | `./build.sh ipq5018_mr3000d_04`          |
 | IPQ5018 | ipq5018_mr3000d_ci          | CMCC MR3000D-CI                   |       0x8040802        |    ✓     | `./build.sh ipq5018_mr3000d_ci`          |
 | IPQ5018 | ipq5018_pz_l8               | CMCC PZ-L8                        |       0x8040000        |    ×     | `./build.sh ipq5018_pz_l8`               |
