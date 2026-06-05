@@ -265,6 +265,7 @@ typedef struct {
 #define CONFIG_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD
+#define CONFIG_SYS_LONGHELP
 
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITIONS
