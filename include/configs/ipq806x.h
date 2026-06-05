@@ -273,11 +273,12 @@ typedef struct {
 #define CONFIG_SYS_NULLDEV
 #define CONFIG_CMD_XIMG
 
-/*Support for Compressed DTB image*/
-#ifdef CONFIG_FIT
-#define CONFIG_DTB_COMPRESSION
-#define CONFIG_DTB_LOAD_MAXLEN		0x100000
-#endif
+/*
+ * Compressed Device Tree Configuration
+ */
+#define CONFIG_COMPRESSED_DTB_MAX_SIZE 0x40000
+#define CONFIG_COMPRESSED_DTB_BASE CONFIG_SYS_TEXT_BASE - \
+					CONFIG_COMPRESSED_DTB_MAX_SIZE
 
 /*
  * SPI Flash Configs
