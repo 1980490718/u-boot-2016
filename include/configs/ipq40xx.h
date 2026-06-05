@@ -261,6 +261,7 @@ typedef struct {
 #define CONFIG_NETMASK 255.255.255.0
 #define CONFIG_SERVERIP 192.168.1.2
 #define CONFIG_IPQ_NO_MACS      2
+#define CONFIG_CMD_TFTPPUT
 #define CONFIG_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD
@@ -310,7 +311,7 @@ typedef struct {
  * CRASH DUMP ENABLE
  */
 
-#define CONFIG_QCA_APPSBL_DLOAD	1
+/* #define CONFIG_QCA_APPSBL_DLOAD	1 */
 
 #ifdef CONFIG_QCA_APPSBL_DLOAD
 #define CONFIG_CMD_TFTPPUT

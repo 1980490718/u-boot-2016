@@ -188,8 +188,8 @@
 /*
  * CRASH DUMP ENABLE
  */
-
-#define CONFIG_QCA_APPSBL_DLOAD 1
+#define CONFIG_CMD_TFTPPUT
+/* #define CONFIG_QCA_APPSBL_DLOAD 1 */
 #ifdef CONFIG_QCA_APPSBL_DLOAD
 #define CONFIG_CMD_TFTPPUT
 /* We will be uploading very big files */
@@ -251,8 +251,13 @@ typedef struct {
 	((uint32_t)&(((ipq_mem_reserve_t *)0)->x)))
 #endif
 
+#ifdef CONFIG_QCA_APPSBL_DLOAD
 #define IPQ_NSSTCM_DUMP_ADDR            (IPQ_MEM_RESERVE_BASE(nsstcmdump))
 #define IPQ_TEMP_DUMP_ADDR              (IPQ_MEM_RESERVE_BASE(nsstcmdump))
+#else
+#define IPQ_NSSTCM_DUMP_ADDR            0
+#define IPQ_TEMP_DUMP_ADDR              0
+#endif
 
 #define IPQ_TFTP_MIN_ADDR		(CONFIG_SYS_SDRAM_BASE + (64 << 20))
 #define IPQ_TFTP_MAX_ADDR		(gd->bd->bi_dram[0].start +	\
@@ -376,7 +381,7 @@ typedef struct {
  * CRASH DUMP ENABLE
  */
 
-#define CONFIG_QCA_APPSBL_DLOAD 1
+/* #define CONFIG_QCA_APPSBL_DLOAD 1 */
 
 #define TLMM_BASE_ADDR      0x00800000
 #define GPIO_CONFIG_ADDR(x) (TLMM_BASE_ADDR + 0x1000 + (x)*0x10)

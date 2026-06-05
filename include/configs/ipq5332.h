@@ -415,7 +415,7 @@ extern loff_t board_env_size;
 /*
  * CRASH DUMP ENABLE
  */
-#define CONFIG_QCA_APPSBL_DLOAD
+/* #define CONFIG_QCA_APPSBL_DLOAD */
 #ifdef CONFIG_QCA_APPSBL_DLOAD
 
 #undef CONFIG_NET_RETRY_COUNT

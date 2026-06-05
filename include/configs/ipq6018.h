@@ -349,7 +349,7 @@ extern loff_t board_env_size;
 /*
  * CRASH DUMP ENABLE
  */
-#define CONFIG_QCA_APPSBL_DLOAD
+/* #define CONFIG_QCA_APPSBL_DLOAD */
 #ifdef CONFIG_QCA_APPSBL_DLOAD
 #define CONFIG_CMD_TFTPPUT
 /* We will be uploading very big files */
