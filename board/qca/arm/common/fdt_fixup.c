@@ -1093,7 +1093,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 #endif
 	fdt_fixup_memory_banks(blob, &memory_start, &memory_size, 1);
 	ipq_fdt_fixup_version(blob);
-#ifndef CONFIG_QCA_APPSBL_DLOAD
+#if !defined(CONFIG_QCA_APPSBL_DLOAD) && defined(CONFIG_IPQ_FDT_FIXUP)
 	ipq_fdt_dload_disable_fixup(blob);
 #endif
 	if (((sfi->flash_type == SMEM_BOOT_NAND_FLASH) ||
@@ -1184,8 +1184,11 @@ int ft_board_setup(void *blob, bd_t *bd)
 	if (s)
 		fdt_fixup_set_dload_warm_reset(blob);
 	s = getenv("dload_dis");
-	if ((s != NULL) && (s[0] != '\0'))
+	if ((s != NULL) && (s[0] != '\0')) {
+#ifdef CONFIG_IPQ_FDT_FIXUP
 		ipq_fdt_dload_disable_fixup(blob);
+#endif
+	}
 	s = getenv("qce_fixed_key");
 	if (s)
 		fdt_fixup_set_qce_fixed_key(blob);
