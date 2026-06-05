@@ -353,6 +353,7 @@ typedef struct {
 #endif
 
 #undef CONFIG_IPQ_ROOTFS_AUTH
+#define CONFIG_DISABLE_SEC_AUTH
 
 #define CONFIG_IPQ_4B_ADDR_SWITCH_REQD
 #endif /* _IPQ40XX_H */
