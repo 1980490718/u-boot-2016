@@ -1,6 +1,8 @@
 obj-y := cmd_bootqca.o
 obj-y += cmd_blowsecfuse.o
+ifndef CONFIG_DISABLE_SEC_AUTH
 obj-y += cmd_sec_auth.o
+endif
 ifndef CONFIG_CMD_DISABLE_EXECTZT
 obj-y += cmd_exectzt.o
 endif

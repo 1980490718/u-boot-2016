@@ -388,5 +388,6 @@ typedef struct {
 #define GPIO_IN_OUT_ADDR(x) (TLMM_BASE_ADDR + 0x1004 + (x)*0x10)
 
 #undef CONFIG_IPQ_ROOTFS_AUTH
+#define CONFIG_DISABLE_SEC_AUTH
 
 #endif /* _IPQ806x_CDP_H */
