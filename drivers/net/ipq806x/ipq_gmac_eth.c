@@ -157,8 +157,9 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 }
 
 #ifdef CONFIG_HTTPD
-static u8 ipq806x_phy_link_prev[CONFIG_IPQ_NO_MACS] = {0xFF};
+static u8 ipq806x_phy_link_prev[CONFIG_IPQ_NO_MACS];
 static ulong ipq806x_phy_link_last_check = 0;
+static int ipq806x_first_check_done = 0;
 #define IPQ806X_PHY_LINK_CHECK_INTERVAL 1500
 
 int ipq806x_eth_check_link_change(void)
@@ -202,6 +203,11 @@ int ipq806x_eth_check_link_change(void)
 		return 0;
 
 	memcpy(ipq806x_phy_link_prev, cur_link, sizeof(ipq806x_phy_link_prev));
+	if (!ipq806x_first_check_done) {
+		ipq806x_first_check_done = 1;
+		return 0;
+	}
+
 	eth_init();
 	return 1;
 }
@@ -1271,4 +1277,3 @@ static int do_force_eth_speed(cmd_tbl_t *cmdtp, int flag, int argc,
 U_BOOT_CMD(ethspeed, 3, 0, do_force_eth_speed,
 	   "Force ethernet speed to 10/100/autoneg",
 	   "ethspeed {phy addr} {10|100|autoneg} - Force ethernet speed to 10/100/autoneg\n");
-
