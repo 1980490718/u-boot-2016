@@ -15,6 +15,10 @@
 #include <console.h>
 #include <linux/ctype.h>
 
+#ifdef CONFIG_HTTPD
+#include "../httpd/httpd.h"
+#endif
+
 #define DEBUG_PARSER	0	/* set to 1 to debug */
 
 #define debug_parser(fmt, args...)		\
@@ -266,6 +270,9 @@ void cli_simple_loop(void)
 	int rc = 1;
 
 	for (;;) {
+#ifdef CONFIG_HTTPD
+		httpd_poll();
+#endif
 		if (rc >= 0) {
 			/* Saw enough of a valid command to
 			 * restart the timeout.

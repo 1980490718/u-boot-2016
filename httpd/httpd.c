@@ -581,24 +581,32 @@ void httpd_appcall(void) {
 }
 
 void httpd_poll(void) {
-	int i;
 	ulong now = get_timer(0);
 
 	if (!webfailsafe_is_running)
 		return;
 
-	for (i = 0; i < UIP_CONNS; i++) {
-		uip_periodic(i);
-		if (uip_len > 0) {
-			uip_arp_out();
-			NetSendHttpd();
+	/* Check if upgrade is ready - this was handled in net_loop originally */
+	if (webfailsafe_ready_for_upgrade) {
+		/* Clear flag immediately to prevent re-entry */
+		webfailsafe_ready_for_upgrade = 0;
+		setenv_hex("filesize", net_boot_file_size);
+		setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);
+		setenv_hex("fileaddr", load_addr);
+		if (do_http_upgrade(net_boot_file_size, webfailsafe_upgrade_type) < 0) {
+			do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
+			return;
 		}
+		/* Upgrade successful */
+		HttpdDone();
+		do_reset(NULL, 0, 0, NULL);
+		/* Shouldn't reach here */
+		printf("reboot fail\n");
+		return;
 	}
 
-	static ulong arptimer = 0;
-	if (get_timer(arptimer) >= 1000) {
-		uip_arp_timer();
-		arptimer = now;
+	if (eth_rx() > 0) {
+		HttpdHandler();
 	}
 
 	if ((now % 8) == 0) {

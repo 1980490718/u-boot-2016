@@ -41,13 +41,20 @@ void httpd_set_eth_reinit_needed(int needed) {
 	httpd_needs_eth_reinit = needed;
 }
 void HttpdStart(void) {
-	/* Reinitialize ethernet if needed (e.g., after network operations like tftp) */
-	if (httpd_needs_eth_reinit) {
-		eth_halt();
-		if (eth_init() < 0) {
-			printf("Failed to initialize ethernet\n");
-			return;
-		}
+	int ret;
+	/* Initialize network subsystem first */
+	net_init();
+	/* Always initialize ethernet for HTTPD server */
+	eth_halt();
+	eth_set_current();
+	ret = eth_init();
+	while(ret < 0) {
+		ret = eth_init();
+		mdelay(1000);
+	}
+	if (ret < 0) {
+		printf("Failed to initialize ethernet\n");
+		return;
 	}
 
 #ifdef CONFIG_DHCPD
@@ -87,15 +94,6 @@ void HttpdStart(void) {
 	net_netmask.s_addr = dhcpd_svr_cfg.netmask.s_addr;
 	uip_setnetmask(ip);
 #else
-	/* Reinitialize ethernet if needed (e.g., after network operations like tftp) */
-	if (httpd_needs_eth_reinit) {
-		eth_halt();
-		if (eth_init() < 0) {
-			printf("Failed to initialize ethernet\n");
-			return;
-		}
-	}
-
 	struct uip_eth_addr eaddr;
 	unsigned short int ip[2];
 	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
@@ -589,6 +587,16 @@ void HttpdHandler(void) {
 }
 
 int do_httpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
+	if (argc >= 2 && !strcmp(argv[1], "stop")) {
+		if (webfailsafe_is_running) {
+			HttpdStop();
+			printf("httpd stopped\n");
+		} else {
+			printf("httpd is not running\n");
+		}
+		return CMD_RET_SUCCESS;
+	}
+
 	if (argc >= 2) {
 		net_httpd_ip = string_to_ip(argv[1]);
 		if (net_httpd_ip.s_addr == 0) {
@@ -598,15 +606,18 @@ int do_httpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	} else {
 		net_copy_ip(&net_httpd_ip, &net_ip);
 	}
-	if (net_loop(HTTPD) < 0) {
-		printf("httpd failed\n");
-		return CMD_RET_FAILURE;
+
+	if (webfailsafe_is_running) {
+		printf("httpd is already running\n");
+		return CMD_RET_SUCCESS;
 	}
+	HttpdStart();
+	printf("httpd started\n");
 	return CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(
 	httpd, 2, 1, do_httpd,
 	"start www server for firmware recovery with [localAddress]\n",
-	NULL
+	"  stop - stop the httpd server\n"
 );

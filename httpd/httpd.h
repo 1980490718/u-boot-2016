@@ -88,4 +88,7 @@ void httpd_poll(void);
 void httpd_stop(void);
 int httpd_is_running(void);
 
+/* Function declarations for network setup */
+extern void HttpdStart(void);
+
 #endif /* __HTTPD_H__ */

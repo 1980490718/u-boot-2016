@@ -174,8 +174,7 @@ static void check_reset_button_status(void) {
 			/* Start httpd server */
 			led_off("power_led");
 			led_on("blink_led");
-			run_command("httpd 192.168.1.1", 0);
-			run_command("res", 0);
+			run_command("httpd", 0);
 			break;
 		}
 	}
@@ -250,8 +249,7 @@ void check_button_is_press(void) {
 #ifndef CONFIG_IPQ40XX
 			eth_initialize();
 #endif
-			run_command("httpd 192.168.1.1", 0);
-			run_command("res", 0);
+			run_command("httpd", 0);
 			break;
 		}
 	}
