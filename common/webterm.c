@@ -41,6 +41,9 @@ static int webterm_line_pos = 0;
 /* Track last read position to avoid duplicate output */
 static int last_read_position = 0;
 
+/* Output sequence counter - incremented on every write */
+static volatile int webterm_output_seq = 0;
+
 /* Forward declaration */
 void webterm_capture_output(const char *str);
 
@@ -131,6 +134,8 @@ static void webterm_batch_copy(const char *src, int len) {
 		webterm_out.overflow = 1;
 		last_read_position = 0;
 	}
+
+	webterm_output_seq++;
 }
 
 /* Integration function - capture string output */
@@ -226,7 +231,19 @@ void webterm_http_handler(void) {
 
 	// Check if this is a web terminal GET request
 	if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T) {
-		// Check for /webterm/data endpoint to get just the data
+		if (strncmp((char *)&uip_appdata[4], "/webterm/status", 15) == 0) {
+			int len = snprintf(response_buffer, sizeof(response_buffer),
+				"HTTP/1.1 200 OK\r\n"
+				"Content-Type: text/plain\r\n"
+				"Cache-Control: no-cache\r\n"
+				"Connection: close\r\n\r\n%d",
+				webterm_output_seq);
+			hs->state = STATE_FILE_REQUEST;
+			hs->dataptr = (u8_t *)response_buffer;
+			hs->upload = len;
+			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+			return;
+		}
 		if (strncmp((char *)&uip_appdata[4], "/webterm/data", 13) == 0) {
 			char output[16384];
 			int out_len = webterm_get_output(output, sizeof(output));
