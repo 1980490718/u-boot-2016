@@ -181,9 +181,10 @@
 	</div>
 
 	<script>
-		// 配置
-		const POLL_INTERVAL = 30000;
+		const POLL_INTERVAL = 500;
+		const FETCH_OPTS = { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } };
 		let pollTimer = null;
+		let lastSeq = -1;
 
 		const terminalOutput = document.getElementById('terminalOutput');
 		const terminalInput = document.getElementById('terminalInput');
@@ -191,57 +192,43 @@
 		const clearBtn = document.getElementById('clearBtn');
 		const connectionStatus = document.getElementById('connectionStatus');
 
-		// 显示欢迎信息
 		function showWelcome() {
 			terminalOutput.textContent = '终端已就绪。输入命令并按回车键或点击发送按钮执行。\n\n';
 		}
 
-		// 更新终端状态信息
-		function updateTerminalStatus(isConnected) {
-			const statusMsg = isConnected ? '终端已就绪。输入命令并按回车键或点击发送按钮执行。\n' : '终端未就绪，请检查连接状态！\n';
-			let currentContent = terminalOutput.textContent;
-
-			// 移除现有的状态消息
-			currentContent = currentContent.replace('终端已就绪。输入命令并按回车键或点击发送按钮执行。\n', '').replace('终端未就绪，请检查连接状态！\n', '').trim();
-
-			// 设置新内容
-			terminalOutput.textContent = currentContent ? statusMsg + currentContent : statusMsg;
+		async function fetchStatus() {
+			try {
+				const response = await fetch('/webterm/status', FETCH_OPTS);
+				if (response.ok) {
+					const seq = parseInt(await response.text(), 10);
+					if (seq !== lastSeq) {
+						lastSeq = seq;
+						await fetchOutput();
+					}
+				}
+				connectionStatus.textContent = response.ok ? '● 已连接' : '● 已断开';
+				connectionStatus.style.color = response.ok ? '#4ecb71' : '#e74c3c';
+			} catch (error) { }
+			if (pollTimer) clearTimeout(pollTimer);
+			pollTimer = setTimeout(fetchStatus, POLL_INTERVAL);
 		}
 
-		// 获取输出
 		async function fetchOutput() {
 			try {
-				const response = await fetch('/webterm/data', {
-					cache: 'no-cache',
-					headers: { 'Cache-Control': 'no-cache' }
-				});
-
-				const isConnected = response.ok;
-				const text = isConnected ? await response.text() : '';
-
-				if (isConnected && text && text.length > 0) {
+				const response = await fetch('/webterm/data', FETCH_OPTS);
+				const text = await response.text();
+				if (text) {
 					terminalOutput.textContent += text;
 					terminalOutput.scrollTop = terminalOutput.scrollHeight;
 					updateButtonStyles();
 				}
-
-				// 更新连接状态
-				connectionStatus.textContent = isConnected ? '● 已连接' : '● 连接错误';
-				connectionStatus.style.color = isConnected ? '#4ecb71' : '#e74c3c';
-				updateTerminalStatus(isConnected);
-			} catch (error) {
-				connectionStatus.textContent = '● 连接失败';
-				connectionStatus.style.color = '#e74c3c';
-				updateTerminalStatus(false);
-			}
+			} catch (error) { }
 		}
 
-		// 发送命令
 		async function sendCommand() {
 			const command = terminalInput.value.trim();
 			if (!command) return;
 
-			// 禁用输入和按钮
 			[terminalInput, sendBtn].forEach(el => el.disabled = true);
 
 			try {
@@ -251,54 +238,43 @@
 					body: command
 				});
 
-				if (!response.ok) {
-					terminalOutput.textContent += `\n[错误] 发送失败: HTTP ${response.status}\n`;
-					terminalOutput.scrollTop = terminalOutput.scrollHeight;
-					updateTerminalStatus(false);
-				} else {
-					terminalInput.value = '';
-					setTimeout(fetchOutput, 100);
-				}
+				response.ok ? (terminalInput.value = '',
+					clearTimeout(pollTimer),
+					pollTimer = setTimeout(fetchStatus, 100))
+				: (terminalOutput.textContent += `\n[错误] 发送失败: HTTP ${response.status}\n`,
+					terminalOutput.scrollTop = terminalOutput.scrollHeight);
 			} catch (error) {
-				terminalOutput.textContent += `\n[错误] ${error.message}\n`;
-				terminalOutput.scrollTop = terminalOutput.scrollHeight;
-				updateTerminalStatus(false);
+				if (error.name !== 'TypeError') {
+					terminalOutput.textContent += `\n[错误] ${error.message}\n`;
+					terminalOutput.scrollTop = terminalOutput.scrollHeight;
+				}
 			} finally {
-				// 恢复输入和按钮
 				[terminalInput, sendBtn].forEach(el => el.disabled = false);
 				terminalInput.focus();
 				updateButtonStyles();
 			}
 		}
 
-		// 清屏 - 只清空前端显示，不请求服务器
 		function clearTerminal() {
 			terminalOutput.textContent = '';
 			updateButtonStyles();
 		}
-		// 启动轮询
+
 		function startPolling() {
-			if (pollTimer) clearInterval(pollTimer);
-			pollTimer = setInterval(fetchOutput, POLL_INTERVAL);
+			stopPolling();
+			pollTimer = setTimeout(fetchStatus, POLL_INTERVAL);
 		}
 
-		// 停止轮询
 		function stopPolling() {
-			if (pollTimer) {
-				clearInterval(pollTimer);
-				pollTimer = null;
-			}
+			if (pollTimer) clearTimeout(pollTimer);
+			pollTimer = null;
 		}
 
-		// 更新按钮样式
 		function updateButtonStyles() {
-			// 发送按钮：当输入框有内容时激活
 			sendBtn.classList.toggle('active', terminalInput.value.trim().length > 0);
-			// 清屏按钮：当输出框有内容时激活
 			clearBtn.classList.toggle('active', terminalOutput.textContent.trim().length > 0);
 		}
 
-		// 事件绑定
 		Object.entries({
 			input: updateButtonStyles,
 			keypress: (e) => e.key === 'Enter' && sendCommand()
@@ -306,13 +282,10 @@
 
 		[sendBtn, clearBtn].forEach((btn, i) => btn.addEventListener('click', [sendCommand, clearTerminal][i]));
 
-		// 初始化
 		showWelcome();
 		updateButtonStyles();
 		startPolling();
-		setTimeout(fetchOutput, 100);
 
-		// 页面关闭时停止轮询
 		window.addEventListener('beforeunload', stopPolling);
 	</script>
 	<div class="additional-links">
