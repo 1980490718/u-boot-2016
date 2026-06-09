@@ -522,9 +522,6 @@ extern int 		tftp_our_port;
 enum proto_t {
     BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
     TFTPSRV, TFTPPUT, LINKLOCAL
-#ifdef CONFIG_HTTPD
-    , HTTPD
-#endif
 #ifdef CONFIG_DHCPD
     , DHCPD
 #endif

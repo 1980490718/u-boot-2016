@@ -412,14 +412,6 @@ int net_loop(enum proto_t protocol)
 {
 	int ret = -EINVAL;
 
-	/* Save HTTPD running state before network operation */
-#ifdef CONFIG_HTTPD
-	extern int httpd_was_running_before;
-	if (protocol != HTTPD && webfailsafe_is_running) {
-		httpd_was_running_before = 1;
-	}
-#endif
-
 	net_restarted = 0;
 	net_dev_exists = 0;
 	net_try_count = 1;
@@ -431,12 +423,6 @@ int net_loop(enum proto_t protocol)
 		eth_halt();
 		eth_set_current();
 		ret = eth_init();
-#if defined(CONFIG_HTTPD)
-		while(protocol==HTTPD && ret < 0){
-			ret = eth_init();
-			mdelay(1000);
-		}
-#endif
 		if (ret < 0) {
 			eth_halt();
 			return ret;
@@ -517,11 +503,6 @@ restart:
 			ping_start();
 			break;
 #endif
-#if defined(CONFIG_HTTPD)
-		case HTTPD:
-			HttpdStart();
-			break;
-#endif
 #if defined(CONFIG_CMD_NFS)
 		case NFS:
 			nfs_start();
@@ -595,14 +576,7 @@ restart:
 		 *	errors that may have happened.
 		 */
 
-#if defined(CONFIG_HTTPD)
-		if (eth_rx() > 0) {
-			if(protocol == HTTPD)
-			  HttpdHandler();
-		}
-#else
 		eth_rx();
-#endif
 
 		/*
 		 *	Abort if ctrl-c was pressed.
@@ -610,10 +584,6 @@ restart:
 		if (ctrlc()) {
 			/* cancel any ARP that may not have completed */
 			net_arp_wait_packet_ip.s_addr = 0;
-#if defined(CONFIG_HTTPD)
-			if(protocol == HTTPD)
-			  HttpdStop();
-#endif
 			net_cleanup_loop();
 			eth_halt();
 			/* Invalidate the last protocol */
@@ -626,27 +596,6 @@ restart:
 			ret = -EINTR;
 			goto done;
 		}
-#if defined(CONFIG_HTTPD)
-		if (protocol == HTTPD) {
-			if(!webfailsafe_ready_for_upgrade)
-				net_state = NETLOOP_CONTINUE;
-		else
-			net_state = NETLOOP_SUCCESS;
-#if 0
-			//workaround for some case we can't receive uip_acked
-			//just force upgrade
-			if(webfailsafe_post_done && !file_too_big && !webfailsafe_ready_for_upgrade){
-				if(wait_time == 0)
-					wait_time = get_timer(0);
-				if((get_timer(0) - wait_time) > 1000){
-					//force update
-					printf("ack timeout force upgrade cost time= %ld\n",(get_timer(0) - wait_time));
-					webfailsafe_ready_for_upgrade = 1;
-				}
-			}
-#endif
-		}
-#endif
 
 		/*
 		 *	Check for a timeout, and run the timeout handler
@@ -690,23 +639,7 @@ restart:
 				printf("Bytes transferred = %d (%x hex)\n",
 				       net_boot_file_size, net_boot_file_size);
 				setenv_hex("filesize", net_boot_file_size);
-#if defined(CONFIG_HTTPD)
-				setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);
-#endif
 				setenv_hex("fileaddr", load_addr);
-#if defined(CONFIG_HTTPD)
-				if(protocol == HTTPD){
-					if(do_http_upgrade(net_boot_file_size,webfailsafe_upgrade_type) < 0){
-						HttpdStop();
-						goto restart;
-					}
-					else{
-						HttpdDone();
-						do_reset( NULL,0,0,NULL );
-						printf("reboot fail\n");
-					}
-				}
-#endif
 			}
 			if (protocol != NETCONS)
 				eth_halt();
@@ -739,22 +672,6 @@ done:
 	/* Clear out the handlers */
 	net_set_udp_handler(NULL);
 	net_set_icmp_handler(NULL);
-#endif
-
-	/* Restart HTTPD if it was running before and we just finished a network operation */
-#ifdef CONFIG_HTTPD
-	extern int httpd_was_running_before;
-	if (httpd_was_running_before && protocol != HTTPD) {
-		httpd_was_running_before = 0;
-		/* Set flag to indicate ethernet needs reinit when restarting HTTPD */
-		extern void httpd_set_eth_reinit_needed(int);
-		httpd_set_eth_reinit_needed(1);
-		/* Small delay to allow network cleanup */
-		mdelay(100);
-		HttpdStart();
-		/* Reset the flag after restart */
-		httpd_set_eth_reinit_needed(0);
-	}
 #endif
 	return ret;
 }
@@ -824,9 +741,6 @@ int net_start_again(void)
 /*
  * Miscellaneous bits.
  */
-
-/* Global variable to track if HTTPD was running before network operation */
-int httpd_was_running_before = 0;
 
 static void dummy_handler(uchar *pkt, unsigned dport,
 			struct in_addr sip, unsigned sport,
@@ -1409,29 +1323,6 @@ static int net_check_prereq(enum proto_t protocol)
 		if (net_ping_ip.s_addr == 0) {
 			puts("*** ERROR: ping address not given\n");
 			return 1;
-		}
-		goto common;
-#endif
-#if defined(CONFIG_HTTPD)
-	case HTTPD:
-		if (net_httpd_ip.s_addr == 0) {
-			char *s = getenv("ipaddr");
-			if (s != NULL) {
-				net_httpd_ip = string_to_ip(s);
-			} else {
-				run_command("env default ipaddr", 0);
-				s = getenv("ipaddr");
-				if (s != NULL) {
-					net_httpd_ip = string_to_ip(s);
-					printf("*** Warning: httpd address not given, using builtin default ipaddr: %s\n", s);
-				}
-			}
-			if (net_ip.s_addr == 0) {
-				char *s_ip = getenv("ipaddr");
-				if (s_ip != NULL) {
-					net_ip = string_to_ip(s_ip);
-				}
-			}
 		}
 		goto common;
 #endif
