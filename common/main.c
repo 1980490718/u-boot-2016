@@ -104,6 +104,9 @@ void main_loop(void)
 		cli_secure_boot_cmd(s);
 #endif
 
+#ifdef CONFIG_HTTPD
+	if (!webfailsafe_is_running)
+#endif
 	autoboot_command(s);
 
 	cli_loop();

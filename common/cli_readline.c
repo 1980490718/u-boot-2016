@@ -14,6 +14,10 @@
 #include <cli.h>
 #include <watchdog.h>
 
+#ifdef CONFIG_HTTPD
+#include "../httpd/httpd.h"
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 static const char erase_seq[] = "\b \b";	/* erase sequence */
@@ -268,8 +272,18 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 				if (get_ticks() >= etime)
 					return -2;	/* timed out */
 				WATCHDOG_RESET();
+#ifdef CONFIG_HTTPD
+				httpd_poll();
+#endif
 			}
 			first = 0;
+		}
+		/* Also poll httpd in the main loop waiting for characters */
+		while (!tstc()) {
+			WATCHDOG_RESET();
+#ifdef CONFIG_HTTPD
+			httpd_poll();
+#endif
 		}
 
 		ichar = getcmd_getch();
@@ -534,6 +548,16 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 		while (!tstc()) {
 			show_activity(0);
 			WATCHDOG_RESET();
+#ifdef CONFIG_HTTPD
+			httpd_poll();
+#endif
+		}
+#else
+		while (!tstc()) {
+			WATCHDOG_RESET();
+#ifdef CONFIG_HTTPD
+			httpd_poll();
+#endif
 		}
 #endif
 		c = getc();

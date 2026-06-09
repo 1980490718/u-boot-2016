@@ -208,12 +208,19 @@ err:
 void cli_loop(void)
 {
 #ifdef CONFIG_SYS_HUSH_PARSER
+	/* We need to patch parse_file_outer() to poll httpd, but since
+	 * that's complex, we'll use a wrapper loop
+	 */
+	for (;;) {
 #ifdef CONFIG_HTTPD
-	httpd_poll();
+		httpd_poll();
 #endif
-	parse_file_outer();
-	/* This point is never reached */
-	for (;;);
+		/* Check if there's input ready before parsing */
+		if (tstc()) {
+			parse_file_outer();
+		}
+		udelay(1000); /* Small delay to prevent 100% CPU usage */
+	}
 #else
 	cli_simple_loop();
 #endif /*CONFIG_SYS_HUSH_PARSER*/
