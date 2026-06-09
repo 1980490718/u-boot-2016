@@ -45,6 +45,22 @@ extern int webfailsafe_upgrade_type;
 extern u32 net_boot_file_size;
 extern unsigned char *webfailsafe_data_pointer;
 
+#if defined(CONFIG_IPQ807x)
+extern int ipq807x_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ40xx)
+extern int ipq40xx_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ6018)
+extern int ipq6018_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ9574)
+extern int ipq9574_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ5332)
+extern int ipq5332_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ5018)
+extern int ipq5018_eth_check_link_change(void);
+#elif defined(CONFIG_IPQ806x)
+extern int ipq806x_eth_check_link_change(void);
+#endif
+
 struct httpd_state *hs;
 
 int webfailsafe_post_done = 0;
@@ -604,6 +620,22 @@ void httpd_poll(void) {
 		printf("reboot fail\n");
 		return;
 	}
+
+#if defined(CONFIG_IPQ807x)
+	ipq807x_eth_check_link_change();
+#elif defined(CONFIG_IPQ40xx)
+	ipq40xx_eth_check_link_change();
+#elif defined(CONFIG_IPQ6018)
+	ipq6018_eth_check_link_change();
+#elif defined(CONFIG_IPQ9574)
+	ipq9574_eth_check_link_change();
+#elif defined(CONFIG_IPQ5332)
+	ipq5332_eth_check_link_change();
+#elif defined(CONFIG_IPQ5018)
+	ipq5018_eth_check_link_change();
+#elif defined(CONFIG_IPQ806x)
+	ipq806x_eth_check_link_change();
+#endif
 
 	if (eth_rx() > 0) {
 		HttpdHandler();
