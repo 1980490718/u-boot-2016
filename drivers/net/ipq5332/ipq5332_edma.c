@@ -1229,6 +1229,57 @@ static int ipq5332_edma_wr_macaddr(struct eth_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_HTTPD
+static u8 phy_link_prev[IPQ5332_PHY_MAX] = {0xFF};
+static ulong phy_link_last_check = 0;
+#define PHY_LINK_CHECK_INTERVAL 1500
+
+int ipq5332_eth_check_link_change(void)
+{
+	ulong now = get_timer(0);
+	struct ipq5332_eth_dev *priv;
+	int i;
+	phy_info_t *phy_info;
+	u8 cur_link[IPQ5332_PHY_MAX];
+	int changed = 0;
+
+	if ((now - phy_link_last_check) < PHY_LINK_CHECK_INTERVAL)
+		return 0;
+	phy_link_last_check = now;
+
+	if (!ipq5332_edma_dev[0] || !ipq5332_edma_dev[0]->dev)
+		return -1;
+
+	priv = ipq5332_edma_dev[0]->dev->priv;
+
+	for (i = 0; i < IPQ5332_PHY_MAX; i++) {
+		if (!port_info[i]) {
+			cur_link[i] = 0;
+			continue;
+		}
+		phy_info = port_info[i]->phy_info;
+		if (!phy_info || phy_info->phy_type == UNUSED_PHY_TYPE) {
+			cur_link[i] = 0;
+		} else if (phy_info->phy_type == SFP_PHY_TYPE) {
+			cur_link[i] = phy_status_get_from_ppe(i) ? 0 : 1;
+		} else if (priv->ops[i] && priv->ops[i]->phy_get_link_status) {
+			cur_link[i] = priv->ops[i]->phy_get_link_status(priv->mac_unit, phy_info->phy_address) ? 1 : 0;
+		} else {
+			cur_link[i] = 0;
+		}
+		if (cur_link[i] != phy_link_prev[i])
+			changed = 1;
+	}
+
+	if (!changed)
+		return 0;
+
+	memcpy(phy_link_prev, cur_link, sizeof(phy_link_prev));
+	eth_init();
+	return 1;
+}
+#endif
+
 static void ipq5332_eth_halt(struct eth_device *dev)
 {
 	pr_debug("\n\n*****GMAC0 info*****\n");

@@ -1234,6 +1234,70 @@ static int ipq6018_edma_wr_macaddr(struct eth_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_HTTPD
+static u8 phy_link_prev[IPQ6018_PHY_MAX] = {0xFF};
+static ulong phy_link_last_check = 0;
+#define PHY_LINK_CHECK_INTERVAL 1500
+
+int ipq6018_eth_check_link_change(void)
+{
+	ulong now = get_timer(0);
+	struct ipq6018_eth_dev *priv;
+	int i, node, sfp_port = -1;
+	int port_8033 = -1, aquantia_port = -1;
+	int phy_node = -1;
+	u8 cur_link[IPQ6018_PHY_MAX];
+	int changed = 0;
+
+	if ((now - phy_link_last_check) < PHY_LINK_CHECK_INTERVAL)
+		return 0;
+	phy_link_last_check = now;
+
+	if (!ipq6018_edma_dev[0] || !ipq6018_edma_dev[0]->dev)
+		return -1;
+
+	priv = ipq6018_edma_dev[0]->dev->priv;
+
+	node = fdt_path_offset(gd->fdt_blob, "/ess-switch");
+	if (node >= 0) {
+		port_8033 = fdtdec_get_uint(gd->fdt_blob, node, "8033_port", -1);
+		aquantia_port = fdtdec_get_uint(gd->fdt_blob, node, "aquantia_port", -1);
+		sfp_port = fdtdec_get_uint(gd->fdt_blob, node, "sfp_port", -1);
+	}
+	phy_node = fdt_path_offset(gd->fdt_blob, "/ess-switch/port_phyinfo");
+
+	for (i = 0; i < IPQ6018_PHY_MAX; i++) {
+		if (phy_info[i] && phy_info[i]->phy_type == UNUSED_PHY_TYPE) {
+			cur_link[i] = 0;
+		} else if (i == sfp_port) {
+			cur_link[i] = phy_status_get_from_ppe(i) ? 0 : 1;
+		} else if (priv->ops[i] && priv->ops[i]->phy_get_link_status) {
+			int phy_addr;
+			if (phy_node >= 0 && phy_info[i])
+				phy_addr = phy_info[i]->phy_address;
+			else if (i == port_8033)
+				phy_addr = QCA8033_PHY_ADDR;
+			else if (i == aquantia_port)
+				phy_addr = AQU_PHY_ADDR;
+			else
+				phy_addr = i;
+			cur_link[i] = priv->ops[i]->phy_get_link_status(priv->mac_unit, phy_addr) ? 1 : 0;
+		} else {
+			cur_link[i] = 0;
+		}
+		if (cur_link[i] != phy_link_prev[i])
+			changed = 1;
+	}
+
+	if (!changed)
+		return 0;
+
+	memcpy(phy_link_prev, cur_link, sizeof(phy_link_prev));
+	eth_init();
+	return 1;
+}
+#endif
+
 static void ipq6018_eth_halt(struct eth_device *dev)
 {
 	pr_info("%s: done\n", __func__);

@@ -68,6 +68,71 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_HTTPD
+static u8 ipq5018_phy_link_prev[IPQ5018_GMAC_PORT] = {0xFF};
+static ulong ipq5018_phy_link_last_check = 0;
+#define IPQ5018_PHY_LINK_CHECK_INTERVAL 1500
+
+int ipq5018_eth_check_link_change(void)
+{
+	ulong now = get_timer(0);
+	struct ipq_eth_dev *priv;
+	int i, j;
+	u8 cur_link[IPQ5018_GMAC_PORT];
+	int changed = 0;
+
+	if ((now - ipq5018_phy_link_last_check) < IPQ5018_PHY_LINK_CHECK_INTERVAL)
+		return 0;
+	ipq5018_phy_link_last_check = now;
+
+	for (i = 0; i < IPQ5018_GMAC_PORT; i++) {
+		if (!ipq_gmac_macs[i] || !ipq_gmac_macs[i]->dev) {
+			cur_link[i] = 0;
+			continue;
+		}
+		priv = ipq_gmac_macs[i];
+
+		if (priv->ipq_swith) {
+			uint16_t phy_data;
+			u8 link = 0;
+			for (j = 0; j < priv->gmac_board_cfg->switch_port_count; j++) {
+				phy_data = ipq_mdio_read(
+					priv->gmac_board_cfg->switch_port_phy_address[j],
+					0x11, NULL);
+				if (phy_data != 0x50 && (phy_data & LINK_UP))
+					link = 1;
+			}
+			cur_link[i] = link;
+		} else if (priv->sfp_tx_gpio) {
+			u8 status = 1;
+			fal_port_speed_t speed;
+			fal_port_duplex_t duplex;
+			uniphy_channel0_input_output_6_get(priv->sfp_mode,
+				priv->sfp_rx_gpio, &status, &speed, &duplex);
+			cur_link[i] = status ? 0 : 1;
+		} else if (priv->ops && priv->ops->phy_get_link_status) {
+			u8 status;
+			status = priv->ops->phy_get_link_status(priv->mac_unit,
+				 priv->phy_address);
+			cur_link[i] = status ? 1 : 0;
+		} else {
+			cur_link[i] = 0;
+		}
+
+		if (cur_link[i] != ipq5018_phy_link_prev[i])
+			changed = 1;
+	}
+
+	if (!changed)
+		return 0;
+
+	memcpy(ipq5018_phy_link_prev, cur_link, sizeof(ipq5018_phy_link_prev));
+	eth_init();
+	return 1;
+}
+#endif
+
+
 static void ipq_mac_reset(struct eth_device *dev)
 {
 	struct ipq_eth_dev *priv = dev->priv;
