@@ -5,21 +5,13 @@
 
 #include <common.h>
 #include <malloc.h>
-#include <version.h>
 #include <command.h>
 #include "../httpd/uipopt.h"
 #include "../httpd/httpd.h"
 #include "../httpd/uip.h"
-#include <cli.h>
 #include <net.h>
 
-/* Definitions copied from httpd.c */
-#define STATE_NONE					0
 #define STATE_FILE_REQUEST			1
-#define STATE_UPLOAD_REQUEST		2
-#ifdef CONFIG_CMD_SETENV_WEB
-#define STATE_ENV_REQUEST			3
-#endif
 
 #define ISO_G		0x47
 #define ISO_E		0x45
@@ -27,11 +19,6 @@
 #define ISO_P		0x50
 #define ISO_O		0x4f
 #define ISO_S		0x53
-#define ISO_slash	0x2f
-#define ISO_space	0x20
-#define ISO_nl		0x0a
-#define ISO_cr		0x0d
-#define ISO_tab		0x09
 
 /* Web terminal buffer size */
 #define WEBTERM_BUFFER_SIZE 16384
@@ -54,9 +41,6 @@ static int webterm_line_pos = 0;
 /* Track last read position to avoid duplicate output */
 static int last_read_position = 0;
 
-/* Flag to indicate if an interrupt signal was requested */
-static volatile int webterm_interrupt_requested = 0;
-
 /* Forward declaration */
 void webterm_capture_output(const char *str);
 
@@ -64,8 +48,7 @@ void webterm_capture_output(const char *str);
 extern struct httpd_state *hs;
 
 /* Initialize web terminal */
-int webterm_init(void)
-{
+int webterm_init(void) {
 	if (webterm_out.buffer)
 		return 0;  // Already initialized
 
@@ -88,23 +71,11 @@ int webterm_init(void)
 	return 0;
 }
 
-/* Check and handle buffer overflow */
-static void webterm_check_overflow(void)
-{
-	// If the buffer has overflowed, reset the read position
-	// because we've lost some old data
-	if (webterm_out.overflow) {
-		last_read_position = 0;  // Reset to beginning since we lost data
-		webterm_out.overflow = 0;
-	}
-}
-
 /* Add character to web terminal buffer */
 static void webterm_batch_copy(const char *src, int len);
 
 /* Modified webterm_add_char with batch copy */
-static void webterm_add_char(char c)
-{
+static void webterm_add_char(char c) {
 	if (!webterm_out.buffer)
 		return;
 
@@ -134,12 +105,10 @@ static void webterm_add_char(char c)
 	}
 
 	webterm_line_buffer[webterm_line_pos++] = c;
-	webterm_check_overflow();
 }
 
 /* Simple batch copy - 2D optimization (split + memcpy) */
-static void webterm_batch_copy(const char *src, int len)
-{
+static void webterm_batch_copy(const char *src, int len) {
 	int first = (len <= webterm_out.size - webterm_out.head) ? len : webterm_out.size - webterm_out.head;
 
 	if (first > 0) {
@@ -160,6 +129,7 @@ static void webterm_batch_copy(const char *src, int len)
 		webterm_out.tail = (webterm_out.tail + overrun) % webterm_out.size;
 		webterm_out.count = webterm_out.size;
 		webterm_out.overflow = 1;
+		last_read_position = 0;
 	}
 }
 
@@ -183,8 +153,7 @@ void webterm_putc(const char c) {
 }
 
 /* Get console output for web interface - returns only new content since last read */
-int webterm_get_output(char *buf, int size)
-{
+int webterm_get_output(char *buf, int size) {
 	if (!buf || !webterm_out.buffer || size <= 0)
 		return 0;
 
@@ -201,11 +170,11 @@ int webterm_get_output(char *buf, int size)
 	// Limit to requested size
 	int bytes_to_read = min(size - 1, new_bytes_available);
 	int read = 0;
+	int i;
 
-	// Calculate starting position for new data
 	int start_pos = (webterm_out.tail + last_read_position) % webterm_out.size;
 
-	for (int i = 0; i < bytes_to_read; i++) {
+	for (i = 0; i < bytes_to_read; i++) {
 		buf[i] = webterm_out.buffer[start_pos];
 		start_pos = (start_pos + 1) % webterm_out.size;
 		read++;
@@ -224,8 +193,7 @@ int webterm_get_output(char *buf, int size)
 }
 
 /* Reset web terminal buffer */
-void webterm_reset(void)
-{
+void webterm_reset(void) {
 	if (webterm_out.buffer) {
 		webterm_out.head = 0;
 		webterm_out.tail = 0;
@@ -241,40 +209,16 @@ void webterm_reset(void)
 	last_read_position = 0;
 }
 
-/* Function to check if a command is a network command that might affect HTTPD */
-static int is_network_command(const char *cmd) {
-	return (strstr(cmd, "tftp") != NULL ||
-	       strstr(cmd, "ping") != NULL ||
-	       strstr(cmd, "bootp") != NULL ||
-	       strstr(cmd, "dhcp") != NULL ||
-	       strstr(cmd, "rarp") != NULL ||
-	       strstr(cmd, "nfs") != NULL);
-}
-
-/* Execute command and capture output */
-void webterm_execute_command(const char *cmd)
-{
-	// Echo the command to web terminal (plain text format)
+void webterm_execute_command(const char *cmd) {
 	char cmd_echo[512];
 	snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", cmd);
 	webterm_capture_output(cmd_echo);
 
-	// Check if this is a network command that might affect HTTPD
-	int is_network_cmd = is_network_command(cmd);
-
-	// Execute the command (output will be captured automatically)
 	run_command(cmd, 0);
-
-	// If it was a network command, HTTPD will be restarted automatically
-	// by the net_loop cleanup code
-	if (is_network_cmd) {
-		webterm_capture_output("Network command completed.\n");
-	}
 }
 
 /* Handle web terminal HTTP requests */
-void webterm_http_handler(void)
-{
+void webterm_http_handler(void) {
 	static char response_buffer[32768]; /* Static buffer to persist across calls */
 
 	if (!hs)
@@ -344,28 +288,12 @@ void webterm_http_handler(void)
 					memcpy(body_copy, body, body_len);
 					body_copy[body_len] = '\0';
 
-					// Process the command - execute it in U-Boot
-					// Truncate at first newline if present
 					char *nl = strchr(body_copy, '\n');
 					if (nl) *nl = '\0';
 					nl = strchr(body_copy, '\r');
 					if (nl) *nl = '\0';
 
-					// Check if this is a network command that affects HTTPD
-					int is_network_cmd = is_network_command(body_copy);
-
-					// Add the command to webterm output (plain text format)
-					char cmd_echo[512];
-					snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", body_copy);
-					webterm_capture_output(cmd_echo);
-
-					// Execute the command (output will be captured automatically)
-					run_command(body_copy, 0);
-
-					// If it was a network command, inform user that HTTPD will be restored
-					if (is_network_cmd) {
-						webterm_capture_output("Network command completed.\n");
-					}
+					webterm_execute_command(body_copy);
 
 					free(body_copy);
 				}
@@ -386,8 +314,7 @@ void webterm_http_handler(void)
 }
 
 /* Integration function - override puts to capture output */
-void webterm_puts(const char *str)
-{
+void webterm_puts(const char *str) {
 	// Capture the output for web terminal
 	webterm_capture_output(str);
 
