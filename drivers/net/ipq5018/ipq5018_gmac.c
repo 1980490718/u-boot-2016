@@ -69,8 +69,9 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 }
 
 #ifdef CONFIG_HTTPD
-static u8 ipq5018_phy_link_prev[IPQ5018_GMAC_PORT] = {0xFF};
+static u8 ipq5018_phy_link_prev[IPQ5018_GMAC_PORT];
 static ulong ipq5018_phy_link_last_check = 0;
+static int ipq5018_first_check_done = 0;
 #define IPQ5018_PHY_LINK_CHECK_INTERVAL 1500
 
 int ipq5018_eth_check_link_change(void)
@@ -113,7 +114,7 @@ int ipq5018_eth_check_link_change(void)
 		} else if (priv->ops && priv->ops->phy_get_link_status) {
 			u8 status;
 			status = priv->ops->phy_get_link_status(priv->mac_unit,
-				 priv->phy_address);
+					 priv->phy_address);
 			cur_link[i] = status ? 1 : 0;
 		} else {
 			cur_link[i] = 0;
@@ -127,6 +128,11 @@ int ipq5018_eth_check_link_change(void)
 		return 0;
 
 	memcpy(ipq5018_phy_link_prev, cur_link, sizeof(ipq5018_phy_link_prev));
+	if (!ipq5018_first_check_done) {
+		ipq5018_first_check_done = 1;
+		return 0;
+	}
+
 	eth_init();
 	return 1;
 }
@@ -977,4 +983,3 @@ init_failed:
 
 	return -ENOMEM;
 }
-

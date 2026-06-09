@@ -1186,8 +1186,9 @@ static int ipq807x_edma_wr_macaddr(struct eth_device *dev)
 }
 
 #ifdef CONFIG_HTTPD
-static u8 phy_link_prev[PHY_MAX] = {0xFF};
+static u8 phy_link_prev[PHY_MAX];
 static ulong phy_link_last_check = 0;
+static int first_check_done = 0;
 #define PHY_LINK_CHECK_INTERVAL 1500
 
 int ipq807x_eth_check_link_change(void)
@@ -1242,6 +1243,11 @@ int ipq807x_eth_check_link_change(void)
 		return 0;
 
 	memcpy(phy_link_prev, cur_link, sizeof(phy_link_prev));
+	if (!first_check_done) {
+		first_check_done = 1;
+		return 0;
+	}
+
 	eth_init();
 	return 1;
 }
