@@ -600,9 +600,13 @@ void httpd_appcall(void) {
 
 void httpd_poll(void) {
 	static int httpd_progress_start_done = 0;
+	static int eth_init_attempted = 0;
 	static ulong arptimer = 0;
 	ulong now = get_timer(0);
 	int i;
+#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+	int link_changed = 0;
+#endif
 
 	if (!webfailsafe_is_running)
 		return;
@@ -633,9 +637,9 @@ void httpd_poll(void) {
 #elif defined(CONFIG_IPQ6018)
 	ipq6018_eth_check_link_change();
 #elif defined(CONFIG_IPQ9574)
-	ipq9574_eth_check_link_change();
+	link_changed = ipq9574_eth_check_link_change();
 #elif defined(CONFIG_IPQ5332)
-	ipq5332_eth_check_link_change();
+	link_changed = ipq5332_eth_check_link_change();
 #elif defined(CONFIG_IPQ5018)
 	ipq5018_eth_check_link_change();
 #elif defined(CONFIG_IPQ806x)
@@ -643,17 +647,25 @@ void httpd_poll(void) {
 #endif
 
 	if (!eth_is_active(eth_get_dev())) {
-		eth_halt();
-		eth_set_current();
-		eth_init();
+		if (!eth_init_attempted) {
+			eth_init_attempted = 1;
+			eth_halt();
+			eth_set_current();
+			eth_init();
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
-		ppe_arp_kickstart();
+			ppe_arp_kickstart();
 #endif
-		if (!httpd_progress_start_done) {
-			do_http_progress(WEBFAILSAFE_PROGRESS_START);
-			httpd_progress_start_done = 1;
+			if (!httpd_progress_start_done) {
+				do_http_progress(WEBFAILSAFE_PROGRESS_START);
+				httpd_progress_start_done = 1;
+			}
 		}
 	}
+#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+	else if (link_changed > 0) {
+		ppe_arp_kickstart();
+	}
+#endif
 
 	if (eth_rx() > 0) {
 		HttpdHandler();
