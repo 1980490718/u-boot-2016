@@ -5,7 +5,6 @@
 #include "uip_arp.h"
 #include <common.h>
 #include <net.h>
-#include <watchdog.h>
 #include "../net/httpd.h"
 #include <webterm.h>
 #include <asm/gpio.h>
@@ -600,7 +599,10 @@ void httpd_appcall(void) {
 }
 
 void httpd_poll(void) {
+	static int httpd_progress_start_done = 0;
+	static ulong arptimer = 0;
 	ulong now = get_timer(0);
+	int i;
 
 	if (!webfailsafe_is_running)
 		return;
@@ -640,20 +642,18 @@ void httpd_poll(void) {
 	ipq806x_eth_check_link_change();
 #endif
 
-static int httpd_progress_start_done = 0;
-
-if (!eth_is_active(eth_get_dev())) {
-	eth_halt();
-	eth_set_current();
-	eth_init();
+	if (!eth_is_active(eth_get_dev())) {
+		eth_halt();
+		eth_set_current();
+		eth_init();
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
-	ppe_arp_kickstart();
+		ppe_arp_kickstart();
 #endif
-	if (!httpd_progress_start_done) {
-		do_http_progress(WEBFAILSAFE_PROGRESS_START);
-		httpd_progress_start_done = 1;
+		if (!httpd_progress_start_done) {
+			do_http_progress(WEBFAILSAFE_PROGRESS_START);
+			httpd_progress_start_done = 1;
+		}
 	}
-}
 
 	if (eth_rx() > 0) {
 		HttpdHandler();
@@ -662,8 +662,16 @@ if (!eth_is_active(eth_get_dev())) {
 #endif
 	}
 
-	if ((now % 8) == 0) {
-		WATCHDOG_RESET();
+	for (i = 0; i < UIP_CONNS; i++) {
+		uip_periodic(i);
+		if (uip_len > 0) {
+			uip_arp_out();
+			NetSendHttpd();
+		}
+	}
+	if (get_timer(arptimer) >= 1000) {
+		uip_arp_timer();
+		arptimer = now;
 	}
 }
 
