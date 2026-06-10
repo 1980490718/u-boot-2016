@@ -10,6 +10,9 @@
 #include <webterm.h>
 #include <asm/gpio.h>
 #include <ipq_api.h>
+#ifdef CONFIG_DHCPD
+#include "../net/dhcpd.h"
+#endif
 #ifdef CONFIG_CMD_SETENV_WEB
 #include <setenv_web.h>
 #endif
@@ -637,14 +640,60 @@ void httpd_poll(void) {
 	ipq806x_eth_check_link_change();
 #endif
 
+static int httpd_progress_start_done = 0;
+
+if (!eth_is_active(eth_get_dev())) {
+	eth_halt();
+	eth_set_current();
+	eth_init();
+#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+	ppe_arp_kickstart();
+#endif
+	if (!httpd_progress_start_done) {
+		do_http_progress(WEBFAILSAFE_PROGRESS_START);
+		httpd_progress_start_done = 1;
+	}
+}
+
 	if (eth_rx() > 0) {
 		HttpdHandler();
+#ifdef CONFIG_DHCPD
+		dhcpd_poll_server();
+#endif
 	}
 
 	if ((now % 8) == 0) {
 		WATCHDOG_RESET();
 	}
 }
+
+#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+void ppe_arp_kickstart(void) {
+	uchar arp_packet[60];
+	memset(arp_packet, 0, sizeof(arp_packet));
+
+	memset(arp_packet, 0xff, 6);
+	memcpy(arp_packet + 6, uip_ethaddr.addr, 6);
+	*(u16_t *)(arp_packet + 12) = htons(0x0806);
+
+	*(u16_t *)(arp_packet + 14) = htons(1);
+	*(u16_t *)(arp_packet + 16) = htons(0x0800);
+	*(arp_packet + 18) = 6;
+	*(arp_packet + 19) = 4;
+	*(u16_t *)(arp_packet + 20) = htons(1);
+
+	memcpy(arp_packet + 22, uip_ethaddr.addr, 6);
+	*(u16_t *)(arp_packet + 28) = uip_hostaddr[0];
+	*(u16_t *)(arp_packet + 30) = uip_hostaddr[1];
+
+	memset(arp_packet + 32, 0, 6);
+	*(u16_t *)(arp_packet + 38) = htons(0xC0A8);
+	*(u16_t *)(arp_packet + 40) = htons(0x01FE);
+
+	net_send_packet(arp_packet, sizeof(arp_packet));
+	mdelay(500);
+}
+#endif
 
 void httpd_stop(void) {
 	webfailsafe_is_running = 0;
