@@ -113,7 +113,7 @@ void httpd_init(void) {
 
 static void httpd_state_reset(void) {
 	hs->state = STATE_NONE;
-	hs->count = 0;
+	hs->last_activity = get_timer(0);
 	hs->dataptr = 0;
 	hs->upload = 0;
 	hs->upload_total = 0;
@@ -303,7 +303,7 @@ void httpd_appcall(void) {
 				return;
 			}
 			if (uip_poll()) {
-				if (hs->count++ >= 10000) {
+				if (get_timer(hs->last_activity) >= 30000) {
 					httpd_state_reset();
 					uip_abort();
 				}
@@ -314,6 +314,7 @@ void httpd_appcall(void) {
 				return;
 			}
 			if (uip_newdata() && hs->state == STATE_NONE) {
+				hs->last_activity = get_timer(0);
 				if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T && (uip_appdata[3] == ISO_space || uip_appdata[3] == ISO_tab)) {
 					if (strncmp((char *)&uip_appdata[4], "/webterm", 8) == 0) {
 						webterm_http_handler();
@@ -553,6 +554,7 @@ void httpd_appcall(void) {
 				return;
 			}
 			if (uip_newdata()) {
+				hs->last_activity = get_timer(0);
 				if (hs->state == STATE_UPLOAD_REQUEST) {
 					uip_appdata[uip_len] = '\0';
 					if (!data_start_found) {
