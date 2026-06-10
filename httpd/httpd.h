@@ -60,7 +60,7 @@ void httpd_appcall(void);
 
 struct httpd_state {
 	u8_t state;
-	u16_t count;
+	ulong last_activity;
 	u8_t *dataptr;
 	unsigned int upload;
 	unsigned int upload_total;
