@@ -121,6 +121,7 @@ enum flash_type_enum {
 #define WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES		get_art_size()
 #define WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES		get_cdt_size()
 #define WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES		get_mibib_size()
+#define WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES	get_firmware_upgrade_max_size()
 
 /*
  * dynamic get nor firmware size
@@ -154,6 +155,7 @@ unsigned long get_smem_table_offset(const char *name);
 unsigned long get_uboot_size(void);
 unsigned long get_art_size(void);
 unsigned long get_firmware_size(void);
+unsigned long get_firmware_upgrade_max_size(void);
 unsigned long get_cdt_size(void);
 unsigned long get_mibib_size(void);
 unsigned long get_hlos_offset(void);

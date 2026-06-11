@@ -126,6 +126,7 @@ static void httpd_state_reset(void) {
 #endif
 	data_start_found = 0;
 	post_packet_counter = 0;
+	file_too_big = 0;
 	led_on("blink_led");
 	if (boundary_value) {
 		free(boundary_value);
@@ -207,7 +208,11 @@ static int httpd_findandstore_firstchunk(void) {
 				end += 4;
 				hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
 				printf("Upload file size: %d bytes\n", hs->upload_total);
-				if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)) {
+				if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE) && (hs->upload_total > WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES)) {
+					print_file_size_error(WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES);
+					webfailsafe_upload_failed = 1;
+					file_too_big = 1;
+				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)) {
 					print_file_size_error(WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
 						webfailsafe_upload_failed = 1;
 					file_too_big = 1;
@@ -228,8 +233,11 @@ static int httpd_findandstore_firstchunk(void) {
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
 				}
-				printf("Loading: ");
 				hs->upload = (unsigned int)(uip_len - (end - (char *)uip_appdata));
+				if (file_too_big) {
+					return 1;
+				}
+				printf("Loading: ");
 				memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
 				webfailsafe_data_pointer += hs->upload;
 				httpd_download_progress();
@@ -572,10 +580,14 @@ void httpd_appcall(void) {
 					if (!webfailsafe_upload_failed) {
 						memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, uip_len);
 						webfailsafe_data_pointer += uip_len;
+						httpd_download_progress();
 					}
-					httpd_download_progress();
 					if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
-						printf("\n\ndone!\n");
+						if (webfailsafe_upload_failed) {
+							printf("\nfailed!\n");
+						} else {
+							printf("\n\ndone!\n");
+						}
 						led_on("blink_led");
 						webfailsafe_post_done = 1;
 						net_boot_file_size = (ulong)hs->upload_total;

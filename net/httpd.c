@@ -13,6 +13,7 @@
 #include "../httpd/uip.h"
 #include "../httpd/uip_arp.h"
 #include <ipq_api.h>
+#include <asm/arch-qca-common/smem.h>
 #include <asm/gpio.h>
 #ifdef CONFIG_DHCPD
 #include "dhcpd.h"
@@ -252,27 +253,61 @@ static int do_firmware_upgrade(const ulong size) {
 		}
 #endif
 		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
 		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_NAND:
-		default: {
+		case FLASH_TYPE_NOR_PLUS_NAND: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK || fw_type == FW_TYPE_UBI) {
+			if (fw_type == FW_TYPE_UBI) {
 				print_upgrade_warning("FIRMWARE");
-				if (fw_type == FW_TYPE_FIT) {
-					sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
-				} else if (fw_type == FW_TYPE_QSDK) {
-					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
-				} else { // fw_type == FW_TYPE_UBI
-					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
-				}
+				sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
 			} else {
-				printf("\n* Unsupported FIRMWARE type *\n");
+				printf("\n* NAND flash only supports UBI firmware, got: %s *\n", fw_type_to_string(fw_type));
 				return -1;
 			}
 			break;
 		}
+		case FLASH_TYPE_NOR: {
+			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
+			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
+				print_upgrade_warning("FIRMWARE");
+				if (fw_type == FW_TYPE_FIT) {
+					sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
+				} else {
+					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
+				}
+			} else {
+				printf("\n* NOR flash only supports FIT/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+				return -1;
+			}
+			break;
+		}
+		case FLASH_TYPE_SPI: {
+			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
+			if (get_which_flash_param("rootfs")) {
+				if (fw_type == FW_TYPE_UBI) {
+					print_upgrade_warning("FIRMWARE");
+					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+				} else {
+					printf("\n* SPI+NAND flash only supports UBI firmware, got: %s *\n", fw_type_to_string(fw_type));
+					return -1;
+				}
+			} else {
+				if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
+					print_upgrade_warning("FIRMWARE");
+					if (fw_type == FW_TYPE_FIT) {
+						sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
+					} else {
+						sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
+					}
+				} else {
+					printf("\n* NOR flash only supports FIT/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+					return -1;
+				}
+			}
+			break;
+		}
+		default:
+			printf("\n* Unsupported flash type *\n");
+			return -1;
 	}
 	return execute_command(buf);
 }
