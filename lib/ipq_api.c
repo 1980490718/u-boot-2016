@@ -371,6 +371,28 @@ DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
 DEFINE_GET_SIZE_FUNC(get_bootconfig_size, "0:BOOTCONFIG")
 
+unsigned long get_firmware_upgrade_max_size(void) {
+	switch (qca_smem_flash_info.flash_type) {
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
+		case FLASH_TYPE_MMC:
+		case FLASH_TYPE_NOR_PLUS_EMMC:
+			return get_hlos_size() + get_rootfs_size();
+#endif
+		case FLASH_TYPE_NOR:
+			return get_nor_firmware_combined_size();
+		case FLASH_TYPE_SPI:
+			if (get_which_flash_param("rootfs"))
+				return get_firmware_size();
+			else
+				return get_nor_firmware_combined_size();
+		case FLASH_TYPE_NAND:
+		case FLASH_TYPE_QSPI_NAND:
+		case FLASH_TYPE_NOR_PLUS_NAND:
+		default:
+			return get_firmware_size();
+	}
+}
+
 /* Function to get firmware size supporting multiple rootfs partition names */
 unsigned long get_firmware_size(void) {
 	unsigned long size;
