@@ -100,6 +100,11 @@ static int tftp_acl_our_port;
 extern void qca8084_bypass_interface_mode_set(u32 interface_mode);
 extern void qca8084_phy_sgmii_mode_set(uint32_t phy_addr, u32 interface_mode,
 		u32 link, fal_port_speed_t speed);
+#ifdef CONFIG_IPQ5332_JDCLOUD_BE6500
+#ifdef CONFIG_QCA8084_BYPASS_MODE
+extern void qca8084_phy_reset(u32 phy_addr);
+#endif
+#endif
 static int qca8084_bypass_enb = 0;
 #endif /* CONFIG_QCA8084_BYPASS_MODE */
 
@@ -2238,7 +2243,16 @@ int ipq5332_edma_init(void *edma_board_cfg)
 					"_init failed %d\n",
 					phy_id);
 			}
-
+#ifdef CONFIG_IPQ5332_JDCLOUD_BE6500
+#ifdef CONFIG_QCA8084_BYPASS_MODE
+			if (qca8084_bypass_enb) {
+				qca8084_phy_sgmii_mode_set(PORT4,
+						PHY_SGMII_BASET, false,
+						FAL_SPEED_1000);
+				qca8084_phy_reset(PORT4);
+			}
+#endif
+#endif
 		}
 
 		eth_register(dev[i]);
