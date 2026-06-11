@@ -25,4 +25,6 @@ void webterm_http_handler(void);
 void webterm_puts(const char *str);
 void webterm_putc(const char c);
 
+int webterm_run_pending_command(void);
+
 #endif /* _WEBTERM_H_ */
