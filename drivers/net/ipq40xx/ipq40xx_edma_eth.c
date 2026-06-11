@@ -576,7 +576,7 @@ static int ipq40xx_edma_wr_macaddr(struct eth_device *dev)
 static u8 phy_link_prev[PHY_MAX];
 static ulong phy_link_last_check = 0;
 static int first_check_done = 0;
-#define PHY_LINK_CHECK_INTERVAL 1500
+#define PHY_LINK_CHECK_INTERVAL 500
 
 int ipq40xx_eth_check_link_change(void)
 {
