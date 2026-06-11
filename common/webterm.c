@@ -44,6 +44,9 @@ static int last_read_position = 0;
 /* Output sequence counter - incremented on every write */
 static volatile int webterm_output_seq = 0;
 
+static char webterm_pending_cmd[4096] = {0};
+static volatile int webterm_has_pending_cmd = 0;
+
 /* Forward declaration */
 void webterm_capture_output(const char *str);
 
@@ -219,7 +222,23 @@ void webterm_execute_command(const char *cmd) {
 	snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", cmd);
 	webterm_capture_output(cmd_echo);
 
-	run_command(cmd, 0);
+	if (webfailsafe_is_running) {
+		strncpy(webterm_pending_cmd, cmd, sizeof(webterm_pending_cmd) - 1);
+		webterm_pending_cmd[sizeof(webterm_pending_cmd) - 1] = '\0';
+		webterm_has_pending_cmd = 1;
+	} else {
+		run_command(cmd, 0);
+	}
+}
+
+int webterm_run_pending_command(void) {
+	char cmd_copy[4096];
+	if (!webterm_has_pending_cmd)
+		return 0;
+	webterm_has_pending_cmd = 0;
+	strcpy(cmd_copy, webterm_pending_cmd);
+	run_command(cmd_copy, 0);
+	return 1;
 }
 
 /* Handle web terminal HTTP requests */

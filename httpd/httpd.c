@@ -662,6 +662,11 @@ void httpd_poll(void) {
 		return;
 	}
 
+	if (webterm_run_pending_command()) {
+		if (!eth_is_active(eth_get_dev()))
+			eth_init_attempted = 0;
+	}
+
 #if defined(CONFIG_IPQ807x)
 	ipq807x_eth_check_link_change();
 #elif defined(CONFIG_IPQ40xx)
