@@ -87,20 +87,14 @@ static int atoi(const char *s) {
 }
 
 static void httpd_download_progress(void) {
-	if (post_packet_counter == 39) {
-		puts("\n         ");
+	if (post_packet_counter == 80) {
+		puts("\n");
 		post_packet_counter = 0;
 		post_line_counter++;
 	}
 	if (post_line_counter == 10) {
 		post_line_counter = 0;
-#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
-		led_toggle("wlan2g_led");
-		led_toggle("wlan5g_led");
-		led_off("bluetooth_led");
-#else
-		led_toggle("blink_led");
-#endif
+		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOADING);
 	}
 	puts("#");
 	post_packet_counter++;
@@ -237,7 +231,7 @@ static int httpd_findandstore_firstchunk(void) {
 				if (file_too_big) {
 					return 1;
 				}
-				printf("Loading: ");
+				printf("Loading:\n");
 				memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
 				webfailsafe_data_pointer += hs->upload;
 				httpd_download_progress();
@@ -585,8 +579,6 @@ void httpd_appcall(void) {
 					if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
 						if (webfailsafe_upload_failed) {
 							printf("\nfailed!\n");
-						} else {
-							printf("\n\ndone!\n");
 						}
 						led_on("blink_led");
 						webfailsafe_post_done = 1;
@@ -632,6 +624,7 @@ void httpd_poll(void) {
 		setenv_hex("filesize", net_boot_file_size);
 		setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);
 		setenv_hex("fileaddr", load_addr);
+		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOAD_READY);
 		if (do_http_upgrade(net_boot_file_size, webfailsafe_upgrade_type) < 0) {
 			do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
 			return;

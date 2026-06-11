@@ -162,6 +162,7 @@ static const char *fw_type_to_string(int fw_type) {
 
 int do_http_upgrade(const ulong size, const int upgrade_type) {
 	printChecksumMd5(UPLOAD_ADDR, size);
+	do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADING);
 	switch (upgrade_type) {
 		case WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE: return do_firmware_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_UBOOT: return do_uboot_upgrade(size);
@@ -482,20 +483,32 @@ int do_http_progress(const int state) {
 			printf("HTTP server is ready!\n");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPLOAD_READY:
-			printf("HTTP upload is done! Upgrading...\n");
+			led_on("blink_led");
+			printf(" Done!\n");
+			break;
+		case WEBFAILSAFE_PROGRESS_UPLOADING:
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
+			led_toggle("wlan2g_led");
+			led_toggle("wlan5g_led");
+			led_off("bluetooth_led");
+#else
+			led_toggle("blink_led");
+#endif
+			break;
+	case WEBFAILSAFE_PROGRESS_UPGRADING:
+			led_toggle("blink_led");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPGRADE_READY:
 			led_off("power_led");
 			led_off("blink_led");
 			led_on("system_led");
-			printf("HTTP upgrade is done! Rebooting...\n");
-			mdelay(3000);
+			printf("HTTP upgrade is done! ");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPGRADE_FAILED:
 			led_on("power_led");
 			led_off("blink_led");
 			led_off("system_led");
-			printf("## Error: HTTP upgrade failed!\n");
+			printf("HTTP upgrade failed!");
 			break;
 	}
 	return 0;
