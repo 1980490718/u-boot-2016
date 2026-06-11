@@ -72,7 +72,7 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 static u8 ipq5018_phy_link_prev[IPQ5018_GMAC_PORT];
 static ulong ipq5018_phy_link_last_check = 0;
 static int ipq5018_first_check_done = 0;
-#define IPQ5018_PHY_LINK_CHECK_INTERVAL 1500
+#define IPQ5018_PHY_LINK_CHECK_INTERVAL 500
 
 int ipq5018_eth_check_link_change(void)
 {

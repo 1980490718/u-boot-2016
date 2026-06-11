@@ -160,7 +160,7 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 static u8 ipq806x_phy_link_prev[CONFIG_IPQ_NO_MACS];
 static ulong ipq806x_phy_link_last_check = 0;
 static int ipq806x_first_check_done = 0;
-#define IPQ806X_PHY_LINK_CHECK_INTERVAL 1500
+#define IPQ806X_PHY_LINK_CHECK_INTERVAL 500
 
 int ipq806x_eth_check_link_change(void)
 {
