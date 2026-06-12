@@ -9,6 +9,10 @@
 #include <webterm.h>
 #include <asm/gpio.h>
 #include <ipq_api.h>
+#include <asm-generic/global_data.h>
+
+DECLARE_GLOBAL_DATA_PTR;
+
 #ifdef CONFIG_DHCPD
 #include "../net/dhcpd.h"
 #endif
@@ -77,6 +81,7 @@ static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
 
 static char *boundary_value;
+static unsigned long upload_ram_end;
 
 static int atoi(const char *s) {
 	int i = 0;
@@ -130,7 +135,7 @@ static void httpd_state_reset(void) {
 
 /* Common error printing functions */
 static void print_file_size_error(unsigned long max_size) {
-	printf("## Error: wrong file size, should be less than or equal to: %lu bytes!\n", max_size);
+	printf("## Error: size too large, max size <= %lu bytes\n", max_size);
 }
 
 static void print_error(const char *msg) {
@@ -201,7 +206,7 @@ static int httpd_findandstore_firstchunk(void) {
 			if ((end - (char *)uip_appdata) < uip_len) {
 				end += 4;
 				hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
-				printf("Upload file size: %d bytes\n", hs->upload_total);
+				printf("Upload size: %lu.%02lu MiB [%lu bytes | 0x%lx]\n", (unsigned long)hs->upload_total / (1024 * 1024), ((unsigned long)hs->upload_total % (1024 * 1024)) * 100 / (1024 * 1024), (unsigned long)hs->upload_total, (unsigned long)hs->upload_total);
 				if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE) && (hs->upload_total > WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES)) {
 					print_file_size_error(WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
@@ -222,16 +227,18 @@ static int httpd_findandstore_firstchunk(void) {
 					print_file_size_error(WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
 					webfailsafe_upload_failed = 1;
 					file_too_big = 1;
-				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS) && (hs->upload_total > (60 * 1024 * 1024))) {
-					print_file_size_error(60 * 1024 * 1024);
-					webfailsafe_upload_failed = 1;
-					file_too_big = 1;
 				}
 				hs->upload = (unsigned int)(uip_len - (end - (char *)uip_appdata));
 				if (file_too_big) {
 					return 1;
 				}
-				printf("Loading:\n");
+				if (webfailsafe_data_pointer + hs->upload > (u8_t *)upload_ram_end) {
+					print_error("data larger than available RAM space!");
+					webfailsafe_upload_failed = 1;
+					file_too_big = 1;
+					return 1;
+				}
+				printf("Uploading:\n");
 				memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
 				webfailsafe_data_pointer += hs->upload;
 				httpd_download_progress();
@@ -493,15 +500,23 @@ void httpd_appcall(void) {
 						return;
 					}
 					webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+					upload_ram_end = CONFIG_SYS_SDRAM_END;
 					if (!webfailsafe_data_pointer) {
 						print_error("couldn't allocate RAM for data!");
 						httpd_state_reset();
 						uip_abort();
 						return;
 					} else {
-						printf("Data will be downloaded at 0x%lx in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						printf("Upload RAM address: 0x%lx\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+						printf("Available RAM space: %lu.%02lu MiB\n", (upload_ram_end - (unsigned long)webfailsafe_data_pointer) / (1024 * 1024), ((upload_ram_end - (unsigned long)webfailsafe_data_pointer) % (1024 * 1024)) * 100 / (1024 * 1024));
 					}
-					memset((void *)webfailsafe_data_pointer, 0xFF, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
+					{
+						unsigned long memset_len = WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES;
+						if (webfailsafe_data_pointer + memset_len > (u8_t *)upload_ram_end)
+							memset_len = upload_ram_end - (unsigned long)webfailsafe_data_pointer;
+						if (memset_len > 0)
+							memset((void *)webfailsafe_data_pointer, 0xFF, memset_len);
+					}
 					if (httpd_findandstore_firstchunk()) {
 						data_start_found = 1;
 					} else {
@@ -572,8 +587,18 @@ void httpd_appcall(void) {
 					}
 					hs->upload += (unsigned int)uip_len;
 					if (!webfailsafe_upload_failed) {
-						memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, uip_len);
-						webfailsafe_data_pointer += uip_len;
+						unsigned long bytes_to_write = uip_len;
+						unsigned long data_written = webfailsafe_data_pointer - (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+						if (data_written + bytes_to_write > hs->upload_total)
+							bytes_to_write = hs->upload_total - data_written;
+						if (bytes_to_write > 0 && webfailsafe_data_pointer + bytes_to_write > (u8_t *)upload_ram_end) {
+							print_error("data larger than available RAM space!");
+							webfailsafe_upload_failed = 1;
+							file_too_big = 1;
+						} else if (bytes_to_write > 0) {
+							memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, bytes_to_write);
+							webfailsafe_data_pointer += bytes_to_write;
+						}
 						httpd_download_progress();
 					}
 					if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
