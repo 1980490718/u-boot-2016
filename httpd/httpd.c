@@ -53,7 +53,7 @@ extern unsigned char *webfailsafe_data_pointer;
 
 #if defined(CONFIG_IPQ807x)
 extern int ipq807x_eth_check_link_change(void);
-#elif defined(CONFIG_IPQ40xx)
+#elif defined(CONFIG_IPQ40XX)
 extern int ipq40xx_eth_check_link_change(void);
 #elif defined(CONFIG_IPQ6018)
 extern int ipq6018_eth_check_link_change(void);
@@ -669,7 +669,7 @@ void httpd_poll(void) {
 
 #if defined(CONFIG_IPQ807x)
 	ipq807x_eth_check_link_change();
-#elif defined(CONFIG_IPQ40xx)
+#elif defined(CONFIG_IPQ40XX)
 	ipq40xx_eth_check_link_change();
 #elif defined(CONFIG_IPQ6018)
 	ipq6018_eth_check_link_change();
