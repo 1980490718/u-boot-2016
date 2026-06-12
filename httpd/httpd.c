@@ -51,7 +51,7 @@ extern int webfailsafe_upgrade_type;
 extern u32 net_boot_file_size;
 extern unsigned char *webfailsafe_data_pointer;
 
-#if defined(CONFIG_IPQ807x)
+#if defined(CONFIG_IPQ807X)
 extern int ipq807x_eth_check_link_change(void);
 #elif defined(CONFIG_IPQ40XX)
 extern int ipq40xx_eth_check_link_change(void);
@@ -63,7 +63,7 @@ extern int ipq9574_eth_check_link_change(void);
 extern int ipq5332_eth_check_link_change(void);
 #elif defined(CONFIG_IPQ5018)
 extern int ipq5018_eth_check_link_change(void);
-#elif defined(CONFIG_IPQ806x)
+#elif defined(CONFIG_IPQ806X)
 extern int ipq806x_eth_check_link_change(void);
 #endif
 
@@ -667,7 +667,7 @@ void httpd_poll(void) {
 			eth_init_attempted = 0;
 	}
 
-#if defined(CONFIG_IPQ807x)
+#if defined(CONFIG_IPQ807X)
 	ipq807x_eth_check_link_change();
 #elif defined(CONFIG_IPQ40XX)
 	ipq40xx_eth_check_link_change();
@@ -679,7 +679,7 @@ void httpd_poll(void) {
 	link_changed = ipq5332_eth_check_link_change();
 #elif defined(CONFIG_IPQ5018)
 	ipq5018_eth_check_link_change();
-#elif defined(CONFIG_IPQ806x)
+#elif defined(CONFIG_IPQ806X)
 	ipq806x_eth_check_link_change();
 #endif
 

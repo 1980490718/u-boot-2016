@@ -101,7 +101,7 @@ __weak void sdi_disable(void)
 }
 
 #ifdef CONFIG_SMP_CMD_SUPPORT
-#if defined(CONFIG_IPQ807x) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
+#if defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
 __weak int is_secondary_core_off(unsigned int cpuid)
 {
 	return __invoke_psci_fn_smc(ARM_PSCI_TZ_FN_AFFINITY_INFO, cpuid, 0, 0);

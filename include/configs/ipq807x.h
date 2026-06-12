@@ -22,7 +22,7 @@
  * Support for IPQ807X RUMI
  */
 #define CONFIG_IPQ_RUMI
-#define CONFIG_IPQ807x
+#define CONFIG_IPQ807X
 
 /*
  * Disabled for actual chip.
