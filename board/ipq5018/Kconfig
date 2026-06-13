@@ -137,4 +137,10 @@ config IPQ5018_JDCLOUD_AX3000
 	default n
 	help
 		Enable support for ipq5018 jdcoud ax3000 support
+
+config IPQ5018_CTCC_AP301_L
+	bool "For ipq5018 ctcc ap301-l support"
+	default n
+	help
+		Enable support for ipq5018 ctcc ap301-l support
 endif
