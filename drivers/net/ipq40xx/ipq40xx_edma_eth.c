@@ -572,52 +572,6 @@ static int ipq40xx_edma_wr_macaddr(struct eth_device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_HTTPD
-static u8 phy_link_prev[PHY_MAX];
-static ulong phy_link_last_check = 0;
-static int first_check_done = 0;
-#define PHY_LINK_CHECK_INTERVAL 500
-
-int ipq40xx_eth_check_link_change(void)
-{
-	ulong now = get_timer(0);
-	struct ipq40xx_eth_dev *priv;
-	int i;
-	u8 cur_link[PHY_MAX];
-	int changed = 0;
-
-	if ((now - phy_link_last_check) < PHY_LINK_CHECK_INTERVAL)
-		return 0;
-	phy_link_last_check = now;
-
-	if (!ipq40xx_edma_dev[0] || !ipq40xx_edma_dev[0]->dev)
-		return -1;
-
-	priv = ipq40xx_edma_dev[0]->dev->priv;
-
-	if (!priv->ops || !priv->ops->phy_get_link_status)
-		return -1;
-
-	for (i = 0; i < PHY_MAX; i++) {
-		cur_link[i] = priv->ops->phy_get_link_status(priv->mac_unit, i) ? 1 : 0;
-		if (cur_link[i] != phy_link_prev[i])
-			changed = 1;
-	}
-
-	if (!changed)
-		return 0;
-
-	memcpy(phy_link_prev, cur_link, sizeof(phy_link_prev));
-	if (!first_check_done) {
-		first_check_done = 1;
-		return 0;
-	}
-
-	eth_init();
-	return 1;
-}
-#endif
-
 static int ipq40xx_eth_init(struct eth_device *eth_dev, bd_t *this)
 {
 	struct ipq40xx_eth_dev *priv = eth_dev->priv;
