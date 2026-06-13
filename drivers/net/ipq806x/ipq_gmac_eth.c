@@ -156,63 +156,6 @@ static int ipq_eth_wr_macaddr(struct eth_device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_HTTPD
-static u8 ipq806x_phy_link_prev[CONFIG_IPQ_NO_MACS];
-static ulong ipq806x_phy_link_last_check = 0;
-static int ipq806x_first_check_done = 0;
-#define IPQ806X_PHY_LINK_CHECK_INTERVAL 500
-
-int ipq806x_eth_check_link_change(void)
-{
-	ulong now = get_timer(0);
-	struct ipq_eth_dev *priv;
-	int i, j;
-	u8 cur_link[CONFIG_IPQ_NO_MACS];
-	int changed = 0;
-	ushort phy_status;
-	int port_status;
-
-	if ((now - ipq806x_phy_link_last_check) < IPQ806X_PHY_LINK_CHECK_INTERVAL)
-		return 0;
-	ipq806x_phy_link_last_check = now;
-
-	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++) {
-		if (!ipq_gmac_macs[i] || !ipq_gmac_macs[i]->dev) {
-			cur_link[i] = 0;
-			continue;
-		}
-		priv = ipq_gmac_macs[i];
-		cur_link[i] = 0;
-
-		for (j = 0; j < priv->no_of_phys; j++) {
-			miiphy_read(priv->phy_name, priv->phy_address[j],
-					PHY_SPECIFIC_STATUS_REG, &phy_status);
-			port_status = ((phy_status & Mii_phy_status_link_up) >>
-					(MII_PHY_STAT_SHIFT));
-			if (port_status == 1) {
-				cur_link[i] = 1;
-				break;
-			}
-		}
-
-		if (cur_link[i] != ipq806x_phy_link_prev[i])
-			changed = 1;
-	}
-
-	if (!changed)
-		return 0;
-
-	memcpy(ipq806x_phy_link_prev, cur_link, sizeof(ipq806x_phy_link_prev));
-	if (!ipq806x_first_check_done) {
-		ipq806x_first_check_done = 1;
-		return 0;
-	}
-
-	eth_init();
-	return 1;
-}
-#endif
-
 static void ipq_mac_reset(struct eth_device *dev)
 {
 	struct ipq_eth_dev *priv = dev->priv;
