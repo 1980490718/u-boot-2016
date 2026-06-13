@@ -10,9 +10,6 @@
 #include <asm/gpio.h>
 #include <ipq_api.h>
 #include <asm-generic/global_data.h>
-#include <miiphy.h>
-#include <linux/mii.h>
-#include "../drivers/net/ipq_common/ipq_phy.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -53,106 +50,6 @@ extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;
 extern u32 net_boot_file_size;
 extern unsigned char *webfailsafe_data_pointer;
-
-#define LINK_CHECK_INTERVAL	100
-#define PHY_SPEC_STATUS		17
-#define PHY_LINK_PASS		0x0400
-
-static ulong link_last_check;
-static int link_first_check;
-static int link_port_prev;
-
-#if defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574)
-extern phy_info_t *phy_info[];
-
-#if defined(CONFIG_IPQ807X)
-#define PHY_PORT_MAX	PHY_MAX
-#elif defined(CONFIG_IPQ6018)
-#define PHY_PORT_MAX	IPQ6018_PHY_MAX
-#elif defined(CONFIG_IPQ9574)
-#define PHY_PORT_MAX	IPQ9574_PHY_MAX
-#endif
-#endif
-
-static int read_phy_link(const char *devname, int phy_addr) {
-	ushort val;
-
-	if (miiphy_read(devname, phy_addr, PHY_SPEC_STATUS, &val) == 0) {
-		if (val != 0xFFFF && val != 0x0000)
-			return (val & PHY_LINK_PASS) ? 1 : 0;
-	}
-
-	/* BMSR LSTATUS is latched-low: 1st read clears, 2nd reads real-time */
-	if (miiphy_read(devname, phy_addr, MII_BMSR, &val) != 0)
-		return 0;
-	if (miiphy_read(devname, phy_addr, MII_BMSR, &val) != 0)
-		return 0;
-	if (val == 0xFFFF || val == 0x0000)
-		return 0;
-	return (val & BMSR_LSTATUS) ? 1 : 0;
-}
-
-static int eth_check_link_change(void) {
-	ulong now = get_timer(0);
-	const char *devname;
-	int link_port = -1;
-	int i;
-
-	if ((now - link_last_check) < LINK_CHECK_INTERVAL)
-		return 0;
-	link_last_check = now;
-
-	devname = miiphy_get_current_dev();
-	if (!devname)
-		return 0;
-
-#if defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574)
-	for (i = 0; i < PHY_PORT_MAX; i++) {
-		if (!phy_info[i] || phy_info[i]->phy_type == UNUSED_PHY_TYPE || phy_info[i]->phy_type == SFP_PHY_TYPE)
-			continue;
-		if (read_phy_link(devname, phy_info[i]->phy_address)) {
-			link_port = i;
-			break;
-		}
-	}
-#elif defined(CONFIG_IPQ5018)
-	static const char * const mdio_bus[] = {"IPQ MDIO0", "IPQ MDIO1"};
-	int b;
-
-	for (b = 0; b < (int)ARRAY_SIZE(mdio_bus) && link_port < 0; b++) {
-		for (i = 0; i < PHY_MAX_ADDR; i++) {
-			if (read_phy_link(mdio_bus[b], i)) {
-				link_port = b * PHY_MAX_ADDR + i;
-				break;
-			}
-		}
-	}
-#else
-	for (i = 0; i < PHY_MAX_ADDR; i++) {
-		if (read_phy_link(devname, i)) {
-			link_port = i;
-			break;
-		}
-	}
-#endif
-
-	if (!link_first_check) {
-		link_port_prev = link_port;
-		link_first_check = 1;
-		return 0;
-	}
-
-	if (link_port == link_port_prev)
-		return 0;
-
-	link_port_prev = link_port;
-
-	if (link_port < 0)
-		return 0;
-
-	eth_init();
-	return 1;
-}
 
 struct httpd_state *hs;
 
