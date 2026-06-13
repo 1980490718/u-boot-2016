@@ -187,3 +187,6 @@ unsigned long get_rootfs_1_end_block(void);
 int emmc_calculate_firmware_distribution(unsigned long firmware_size,
 		unsigned long hlos_max_size, unsigned long rootfs_max_size,
 		unsigned long *hlos_part_size, unsigned long *rootfs_part_size);
+
+/* link detection api */
+int eth_check_link_change(void);
