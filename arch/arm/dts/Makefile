@@ -97,6 +97,8 @@ else ifeq ($(CONFIG_IPQ5018_MR3000D_04),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-mr3000d-04.dtb
 else ifeq ($(CONFIG_IPQ5018_JDCLOUD_AX3000),y)
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-jdcloud-ax3000.dtb
+else ifeq ($(CONFIG_IPQ5018_CTCC_AP301_L),y)
+dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-ctcc-ap301-l.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ5018) += ipq5018-emulation.dtb \
 			ipq5018-mp02.1.dtb \
