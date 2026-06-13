@@ -699,30 +699,42 @@ void httpd_poll(void) {
 }
 
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+struct ppe_arp_hdr {
+	struct uip_eth_hdr ethhdr;
+	u16_t hwtype;
+	u16_t protocol;
+	u8_t hwlen;
+	u8_t protolen;
+	u16_t opcode;
+	struct uip_eth_addr shwaddr;
+	u16_t sipaddr[2];
+	struct uip_eth_addr dhwaddr;
+	u16_t dipaddr[2];
+};
+
 void ppe_arp_kickstart(void) {
-	uchar arp_packet[60];
-	memset(arp_packet, 0, sizeof(arp_packet));
+	uchar pkt[60];
+	struct ppe_arp_hdr *arp = (struct ppe_arp_hdr *)pkt;
 
-	memset(arp_packet, 0xff, 6);
-	memcpy(arp_packet + 6, uip_ethaddr.addr, 6);
-	*(u16_t *)(arp_packet + 12) = htons(0x0806);
+	memset(pkt, 0, sizeof(pkt));
+	memset(arp->ethhdr.dest.addr, 0xff, 6);
+	arp->ethhdr.src = uip_ethaddr;
+	arp->ethhdr.type = htons(UIP_ETHTYPE_ARP);
 
-	*(u16_t *)(arp_packet + 14) = htons(1);
-	*(u16_t *)(arp_packet + 16) = htons(0x0800);
-	*(arp_packet + 18) = 6;
-	*(arp_packet + 19) = 4;
-	*(u16_t *)(arp_packet + 20) = htons(1);
+	arp->hwtype = htons(1);
+	arp->protocol = htons(UIP_ETHTYPE_IP);
+	arp->hwlen = 6;
+	arp->protolen = 4;
+	arp->opcode = htons(1);
 
-	memcpy(arp_packet + 22, uip_ethaddr.addr, 6);
-	*(u16_t *)(arp_packet + 28) = uip_hostaddr[0];
-	*(u16_t *)(arp_packet + 30) = uip_hostaddr[1];
+	arp->shwaddr = uip_ethaddr;
+	arp->sipaddr[0] = uip_hostaddr[0];
+	arp->sipaddr[1] = uip_hostaddr[1];
 
-	memset(arp_packet + 32, 0, 6);
-	*(u16_t *)(arp_packet + 38) = htons(0xC0A8);
-	*(u16_t *)(arp_packet + 40) = htons(0x01FE);
+	arp->dipaddr[0] = uip_hostaddr[0];
+	arp->dipaddr[1] = (uip_hostaddr[1] & htons(0xFF00)) | htons(0x00FE);
 
-	net_send_packet(arp_packet, sizeof(arp_packet));
-	mdelay(500);
+	net_send_packet(pkt, sizeof(pkt));
 }
 #endif
 
