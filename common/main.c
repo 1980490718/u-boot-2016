@@ -90,7 +90,7 @@ void main_loop(void)
 #endif /* CONFIG_UPDATE_TFTP */
 
 #ifdef CONFIG_HTTPD
-	check_button_is_press();
+	btn_check_press();
 #endif
 #ifdef CONFIG_BOARD_DISPLAY_NAME
 	const char *env_config = getenv("config_name");
