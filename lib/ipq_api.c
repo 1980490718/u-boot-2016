@@ -20,6 +20,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+/* -----------------------------------------------------------------------
+ * GPIO helper - resolve GPIO number from FDT path or environment variable
+ * ----------------------------------------------------------------------- */
+
 static int fdt_get_gpio_number(const char *gpio_name) {
 	int node;
 	unsigned int gpio;
@@ -46,6 +50,10 @@ static int fdt_get_gpio_number(const char *gpio_name) {
 	gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
 	return gpio;
 }
+
+/* -----------------------------------------------------------------------
+ * LED control - toggle/on/off/blink with FDT or env GPIO override
+ * ----------------------------------------------------------------------- */
 
 void led_toggle(const char *gpio_name) {
 	int value;
@@ -102,6 +110,65 @@ void led_blink_then_off(const char *gpio_name, int duration) {
 	led_blink(gpio_name, duration);
 	led_off(gpio_name);
 }
+
+static void led_init_from_env(int gpio, const char *name) {
+	struct qca_gpio_config cfg = {
+		.gpio = gpio, .func = 0, .out = 0,
+		.pull = GPIO_NO_PULL, .drvstr = GPIO_8MA,
+		.oe = GPIO_OE_ENABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
+	};
+	gpio_tlmm_config(&cfg);
+	printf("GPIO%d: %s (env)\n", gpio, name);
+}
+
+void led_init_by_name(const char *gpio_name) {
+	char *env_val = getenv(gpio_name);
+	if (env_val) {
+		led_init_from_env(simple_strtoul(env_val, NULL, 10), gpio_name);
+		return;
+	}
+	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node < 0) {
+		return;
+	}
+	struct qca_gpio_config gpio_config;
+	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
+	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob, node, "func", 0);
+	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob, node, "out", 0);
+	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob, node, "pull", 0);
+	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob, node, "drvstr", 0);
+	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob, node, "oe", 0);
+	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob, node, "vm", 0);
+	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob, node, "od_en", 0);
+	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob, node, "pu_res", 0);
+	gpio_tlmm_config(&gpio_config);
+	printf("GPIO%d: %s\n", gpio_config.gpio, gpio_name);
+}
+
+void led_init(void) {
+	led_init_by_name("power_led");
+	led_init_by_name("blink_led");
+	led_init_by_name("system_led");
+#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
+	led_init_by_name("wlan2g_led");
+	led_init_by_name("wlan5g_led");
+	led_init_by_name("bluetooth_led");
+#endif
+#if defined(CONFIG_IPQ807X_REDMI_AX6)
+	led_init_by_name("network_blue_led");
+	led_init_by_name("aiot_led");
+#endif
+#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
+	led_init_by_name("led_system_power2");
+#endif
+	led_on("power_led");
+	mdelay(500);
+}
+
+/* -----------------------------------------------------------------------
+ * Button detection - debounce, init, env override, 3s hold to start httpd
+ * Priority: env reset_key > DTS key_gpio subnodes > DTS reset_key fallback
+ * ----------------------------------------------------------------------- */
 
 static bool gpio_debounce(int gpio, int value) {
 	if (gpio_get_value(gpio) != value)
@@ -262,6 +329,10 @@ void check_button_is_press(void) {
 	return;
 }
 
+/* -----------------------------------------------------------------------
+ * Firmware detection - identify firmware type and HLOS size by magic number
+ * ----------------------------------------------------------------------- */
+
 struct fw_info check_fw_type_ex(void *address) {
 	typedef unsigned int u32;
 	typedef unsigned short u16;
@@ -327,7 +398,10 @@ int check_fw_type(void *address) {
 	return info.type;
 }
 
-/* Get the size information from the smem table (in bytes) */
+/* -----------------------------------------------------------------------
+ * Partition - SMEM/GPT partition size and offset queries for webfailsafe
+ * ----------------------------------------------------------------------- */
+
 unsigned long get_smem_table_size_bytes(const char *name) {
 	uint32_t offset, byte_size;
 	int ret;
@@ -485,59 +559,9 @@ unsigned long get_rootfs_1_start_block(void){ return PART_START_BLOCK("rootfs_1"
 unsigned long get_rootfs_1_end_block(void)  { return PART_END_BLOCK("rootfs_1"); }
 #endif /* CONFIG_EFI_PARTITION && CONFIG_PARTITIONS && CONFIG_CMD_MMC */
 
-static void led_init_from_env(int gpio, const char *name) {
-	struct qca_gpio_config cfg = {
-		.gpio = gpio, .func = 0, .out = 0,
-		.pull = GPIO_NO_PULL, .drvstr = GPIO_8MA,
-		.oe = GPIO_OE_ENABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
-	};
-	gpio_tlmm_config(&cfg);
-	printf("GPIO%d: %s (env)\n", gpio, name);
-}
-
-void led_init_by_name(const char *gpio_name) {
-	char *env_val = getenv(gpio_name);
-	if (env_val) {
-		led_init_from_env(simple_strtoul(env_val, NULL, 10), gpio_name);
-		return;
-	}
-	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
-	if (node < 0) {
-		return;
-	}
-	struct qca_gpio_config gpio_config;
-	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
-	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob, node, "func", 0);
-	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob, node, "out", 0);
-	gpio_config.pull	= fdtdec_get_uint(gd->fdt_blob, node, "pull", 0);
-	gpio_config.drvstr	= fdtdec_get_uint(gd->fdt_blob, node, "drvstr", 0);
-	gpio_config.oe		= fdtdec_get_uint(gd->fdt_blob, node, "oe", 0);
-	gpio_config.vm		= fdtdec_get_uint(gd->fdt_blob, node, "vm", 0);
-	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob, node, "od_en", 0);
-	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob, node, "pu_res", 0);
-	gpio_tlmm_config(&gpio_config);
-	printf("GPIO%d: %s\n", gpio_config.gpio, gpio_name);
-}
-
-void led_init(void) {
-	led_init_by_name("power_led");
-	led_init_by_name("blink_led");
-	led_init_by_name("system_led");
-#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
-	led_init_by_name("wlan2g_led");
-	led_init_by_name("wlan5g_led");
-	led_init_by_name("bluetooth_led");
-#endif
-#if defined(CONFIG_IPQ807X_REDMI_AX6)
-	led_init_by_name("network_blue_led");
-	led_init_by_name("aiot_led");
-#endif
-#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-	led_init_by_name("led_system_power2");
-#endif
-	led_on("power_led");
-	mdelay(500);
-}
+/* -----------------------------------------------------------------------
+ * Network - PHY link status monitoring and auto re-initialization
+ * ----------------------------------------------------------------------- */
 
 #define LINK_CHECK_INTERVAL	100
 #define PHY_SPEC_STATUS		17
