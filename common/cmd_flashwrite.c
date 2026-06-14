@@ -380,8 +380,14 @@ char * const argv[])
 			}
 
 #ifdef CONFIG_QCA_MMC
+#ifdef CONFIG_HTTPD
+		} else if (sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH &&
+			(smem_getpart(part_name, &start_block, &size_block) == -ENOENT ||
+			 (start_block == 0 && size_block == 0))){
+#else
 		} else if ((smem_getpart(part_name, &start_block, &size_block)
 				== -ENOENT) && (sfi->rootfs.offset == 0xBAD0FF5E)){
+#endif
 
 			/* NOR + EMMC */
 			flash_type = SMEM_BOOT_MMC_FLASH;
@@ -421,6 +427,12 @@ char * const argv[])
 					part_size = (ulong)disk_info.size;
 				}
 			}
+#ifdef CONFIG_HTTPD
+			else {
+				printf("eMMC not initialized, skipped %s\n", part_name);
+				return 0;
+			}
+#endif
 #endif
 		} else {
 			ret = smem_getpart(part_name, &start_block,
