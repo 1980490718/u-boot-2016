@@ -341,8 +341,15 @@ char * const argv[])
 			{
 				ret = get_partition_info_efi_by_name(blk_dev,
 				part_name, &disk_info);
+#ifdef CONFIG_HTTPD
+				if (ret) {
+					printf("Partition %s not found, skipped\n", part_name);
+					return 0;
+				}
+#else
 				if (ret)
 					goto exit;
+#endif
 				offset = (ulong)disk_info.start;
 				part_size = (ulong)disk_info.size;
 			}
@@ -400,8 +407,15 @@ char * const argv[])
 				{
 					ret = get_partition_info_efi_by_name(blk_dev,
 							part_name, &disk_info);
+#ifdef CONFIG_HTTPD
+					if (ret) {
+						printf("Partition %s not found, skipped\n", part_name);
+						return 0;
+					}
+#else
 					if (ret)
 						goto exit;
+#endif
 
 					offset = (ulong)disk_info.start;
 					part_size = (ulong)disk_info.size;
