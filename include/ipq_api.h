@@ -148,7 +148,7 @@ void led_init_by_name(const char *gpio_name);
 void led_init(void);
 void btn_init_by_name(const char *gpio_name);
 void btn_init(void);
-void check_button_is_press(void);
+void btn_check_press(void);
 unsigned long get_nor_firmware_combined_size(void);
 /* main api for get smem table size*/
 unsigned long get_smem_table_size_bytes(const char *name);

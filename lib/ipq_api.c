@@ -24,31 +24,27 @@ DECLARE_GLOBAL_DATA_PTR;
  * GPIO helper - resolve GPIO number from FDT path or environment variable
  * ----------------------------------------------------------------------- */
 
+static int fdt_find_gpio_node(const char *gpio_name) {
+	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node >= 0)
+		return node;
+	char path[128];
+	snprintf(path, sizeof(path), "/tlmm-gpio/key_gpio/%s", gpio_name);
+	node = fdt_path_offset(gd->fdt_blob, path);
+	if (node >= 0)
+		return node;
+	snprintf(path, sizeof(path), "/tlmm-gpio/led_gpio/%s", gpio_name);
+	return fdt_path_offset(gd->fdt_blob, path);
+}
+
 static int fdt_get_gpio_number(const char *gpio_name) {
-	int node;
-	unsigned int gpio;
-	char *env_val;
-	/* First check if gpio_name exists as a direct path */
-	node = fdt_path_offset(gd->fdt_blob, gpio_name);
-	if (node >= 0) {
-		gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
-		return gpio;
-	}
-	/* If not found as direct path, also check under /tlmm-gpio/key_gpio path */
-	char full_path[128];
-	snprintf(full_path, sizeof(full_path), "/tlmm-gpio/key_gpio/%s", gpio_name);
-	node = fdt_path_offset(gd->fdt_blob, full_path);
-	if (node < 0) {
-		/* Check environment variable for GPIO number */
-		env_val = getenv(gpio_name);
-		if (env_val) {
-			gpio = simple_strtoul(env_val, NULL, 10);
-			return gpio;
-		}
+	char *env_val = getenv(gpio_name);
+	if (env_val)
+		return simple_strtoul(env_val, NULL, 10);
+	int node = fdt_find_gpio_node(gpio_name);
+	if (node < 0)
 		return -1;
-	}
-	gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
-	return gpio;
+	return fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
 }
 
 /* -----------------------------------------------------------------------
@@ -129,8 +125,12 @@ void led_init_by_name(const char *gpio_name) {
 	}
 	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
 	if (node < 0) {
-		return;
+		char path[128];
+		snprintf(path, sizeof(path), "/tlmm-gpio/led_gpio/%s", gpio_name);
+		node = fdt_path_offset(gd->fdt_blob, path);
 	}
+	if (node < 0)
+		return;
 	struct qca_gpio_config gpio_config;
 	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
 	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob, node, "func", 0);
@@ -146,21 +146,15 @@ void led_init_by_name(const char *gpio_name) {
 }
 
 void led_init(void) {
-	led_init_by_name("power_led");
-	led_init_by_name("blink_led");
-	led_init_by_name("system_led");
-#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
-	led_init_by_name("wlan2g_led");
-	led_init_by_name("wlan5g_led");
-	led_init_by_name("bluetooth_led");
-#endif
-#if defined(CONFIG_IPQ807X_REDMI_AX6)
-	led_init_by_name("network_blue_led");
-	led_init_by_name("aiot_led");
-#endif
-#if defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-	led_init_by_name("led_system_power2");
-#endif
+	int node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/led_gpio");
+	if (node >= 0) {
+		int subnode;
+		fdt_for_each_subnode(gd->fdt_blob, subnode, node) {
+			const char *name = fdt_get_name(gd->fdt_blob, subnode, NULL);
+			if (name)
+				led_init_by_name(name);
+		}
+	}
 	led_on("power_led");
 	mdelay(500);
 }
@@ -177,7 +171,7 @@ static bool gpio_debounce(int gpio, int value) {
 	return gpio_get_value(gpio) == value;
 }
 
-bool button_is_press(const char *gpio_name, int value) {
+bool btn_is_pressed(const char *gpio_name, int value) {
 	int gpio = fdt_get_gpio_number(gpio_name);
 	if (gpio < 0)
 		return false;
@@ -188,18 +182,12 @@ bool button_is_press(const char *gpio_name, int value) {
  * Configure a GPIO as input with pull-up
  */
 static void gpio_input_pullup(int gpio) {
-	struct qca_gpio_config gpio_config;
-	gpio_config.gpio = gpio;
-	gpio_config.func = 0;
-	gpio_config.out = 0;
-	gpio_config.pull = GPIO_PULL_UP;
-	gpio_config.drvstr = GPIO_8MA;
-	gpio_config.oe = GPIO_OE_DISABLE;
-	gpio_config.vm = 0;
-	gpio_config.od_en = 0;
-	gpio_config.pu_res = 0;
-	gpio_config.sr_en = 0;
-	gpio_tlmm_config(&gpio_config);
+	struct qca_gpio_config cfg = {
+		.gpio = gpio, .func = 0, .out = 0,
+		.pull = GPIO_PULL_UP, .drvstr = GPIO_8MA,
+		.oe = GPIO_OE_DISABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
+	};
+	gpio_tlmm_config(&cfg);
 }
 
 static void btn_init_gpio(int gpio, const char *name, const char *source) {
@@ -244,7 +232,7 @@ static bool btn_pressed(char *name, int name_len) {
 
 	int node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/key_gpio");
 	if (node < 0) {
-		if (button_is_press("reset_key", RESET_BUTTON_PRESSED)) {
+		if (btn_is_pressed("reset_key", RESET_BUTTON_PRESSED)) {
 			strncpy(name, "reset_key", name_len - 1);
 			name[name_len - 1] = '\0';
 			return true;
@@ -257,7 +245,7 @@ static bool btn_pressed(char *name, int name_len) {
 		const char *subname = fdt_get_name(gd->fdt_blob, subnode, NULL);
 		if (!subname)
 			continue;
-		if (button_is_press(subname, RESET_BUTTON_PRESSED)) {
+		if (btn_is_pressed(subname, RESET_BUTTON_PRESSED)) {
 			strncpy(name, subname, name_len - 1);
 			name[name_len - 1] = '\0';
 			return true;
@@ -284,7 +272,7 @@ void btn_init(void) {
 	}
 }
 
-void check_button_is_press(void) {
+void btn_check_press(void) {
 	char name[64] = {0};
 	int counter = 0;
 	while (btn_pressed(name, sizeof(name))) {
@@ -295,28 +283,14 @@ void check_button_is_press(void) {
 		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%2d second(s) ", counter);
 		if(counter >= 3){
 			printf("\n");
-#if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
-			led_on("power_led");
-			led_off("wlan2g_led");
-			led_off("wlan5g_led");
-			led_off("bluetooth_led");
-#elif defined(CONFIG_IPQ807X_REDMI_AX6)
-			led_off("system_led");
+			int led_node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/led_gpio");
+			if (led_node >= 0) {
+				int subnode;
+				fdt_for_each_subnode(gd->fdt_blob, subnode, led_node)
+					led_off(fdt_get_name(gd->fdt_blob, subnode, NULL));
+			}
 			led_on("power_led");
 			led_on("blink_led");
-			led_off("network_blue_led");
-#elif defined(CONFIG_IPQ6018_M2)
-			led_on("system_led");
-			led_on("wlan2g_led");
-			led_on("wlan5g_led");
-			led_on("mesh_led");
-			led_on("bluetooth_led");
-#elif defined(CONFIG_IPQ807X_XGLINK_5GCPE)
-			led_on("led_system_power2");
-#else
-			led_off("power_led");
-			led_on("blink_led");
-#endif
 #ifndef CONFIG_IPQ40XX
 			eth_initialize();
 #endif
