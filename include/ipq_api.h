@@ -19,6 +19,9 @@
 #ifndef GPIO_OE_DISABLE
 #define GPIO_OE_DISABLE 0
 #endif
+#ifndef GPIO_OE_ENABLE
+#define GPIO_OE_ENABLE 1
+#endif
 
 #define LED_ON 1
 #define LED_OFF 0
