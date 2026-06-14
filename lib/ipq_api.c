@@ -41,7 +41,6 @@ static int fdt_get_gpio_number(const char *gpio_name) {
 			gpio = simple_strtoul(env_val, NULL, 10);
 			return gpio;
 		}
-		printf("Could not find %s node in fdt and no env variable set\n", gpio_name);
 		return -1;
 	}
 	gpio = fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
@@ -146,7 +145,6 @@ static void btn_init_gpio(int gpio, const char *name, const char *source) {
 void btn_init_by_name(const char *gpio_name) {
 	int gpio = fdt_get_gpio_number(gpio_name);
 	if (gpio < 0) {
-		printf("Could not find %s in FDT or environment\n", gpio_name);
 		return;
 	}
 	btn_init_gpio(gpio, gpio_name, "fdt");
@@ -487,14 +485,27 @@ unsigned long get_rootfs_1_start_block(void){ return PART_START_BLOCK("rootfs_1"
 unsigned long get_rootfs_1_end_block(void)  { return PART_END_BLOCK("rootfs_1"); }
 #endif /* CONFIG_EFI_PARTITION && CONFIG_PARTITIONS && CONFIG_CMD_MMC */
 
+static void led_init_from_env(int gpio, const char *name) {
+	struct qca_gpio_config cfg = {
+		.gpio = gpio, .func = 0, .out = 0,
+		.pull = GPIO_NO_PULL, .drvstr = GPIO_8MA,
+		.oe = GPIO_OE_ENABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
+	};
+	gpio_tlmm_config(&cfg);
+	printf("GPIO%d: %s (env)\n", gpio, name);
+}
+
 void led_init_by_name(const char *gpio_name) {
-	int node;
-	struct qca_gpio_config gpio_config;
-	node = fdt_path_offset(gd->fdt_blob, gpio_name);
-	if (node < 0) {
-		printf("Could not find %s node\n", gpio_name);
+	char *env_val = getenv(gpio_name);
+	if (env_val) {
+		led_init_from_env(simple_strtoul(env_val, NULL, 10), gpio_name);
 		return;
 	}
+	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
+	if (node < 0) {
+		return;
+	}
+	struct qca_gpio_config gpio_config;
 	gpio_config.gpio	= fdtdec_get_uint(gd->fdt_blob, node, "gpio", 0);
 	gpio_config.func	= fdtdec_get_uint(gd->fdt_blob, node, "func", 0);
 	gpio_config.out		= fdtdec_get_uint(gd->fdt_blob, node, "out", 0);
@@ -505,6 +516,7 @@ void led_init_by_name(const char *gpio_name) {
 	gpio_config.od_en	= fdtdec_get_uint(gd->fdt_blob, node, "od_en", 0);
 	gpio_config.pu_res	= fdtdec_get_uint(gd->fdt_blob, node, "pu_res", 0);
 	gpio_tlmm_config(&gpio_config);
+	printf("GPIO%d: %s\n", gpio_config.gpio, gpio_name);
 }
 
 void led_init(void) {
