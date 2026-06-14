@@ -17,6 +17,8 @@
 #include <dt-bindings/qcom/gpio-ipq40xx.h>
 #endif
 #include <asm/arch-qca-common/gpio.h>
+#include <asm/io.h>
+#include <console.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -38,6 +40,10 @@ static int fdt_find_gpio_node(const char *gpio_name) {
 }
 
 static int fdt_get_gpio_number(const char *gpio_name) {
+	char *endp;
+	ulong num = simple_strtoul(gpio_name, &endp, 10);
+	if (*endp == '\0' && endp != gpio_name)
+		return (int)num;
 	char *env_val = getenv(gpio_name);
 	if (env_val)
 		return simple_strtoul(env_val, NULL, 10);
@@ -302,6 +308,108 @@ void btn_check_press(void) {
 		printf("\n");
 	return;
 }
+
+/* -----------------------------------------------------------------------
+ * U-Boot command - gpio: control LED/GPIO via DTS name or env
+ * ----------------------------------------------------------------------- */
+
+static void fdt_list_gpio(int node, const char *parent) {
+	int subnode;
+	fdt_for_each_subnode(gd->fdt_blob, subnode, node) {
+		int gpio = fdtdec_get_uint(gd->fdt_blob, subnode, "gpio", -1);
+		if (gpio >= 0) {
+			int value = gpio_get_value(gpio);
+			unsigned int cfg = readl(GPIO_CONFIG_ADDR(gpio));
+			printf("GPIO%d %s value=%d  %s/%s\n", gpio,
+				(cfg & (1 << 9)) ? "out" : "in", value,
+				parent, fdt_get_name(gd->fdt_blob, subnode, NULL));
+		}
+		fdt_list_gpio(subnode, fdt_get_name(gd->fdt_blob, subnode, NULL));
+	}
+}
+
+#ifdef CONFIG_IPQ6018
+#define GPIO_MAX 80
+#elif defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ806X)
+#define GPIO_MAX 68
+#elif defined(CONFIG_IPQ5332)
+#define GPIO_MAX 52
+#elif defined(CONFIG_IPQ5018)
+#define GPIO_MAX 47
+#elif defined(CONFIG_IPQ9574)
+#define GPIO_MAX 62
+#endif
+
+static void gpio_detect(void) {
+	int i, values[GPIO_MAX];
+	printf("Detecting GPIO 0-%d input pins...\n", GPIO_MAX - 1);
+	for (i = 0; i < GPIO_MAX; i++) {
+		unsigned int cfg = readl(GPIO_CONFIG_ADDR(i));
+		if ((cfg & 0x1C) || (cfg & (1 << 9)))
+			values[i] = -1;
+		else
+			values[i] = gpio_get_value(i);
+	}
+	printf("Press any button now (Ctrl+C to stop)...\n");
+	while (!ctrlc()) {
+		for (i = 0; i < GPIO_MAX; i++) {
+			if (values[i] < 0)
+				continue;
+			int v = gpio_get_value(i);
+			if (v != values[i]) {
+				printf("GPIO%d changed: %d -> %d\n", i, values[i], v);
+				values[i] = v;
+			}
+		}
+		udelay(10000);
+	}
+}
+
+static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
+	if (argc < 2) {
+		int root = fdt_path_offset(gd->fdt_blob, "/");
+		if (root >= 0)
+			fdt_list_gpio(root, "");
+		return CMD_RET_USAGE;
+	}
+	if (strcmp(argv[1], "d") == 0) {
+		gpio_detect();
+		return 0;
+	}
+	int gpio = fdt_get_gpio_number(argv[1]);
+	if (gpio < 0) {
+		printf("GPIO '%s' not found\n", argv[1]);
+		return 1;
+	}
+	if (argc == 2) {
+		int value = gpio_get_value(gpio);
+		unsigned int cfg = readl(GPIO_CONFIG_ADDR(gpio));
+		printf("GPIO%d %s value=%d\n", gpio, (cfg & (1 << 9)) ? "out" : "in", value);
+		return 0;
+	}
+	const char *op = argv[2];
+	if (strcmp(op, "on") == 0)
+		gpio_set_value(gpio, 1);
+	else if (strcmp(op, "off") == 0)
+		gpio_set_value(gpio, 0);
+	else if (strcmp(op, "t") == 0)
+		gpio_set_value(gpio, !gpio_get_value(gpio));
+	else if (strcmp(op, "b") == 0) {
+		if (argc < 4)
+			return CMD_RET_USAGE;
+		led_blink(argv[1], simple_strtoul(argv[3], NULL, 10) * 1000);
+	} else
+		return CMD_RET_USAGE;
+	return 0;
+}
+
+U_BOOT_CMD(gpio, 4, 0, do_gpio_cmd,
+	"control LED/GPIO via DTS name or env",
+	"<name|num> - show GPIO status\n"
+	"gpio <name> on|off|t|b <sec>\n"
+	"gpio d - detect button\n"
+	"  t=toggle b=blink <sec>"
+);
 
 /* -----------------------------------------------------------------------
  * Firmware detection - identify firmware type and HLOS size by magic number
