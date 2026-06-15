@@ -1271,11 +1271,16 @@ struct dtb_combined_hdr {
 };
 
 
+unsigned long cdt_machid_mismatch;
+unsigned long dtb_machid_fallback;
+
 static int parse_combined_fdt(unsigned long machid)
 {
 	unsigned long *ptr = NULL;
 	struct dtb_combined_hdr *fdt_table;
+	struct dtb_combined_hdr *fdt_table_first;
 	unsigned long ndtbs = 0;
+	unsigned long ndtbs_total = 0;
 #ifdef CONFIG_COMPRESSED_DTB_BASE
 	uint32_t size, uncompressed_size;
 	unsigned long dtb_end, dtb_begin, dtb_base;
@@ -1287,18 +1292,24 @@ static int parse_combined_fdt(unsigned long machid)
 	ptr = &__dtb_table_start;
 #endif
 	ndtbs = *ptr;
+	ndtbs_total = ndtbs;
 
 	ptr++;
 
 	fdt_table = (struct dtb_combined_hdr *)ptr;
+	fdt_table_first = fdt_table;
 
 	while(ndtbs && (fdt_table->machid != machid)) {
 		fdt_table++;
 		ndtbs--;
 	}
 
-	if(ndtbs == 0)
-		hang();
+	if(ndtbs == 0) {
+		cdt_machid_mismatch = machid;
+		dtb_machid_fallback = fdt_table_first->machid;
+		fdt_table = fdt_table_first;
+		ndtbs = ndtbs_total;
+	}
 
 #ifdef CONFIG_COMPRESSED_DTB_BASE
 	dtb_begin = fdt_table->dtbaddr;
