@@ -350,8 +350,9 @@ static void gpio_detect(void) {
 		else
 			values[i] = gpio_get_value(i);
 	}
-	printf("Press any button now (Ctrl+C to stop)...\n");
-	while (!ctrlc()) {
+	printf("Press and release button(Ctrl+C or 10s exit)\n");
+	ulong deadline = get_timer(0) + 10000;
+	while (!ctrlc() && get_timer(0) < deadline) {
 		for (i = 0; i < GPIO_MAX; i++) {
 			if (values[i] < 0)
 				continue;
@@ -404,11 +405,10 @@ static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 }
 
 U_BOOT_CMD(gpio, 4, 0, do_gpio_cmd,
-	"control LED/GPIO via DTS name or env",
+	"control LED/GPIO via FDT name or env",
 	"<name|num> - show GPIO status\n"
-	"gpio <name> on|off|t|b <sec>\n"
+	"gpio <name> on|off|t(oggle)|b(link) <sec>\n"
 	"gpio d - detect button\n"
-	"  t=toggle b=blink <sec>"
 );
 
 /* -----------------------------------------------------------------------
