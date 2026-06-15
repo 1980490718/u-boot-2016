@@ -31,6 +31,8 @@ extern env_t *nand_env_ptr;
 extern char *nand_env_name_spec;
 #endif
 extern char *sf_env_name_spec;
+extern unsigned long cdt_machid_mismatch;
+extern unsigned long dtb_machid_fallback;
 extern int nand_saveenv(void);
 extern int sf_saveenv(void);
 
@@ -495,6 +497,15 @@ int board_late_init(void)
 	/* get machine type from SMEM and set in env */
 	machid = gd->bd->bi_arch_number;
 	printf("machid: %x\n", machid);
+
+	if (cdt_machid_mismatch) {
+		printf("WARNING: CDT machid 0x%lx mismatch all DTB, "
+		       "fallback to first DTB with machid 0x%lx\n",
+		       cdt_machid_mismatch, dtb_machid_fallback);
+		gd->bd->bi_arch_number = dtb_machid_fallback;
+		machid = dtb_machid_fallback;
+	}
+
 	if (machid != 0) {
 		setenv_addr("machid", (void *)machid);
 		gd->bd->bi_arch_number = machid;
