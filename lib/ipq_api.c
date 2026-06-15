@@ -389,6 +389,12 @@ static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 		return 0;
 	}
 	const char *op = argv[2];
+	struct qca_gpio_config cfg = {
+		.gpio = gpio, .func = 0, .out = 1,
+		.pull = GPIO_NO_PULL, .drvstr = GPIO_8MA,
+		.oe = GPIO_OE_ENABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
+	};
+	gpio_tlmm_config(&cfg);
 	if (strcmp(op, "on") == 0)
 		gpio_set_value(gpio, 1);
 	else if (strcmp(op, "off") == 0)
