@@ -106,4 +106,10 @@ config IPQ5332_JDCLOUD_BE6500
 	default n
 	help
 		Enable support for IPQ5332_JDCLOUD_BE6500 support
+
+config IPQ5332_XIAOMI_BE6500
+	bool "For IPQ5332_XIAOMI_BE6500 support"
+	default n
+	help
+		Enable support for IPQ5332_XIAOMI_BE6500 support
 endif
