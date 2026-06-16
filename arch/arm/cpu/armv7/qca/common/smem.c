@@ -1017,7 +1017,7 @@ void qca_smem_part_to_mtdparts(char *mtdid, int len)
 unsigned int get_which_flash_param(char *part_name)
 {
 	int i;
-	int flash_var = -1;
+	int flash_var = 0;
 
 	for (i = 0; i < smem_ptable.len; i++) {
 		struct smem_ptn *p = &smem_ptable.parts[i];
@@ -1096,7 +1096,7 @@ int ubi_set_rootfs_part(void)
 		offset = sfi->flash_block_size * start_block;
 		part_size = sfi->flash_block_size * size_block;
 	} else if (sfi->flash_type == SMEM_BOOT_SPI_FLASH &&
-				get_which_flash_param(QCA_ROOT_FS_PART_NAME)) {
+				(get_which_flash_param(QCA_ROOT_FS_PART_NAME) > 0)) {
 		ret = getpart_offset_size(QCA_ROOT_FS_PART_NAME, &offset,
 								&part_size);
 		if (ret)

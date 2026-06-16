@@ -1021,7 +1021,7 @@ void set_mtdids(void)
 
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 	if (sfi->flash_type == SMEM_BOOT_SPI_FLASH) {
-		if (get_which_flash_param("rootfs") ||
+		if ((get_which_flash_param("rootfs") > 0) ||
 		    ((sfi->flash_secondary_type == SMEM_BOOT_NAND_FLASH) ||
 			(sfi->flash_secondary_type == SMEM_BOOT_QSPI_NAND_FLASH))) {
 

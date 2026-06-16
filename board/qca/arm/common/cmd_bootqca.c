@@ -176,7 +176,7 @@ static int set_fs_bootargs(int *fs_on_nand)
 #define nand_rootfs "ubi.mtd=" QCA_ROOT_FS_PART_NAME " root=mtd:ubi_rootfs rootfstype=squashfs"
 
 	if (sfi->flash_type == SMEM_BOOT_SPI_FLASH) {
-		if (get_which_flash_param("rootfs") ||
+		if ((get_which_flash_param("rootfs") > 0) ||
 		    ((sfi->flash_secondary_type == SMEM_BOOT_NAND_FLASH) ||
 			(sfi->flash_secondary_type == SMEM_BOOT_QSPI_NAND_FLASH))) {
 			bootargs = nand_rootfs;
@@ -853,7 +853,7 @@ static int do_boot_unsignedimg(cmd_tbl_t *cmdtp, int flag, int argc, char *const
 	} else if (((sfi->flash_type == SMEM_BOOT_SPI_FLASH) &&
 		    (sfi->rootfs.offset != 0xBAD0FF5E)) ||
 		   ipq_fs_on_nand) {
-		if (get_which_flash_param("rootfs") || ipq_fs_on_nand) {
+		if ((get_which_flash_param("rootfs") > 0) || ipq_fs_on_nand) {
 			snprintf(runcmd, sizeof(runcmd),
 				 "nand device %d && "
 				 "setenv mtdids nand%d=nand%d && "

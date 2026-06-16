@@ -55,31 +55,7 @@ enum firmware_type_enum {
 	FW_TYPE_MIBIB	= 6,
 };
 
-/* flash type from "arch/arm/include/asm/arch-qca-common/smem.h"
-enum flash_type_enum {
-	SMEM_BOOT_NO_FLASH			= 0,
-	SMEM_BOOT_NOR_FLASH			= 1,
-	SMEM_BOOT_NAND_FLASH		= 2,
-	SMEM_BOOT_ONENAND_FLASH		= 3,
-	SMEM_BOOT_SDC_FLASH			= 4,
-	SMEM_BOOT_MMC_FLASH			= 5,
-	SMEM_BOOT_SPI_FLASH			= 6,
-	SMEM_BOOT_NORPLUSNAND		= 7,
-	SMEM_BOOT_NORPLUSEMMC		= 8,
-	SMEM_BOOT_QSPI_NAND_FLASH	= 11,
-};
-*/
-/* flash type */
-#define FLASH_TYPE_NO_FLASH			0
-#define FLASH_TYPE_NOR				1
-#define FLASH_TYPE_NAND				2
-#define FLASH_TYPE_ONENAND			3
-#define FLASH_TYPE_SDC				4
-#define FLASH_TYPE_MMC				5
-#define FLASH_TYPE_SPI				6
-#define FLASH_TYPE_NOR_PLUS_NAND	7
-#define FLASH_TYPE_NOR_PLUS_EMMC	8
-#define FLASH_TYPE_QSPI_NAND		11
+/* flash type: use SMEM_BOOT_* enum from asm/arch-qca-common/smem.h */
 
 /* load address */
 #ifndef CONFIG_IPQ40XX

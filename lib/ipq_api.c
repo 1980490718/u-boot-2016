@@ -503,7 +503,8 @@ unsigned long get_smem_table_size_bytes(const char *name) {
 	uint32_t flash_type, flash_index, flash_chip_select, flash_block_size, flash_density;
 	ret = smem_get_boot_flash(&flash_type, &flash_index, &flash_chip_select, &flash_block_size, &flash_density);
 	/* If it's an EMMC device, try getting partition info from GPT */
-	if (ret == 0 && flash_type == SMEM_BOOT_MMC_FLASH) {
+	if (ret == 0 && (flash_type == SMEM_BOOT_MMC_FLASH ||
+			qca_smem_flash_info.rootfs.offset == 0xBAD0FF5E)) {
 		block_dev_desc_t *mmc_dev;
 		disk_partition_t disk_info;
 		/* Get the MMC device */
@@ -536,22 +537,25 @@ DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
 DEFINE_GET_SIZE_FUNC(get_bootconfig_size, "0:BOOTCONFIG")
 
 unsigned long get_firmware_upgrade_max_size(void) {
-	switch (qca_smem_flash_info.flash_type) {
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return 0;
+	switch (flash_type) {
 #if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
-		case FLASH_TYPE_MMC:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
+		case SMEM_BOOT_MMC_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
 			return get_hlos_size() + get_rootfs_size();
 #endif
-		case FLASH_TYPE_NOR:
+		case SMEM_BOOT_NOR_FLASH:
 			return get_nor_firmware_combined_size();
-		case FLASH_TYPE_SPI:
-			if (get_which_flash_param("rootfs"))
+		case SMEM_BOOT_SPI_FLASH:
+			if (get_which_flash_param("rootfs") > 0)
 				return get_firmware_size();
 			else
 				return get_nor_firmware_combined_size();
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSNAND:
 		default:
 			return get_firmware_size();
 	}

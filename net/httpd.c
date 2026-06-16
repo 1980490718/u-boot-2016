@@ -206,10 +206,13 @@ static int update_bootconfig(void) {
 
 static int do_firmware_upgrade(const ulong size) {
 	char buf[512];
-	switch (qca_smem_flash_info.flash_type) {
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
+	switch (flash_type) {
 #if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
-		case FLASH_TYPE_MMC:
-		case FLASH_TYPE_NOR_PLUS_EMMC: {
+		case SMEM_BOOT_MMC_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_FIT) {
 				print_upgrade_warning("FIRMWARE");
@@ -253,9 +256,9 @@ static int do_firmware_upgrade(const ulong size) {
 			break;
 		}
 #endif
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_NAND: {
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSNAND: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_UBI) {
 				print_upgrade_warning("FIRMWARE");
@@ -266,7 +269,7 @@ static int do_firmware_upgrade(const ulong size) {
 			}
 			break;
 		}
-		case FLASH_TYPE_NOR: {
+		case SMEM_BOOT_NOR_FLASH: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
@@ -281,9 +284,9 @@ static int do_firmware_upgrade(const ulong size) {
 			}
 			break;
 		}
-		case FLASH_TYPE_SPI: {
+		case SMEM_BOOT_SPI_FLASH: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-			if (get_which_flash_param("rootfs")) {
+			if (get_which_flash_param("rootfs") > 0) {
 				if (fw_type == FW_TYPE_UBI) {
 					print_upgrade_warning("FIRMWARE");
 					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
@@ -315,21 +318,24 @@ static int do_firmware_upgrade(const ulong size) {
 
 static int do_uboot_upgrade(const ulong size) {
 	char buf[576];
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
 	if (check_fw_type((void *)UPLOAD_ADDR) != FW_TYPE_ELF) {
 		printf("\n* Uploaded file is not UBOOT ELF type. Actual type is %s *\n", fw_type_to_string(check_fw_type((void *)UPLOAD_ADDR)));
 		return -1;
 	}
 	print_upgrade_warning("U-BOOT");
-	switch (qca_smem_flash_info.flash_type) {
-		case FLASH_TYPE_MMC:
+	switch (flash_type) {
+		case SMEM_BOOT_MMC_FLASH:
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR);
 			break;
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_SPI_FLASH:
+		case SMEM_BOOT_NOR_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
+		case SMEM_BOOT_NORPLUSNAND:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
 			break;
 		default:
@@ -341,22 +347,25 @@ static int do_uboot_upgrade(const ulong size) {
 
 static int do_art_upgrade(const ulong size) {
 	char buf[576];
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
 	int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 	if (fw_type == FW_TYPE_CDT || fw_type == FW_TYPE_ELF || fw_type == FW_TYPE_GPT || fw_type == FW_TYPE_MIBIB) {
 		printf("\n* The %s type is not allowed to upgrade to the ART partition *\n", fw_type_to_string(fw_type));
 		return -1;
 	}
 	print_upgrade_warning("ART");
-	switch (qca_smem_flash_info.flash_type) {
-		case FLASH_TYPE_MMC:
+	switch (flash_type) {
+		case SMEM_BOOT_MMC_FLASH:
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, ART_NAME, UPLOAD_ADDR);
 			break;
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_SPI_FLASH:
+		case SMEM_BOOT_NOR_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
+		case SMEM_BOOT_NORPLUSNAND:
 			sprintf(buf, "flash %s 0x%lx $filesize", ART_NAME, UPLOAD_ADDR);
 			break;
 		default:
@@ -368,23 +377,26 @@ static int do_art_upgrade(const ulong size) {
 
 static int do_gpt_upgrade(const ulong size) {
 	char buf[576];
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
 	if (check_fw_type((void *)UPLOAD_ADDR) != FW_TYPE_GPT) {
 		printf("\n* Uploaded file is not GPT type. Actual type is %s *\n", fw_type_to_string(check_fw_type((void *)UPLOAD_ADDR)));
 		return -1;
 	}
 	print_upgrade_warning("GPT");
-	switch (qca_smem_flash_info.flash_type) {
-		case FLASH_TYPE_MMC:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
+	switch (flash_type) {
+		case SMEM_BOOT_MMC_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
 			sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx", ((size - 1) / 512 + 1), UPLOAD_ADDR, ((size - 1) / 512 + 1));
 			break;
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_SPI_FLASH:
+		case SMEM_BOOT_NOR_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSNAND:
 		default:
-			printf("\n* Flash type %d is not supported for GPT upgrade! Please return and select upgrade type \"mibib\"\n", qca_smem_flash_info.flash_type);
+			printf("\n* Flash type %d is not supported for GPT upgrade! Please return and select upgrade type \"mibib\"\n", flash_type);
 			return -1;
 	}
 	return execute_command(buf);
@@ -392,21 +404,24 @@ static int do_gpt_upgrade(const ulong size) {
 
 static int do_cdt_upgrade(const ulong size) {
 	char buf[576];
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
 	if (check_fw_type((void *)UPLOAD_ADDR) != FW_TYPE_CDT) {
 		printf("\n* Uploaded file is not CDT type. Actual type is %s *\n", fw_type_to_string(check_fw_type((void *)UPLOAD_ADDR)));
 		return -1;
 	}
 	print_upgrade_warning("CDT");
-	switch (qca_smem_flash_info.flash_type) {
-		case FLASH_TYPE_MMC:
+	switch (flash_type) {
+		case SMEM_BOOT_MMC_FLASH:
 			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 			break;
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_SPI_FLASH:
+		case SMEM_BOOT_NOR_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
+		case SMEM_BOOT_NORPLUSNAND:
 			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
 			break;
 		default:
@@ -418,18 +433,21 @@ static int do_cdt_upgrade(const ulong size) {
 
 static int do_mibib_upgrade(const ulong size) {
 	char buf[576];
+	uint32_t flash_type;
+	if (get_current_flash_type(&flash_type) != 0)
+		return -1;
 	if (check_fw_type((void *)UPLOAD_ADDR) != FW_TYPE_MIBIB) {
 		printf("\n* Uploaded file is not MIBIB type. Actual type is %s *\n", fw_type_to_string(check_fw_type((void *)UPLOAD_ADDR)));
 		return -1;
 	}
 	print_upgrade_warning("MIBIB");
-	switch (qca_smem_flash_info.flash_type) {
-		case FLASH_TYPE_NAND:
-		case FLASH_TYPE_SPI:
-		case FLASH_TYPE_NOR:
-		case FLASH_TYPE_QSPI_NAND:
-		case FLASH_TYPE_NOR_PLUS_EMMC:
-		case FLASH_TYPE_NOR_PLUS_NAND:
+	switch (flash_type) {
+		case SMEM_BOOT_NAND_FLASH:
+		case SMEM_BOOT_SPI_FLASH:
+		case SMEM_BOOT_NOR_FLASH:
+		case SMEM_BOOT_QSPI_NAND_FLASH:
+		case SMEM_BOOT_NORPLUSEMMC:
+		case SMEM_BOOT_NORPLUSNAND:
 			sprintf(buf, "flash %s 0x%lx $filesize", MIBIB_NAME, UPLOAD_ADDR);
 			break;
 		default:

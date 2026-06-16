@@ -334,7 +334,7 @@ int get_current_flash_type(uint32_t *flash_type)
 	}
 
 	if (*flash_type == SMEM_BOOT_SPI_FLASH) {
-		if (get_which_flash_param("rootfs") ||
+		if ((get_which_flash_param("rootfs") > 0) ||
 		    ((sfi->flash_secondary_type == SMEM_BOOT_NAND_FLASH) ||
 			(sfi->flash_secondary_type == SMEM_BOOT_QSPI_NAND_FLASH)))
 			*flash_type = SMEM_BOOT_NORPLUSNAND;
