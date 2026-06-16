@@ -1577,7 +1577,7 @@ void set_minidump_bootargs(void)
 		break;
 
 	case SMEM_BOOT_SPI_FLASH:
-		if (get_which_flash_param(part_name))
+		if (get_which_flash_param(part_name) > 0)
 			flash_type = SMEM_BOOT_QSPI_NAND_FLASH;
 		else
 			flash_type = SMEM_BOOT_MMC_FLASH;
@@ -1738,7 +1738,7 @@ int do_dumpqca_minimal_data(const char *offset)
 	{
 		if (dump_to_nvmem) {
 			if (flash_type == SMEM_BOOT_SPI_FLASH) {
-				if (get_which_flash_param(dump_to_nvmem))
+				if (get_which_flash_param(dump_to_nvmem) > 0)
 					flash_type = SMEM_BOOT_QSPI_NAND_FLASH;
 				else
 					flash_type = SMEM_BOOT_MMC_FLASH;

@@ -357,7 +357,7 @@ char * const argv[])
 #endif
 	} else if (flash_type == SMEM_BOOT_SPI_FLASH) {
 
-		if (get_which_flash_param(part_name)) {
+		if (get_which_flash_param(part_name) > 0) {
 
 			/* NOR + NAND*/
 			flash_type = SMEM_BOOT_NAND_FLASH;
@@ -381,7 +381,8 @@ char * const argv[])
 
 #ifdef CONFIG_QCA_MMC
 #ifdef CONFIG_HTTPD
-		} else if (sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH &&
+		} else if ((sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
+				sfi->rootfs.offset == 0xBAD0FF5E) &&
 			(smem_getpart(part_name, &start_block, &size_block) == -ENOENT ||
 			 (start_block == 0 && size_block == 0))){
 #else
