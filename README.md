@@ -84,6 +84,7 @@ cd u-boot-2016
 | IPQ5332 | ipq5332_h3c_ne36pro         | H3C NE36PRO                       |       0x8060007        |    ✓     | `./build.sh ipq5332_h3c_ne36pro`         |
 | IPQ5332 | ipq5332_jdcloud_be6500      | JDCloud BE6500(JDBox RE-CS-06)    |       0x8060000        |    ✓     | `./build.sh ipq5332_jdcloud_be6500`     |
 | IPQ5332 | ipq5332_xiaomi_be306        | 小米 BE306                        |       0x8060007        |    ×     | `./build.sh ipq5332_xiaomi_be306`        |
+| IPQ5332 | ipq5332_xiaomi_be6500       | 小米 BE6500(RN02)                 |       0x8060001        |    ✓     | `./build.sh ipq5332_xiaomi_be6500`       |
 | IPQ5332 | ipq5332_tiny                | 公版简                            |          ---           |    ✓     | `./build.sh ipq5332_tiny`                |
 | IPQ5332 | ipq5332_tiny_nor            | NOR闪存简                         |          ---           |    ✓     | `./build.sh ipq5332_tiny_nor`            |
 | IPQ5332 | ipq5332_tiny_debug          | 公版调试简                        |          ---           |    ✓     | `./build.sh ipq5332_tiny_debug`          |
