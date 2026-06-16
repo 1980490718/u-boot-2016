@@ -14,7 +14,6 @@
 #include "../httpd/uip_arp.h"
 #include <ipq_api.h>
 #include <asm/arch-qca-common/smem.h>
-#include <asm/gpio.h>
 #ifdef CONFIG_DHCPD
 #include "dhcpd.h"
 #endif
@@ -248,6 +247,10 @@ static int do_firmware_upgrade(const ulong size) {
 				print_upgrade_warning("FIRMWARE");
 				sprintf(buf, "imxtract 0x%lx %s && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx %s && flash rootfs $fileaddr $filesize && imxtract 0x%lx %s && flash 0:WIFIFW $fileaddr $filesize && flasherase rootfs_data",
 					UPLOAD_ADDR, HLOS_NAME, UPLOAD_ADDR, ROOTFS_NAME, UPLOAD_ADDR, WIFIFW_NAME);
+				if (execute_command(buf) != 0) {
+					printf("Failed to execute flash command\n");
+					return -1;
+				}
 				return update_bootconfig();
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
@@ -263,8 +266,11 @@ static int do_firmware_upgrade(const ulong size) {
 			if (fw_type == FW_TYPE_UBI) {
 				print_upgrade_warning("FIRMWARE");
 				sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+			} else if (fw_type == FW_TYPE_QSDK) {
+				print_upgrade_warning("FIRMWARE");
+				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 			} else {
-				printf("\n* NAND flash only supports UBI firmware, got: %s *\n", fw_type_to_string(fw_type));
+				printf("\n* NAND flash only supports UBI/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 				return -1;
 			}
 			break;
@@ -290,8 +296,11 @@ static int do_firmware_upgrade(const ulong size) {
 				if (fw_type == FW_TYPE_UBI) {
 					print_upgrade_warning("FIRMWARE");
 					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+				} else if (fw_type == FW_TYPE_QSDK) {
+					print_upgrade_warning("FIRMWARE");
+					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 				} else {
-					printf("\n* SPI+NAND flash only supports UBI firmware, got: %s *\n", fw_type_to_string(fw_type));
+					printf("\n* SPI+NAND flash only supports UBI/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 					return -1;
 				}
 			} else {
