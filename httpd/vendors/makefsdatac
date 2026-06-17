@@ -359,30 +359,34 @@ function minify_html_with_preserved_styling() {
 function minify_standalone_js() {
 	local _input_file="$1"
 	local _output_file="$2"
-	local _original_filename="$3"  # Original filename for debug output
+	local _original_filename="$3"
 
 	if [ $js_minifier_available -eq 1 ]; then
-		# Send progress info to stderr
 		echo "Minifying JS: $(basename $_input_file)" >&2
 		node -e "
-		try {
-			var Terser = require('terser');
-			var fs = require('fs');
-			var content = fs.readFileSync('$_input_file', 'utf8');
-			var result = Terser.minify(content, {
-				compress: {drop_console: true},
-				mangle: true
-			});
-			if (result.code) {
-				fs.writeFileSync('$_output_file', result.code);
-				console.error('JS minification successful');
-			} else {
-				throw new Error('Minification failed');
+		(async function() {
+			try {
+				var Terser = require('terser');
+				var fs = require('fs');
+				var content = fs.readFileSync('$_input_file', 'utf8');
+				var result = await Terser.minify(content, {
+					compress: {drop_console: true},
+					mangle: true
+				});
+				if (result.code) {
+					fs.writeFileSync('$_output_file', result.code);
+					console.error('JS minification successful');
+				} else {
+					throw new Error('Minification failed');
+				}
+			} catch(e) {
+				console.error('JS minification failed:', e.message);
+				fs.copyFileSync('$_input_file', '$_output_file');
 			}
-		} catch(e) {
-			console.error('JS minification failed:', e.message);
+		})().catch(e => {
+			console.error('Unhandled error:', e.message);
 			fs.copyFileSync('$_input_file', '$_output_file');
-		}
+		});
 		" 2>/dev/null || true
 	else
 		# No dedicated tool available, copy original file
