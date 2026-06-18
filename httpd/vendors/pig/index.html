@@ -3,46 +3,48 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>固件更新</title>
+	<title>U-BOOT控制台</title>
 	<link rel="stylesheet" href="style.css">
 </head>
 <body>
 	<div class="main-container">
 		<aside class="sidebar">
 			<ul class="sidebar-nav">
-				<li class="sidebar-nav-item active"><a>固件更新</a></li>
-				<li class="sidebar-nav-item"><a href="uboot.html">U-BOOT更新</a></li>
-				<li class="sidebar-nav-item"><a href="art.html">ART更新</a></li>
-				<li class="sidebar-nav-item"><a href="cdt.html">CDT更新</a></li>
-				<li class="sidebar-nav-item"><a href="ptable.html">PTABLE更新</a></li>
-				<li class="sidebar-nav-item"><a href="initramfs.html">INITRAMFS启动</a></li>
-				<li class="sidebar-nav-item"><a href="env.html">变量管理</a></li>
-				<li class="sidebar-nav-item"><a href="term.html">Web终端</a></li>
+				<li class="sidebar-nav-item active"><a href="firmware.html" target="content-frame">更新固件</a></li>
+				<li class="sidebar-nav-item"><a href="uboot.html" target="content-frame">更新U-BOOT</a></li>
+				<li class="sidebar-nav-item"><a href="art.html" target="content-frame">更新ART</a></li>
+				<li class="sidebar-nav-item"><a href="cdt.html" target="content-frame">更新CDT</a></li>
+				<li class="sidebar-nav-item"><a href="ptable.html" target="content-frame">更新分区表</a></li>
+				<li class="sidebar-nav-item"><a href="initramfs.html" target="content-frame">内存启动</a></li>
+				<li class="sidebar-nav-item"><a href="env.html" target="content-frame">变量管理</a></li>
+				<li class="sidebar-nav-item"><a href="term.html" target="content-frame">网页终端</a></li>
 			</ul>
 		</aside>
-		<main class="main-content">
-			<div class="card">
-				<h2>固件更新</h2>
-				<p>您将要更新此设备<strong>固件</strong>。<br>请从本地选择要更新的<strong>固件文件</strong>并点击<strong>确认更新</strong>按钮。</p>
-				<form method="post" enctype="multipart/form-data" name="firmware">
-					<div class="form-group">
-						<label for="fw-file">请选择<strong>固件文件</strong></label>
-						<input type="file" name="firmware" id="fw-file" accept=".ubi,.UBI,.bin,.BIN,.trx,.TRX,.img,.IMG" required>
-					</div>
-					<div class="button-container"><button type="submit">确认更新</button></div>
-				</form>
-				<div class="warning-box"><strong>温馨提示：</strong>
-					<ul>
-						<li>请确认所选的固件文件是正确的;</li>
-						<li>请勿在更新过程中,断开路由器电源;</li>
-						<li>如果更新成功,设备将自动重启。</li>
-					</ul>
-				</div>
-			</div>
-		</main>
+		<div class="content-frame-wrapper">
+			<iframe name="content-frame" id="content-frame" src="firmware.html" class="content-frame"></iframe>
+		</div>
 	</div>
 	<div class="additional-links">
-		<p class="link-tip">您可以在右方链接中了解本项目的更多信息:<a href="https://github.com/1980490718/u-boot-2016"target="_blank">GitHub</a> | Version:</p>
+		<p class="link-tip">获取更多信息:<a href="https://github.com/1980490718/u-boot-2016" target="_blank">GitHub</a> | Version:</p>
 	</div>
+	<script>
+		(function () {
+			var frame = document.getElementById('content-frame');
+			var items = document.querySelectorAll('.sidebar-nav-item');
+			var links = document.querySelectorAll('.sidebar-nav-item a');
+			links.forEach(function (a) {
+				a.addEventListener('click', function () {
+					items.forEach(function (li) { li.classList.remove('active'); });
+				a.parentElement.classList.add('active');
+				});
+			});
+			frame.addEventListener('load', function () {
+				try {
+					var title = frame.contentDocument.title;
+					if (title) document.title = title;
+				} catch (e) {}
+			});
+		})();
+	</script>
 </body>
 </html>
