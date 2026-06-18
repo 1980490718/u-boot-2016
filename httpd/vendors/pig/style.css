@@ -201,35 +201,7 @@ label {
 	color: #2c3e50
 }
 
-.env-input-group {
-	display: flex;
-	gap: 1rem;
-	justify-content: center;
-	flex-wrap: wrap;
-	margin: .5rem 0 1rem
-}
 
-.env-input-group>div {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 250px;
-	max-width: 350px
-}
-
-.env-input-group label {
-	margin-bottom: .5rem
-}
-
-.env-input-group input[type=text] {
-	padding: .8rem;
-	border: 1px solid #ddd;
-	transition: border-color .3s ease
-}
-
-.env-input-group input[type=text]:focus {
-	outline: none;
-	border-color: #3498db
-}
 
 .error {
 	color: #dc3545;
