@@ -43,8 +43,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 extern const struct fsdata_file file_index_html;
 extern const struct fsdata_file file_404_html;
-extern const struct fsdata_file file_flashing_html;
-extern const struct fsdata_file file_fail_html;
 
 extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;
@@ -57,6 +55,7 @@ int webfailsafe_post_done = 0;
 int file_too_big = 0;
 static int webfailsafe_upload_failed = 0;
 static int data_start_found = 0;
+int upgrade_status = 0;
 
 static unsigned char post_packet_counter = 0;
 static unsigned char post_line_counter = 0;
@@ -66,6 +65,15 @@ static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
 
 static char *boundary_value;
 static unsigned long upload_ram_end;
+
+static void httpd_poll_wait(int count) {
+	int i;
+	for (i = 0; i < count; i++) {
+		mdelay(100);
+		if (eth_rx() > 0)
+			HttpdHandler();
+	}
+}
 
 static int atoi(const char *s) {
 	int i = 0;
@@ -313,6 +321,13 @@ void httpd_appcall(void) {
 						webterm_http_handler();
 						return;
 					}
+					if (strncmp((char *)&uip_appdata[4], "/upgrade_status", 15) == 0) {
+						static const char *status_text[] = {"idle", "flashing", "failed", "rebooting"};
+						char resp[128];
+						int len = sprintf(resp, "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
+						send_http_response((u8_t *)resp, len);
+						return;
+					}
 #ifdef CONFIG_CMD_SETENV_WEB
 					/* Handle environment variable API request */
 					if (strncmp((char *)&uip_appdata[4], "/setenv", 7) == 0) {
@@ -342,8 +357,11 @@ void httpd_appcall(void) {
 					if (strncmp((char *)uip_appdata, "POST /setenv", 12) == 0) {
 						char resp_buf[8192];
 						int resp_len = handle_post_request(web_setenv_handle, resp_buf, sizeof(resp_buf));
-						/* Print response to console */
-						printf("[WEB setenv] %.*s\n", resp_len, resp_buf);
+						char *body = strstr(resp_buf, "\r\n\r\n");
+						if (body) body += 4; else body = resp_buf;
+						int blen = resp_len - (body - resp_buf);
+						while (blen > 0 && (body[blen-1] == '\n' || body[blen-1] == '\r')) body[--blen] = '\0';
+						printf("%s\n", body);
 						send_http_response((u8_t *)resp_buf, resp_len);
 						return;
 					}
@@ -591,16 +609,19 @@ void httpd_appcall(void) {
 						}
 						led_on("blink_led");
 						webfailsafe_post_done = 1;
+						upgrade_status = 0;
 						net_boot_file_size = (ulong)hs->upload_total;
-						if (!webfailsafe_upload_failed) {
-							fs_open(file_flashing_html.name, &fsfile);
-						} else {
-							fs_open(file_fail_html.name, &fsfile);
-						}
+						static const char resp_ok[] = "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
+						static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
 						httpd_state_reset();
 						hs->state = STATE_FILE_REQUEST;
-						hs->dataptr = (u8_t *)fsfile.data;
-						hs->upload = fsfile.len;
+						if (!webfailsafe_upload_failed) {
+							hs->dataptr = (u8_t *)resp_ok;
+							hs->upload = sizeof(resp_ok) - 1;
+						} else {
+							hs->dataptr = (u8_t *)resp_err;
+							hs->upload = sizeof(resp_err) - 1;
+						}
 						uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
 					}
 				}
@@ -628,17 +649,24 @@ void httpd_poll(void) {
 
 	/* Check if upgrade is ready - this was handled in net_loop originally */
 	if (webfailsafe_ready_for_upgrade) {
-		/* Clear flag immediately to prevent re-entry */
 		webfailsafe_ready_for_upgrade = 0;
+		upgrade_status = 1;
 		setenv_hex("filesize", net_boot_file_size);
 		setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);
 		setenv_hex("fileaddr", load_addr);
 		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOAD_READY);
+
+		httpd_poll_wait(20);
+
 		if (do_http_upgrade(net_boot_file_size, webfailsafe_upgrade_type) < 0) {
 			do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
+			upgrade_status = 2;
 			return;
 		}
 		/* Upgrade successful */
+		upgrade_status = 3;
+
+		httpd_poll_wait(50);
 		HttpdDone();
 		do_reset(NULL, 0, 0, NULL);
 		/* Shouldn't reach here */
