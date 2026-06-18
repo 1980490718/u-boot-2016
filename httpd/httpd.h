@@ -64,13 +64,6 @@ struct httpd_state {
 	u8_t *dataptr;
 	unsigned int upload;
 	unsigned int upload_total;
-#ifdef CONFIG_CMD_SETENV_WEB
-	u8_t *senddataptr;
-	uint32_t sendlen;
-	int request_method;
-	char filename[64];
-	u16_t length_upload;
-#endif
 };
 
 /* UIP_APPSTATE_SIZE: The size of the application-specific state
