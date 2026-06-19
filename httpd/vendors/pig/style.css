@@ -155,7 +155,8 @@ p {
 	padding: 1rem 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px
+	gap: 4px;
+	justify-content: flex-end
 }
 
 .sidebar-nav-item a {
@@ -277,6 +278,21 @@ label {
 
 
 /* ===== 终端页面 ===== */
+.terminal-dropdown-menu {
+	display: none;
+	position: absolute;
+	bottom: 100%;
+	right: 8px;
+	background: #2a0e1e;
+	padding: 3px 5px;
+	gap: 4px;
+	flex-direction: column
+}
+
+.terminal-dropdown-menu.show {
+	display: flex
+}
+
 .terminal-container {
 	background: #300a24;
 	overflow: hidden;
@@ -311,7 +327,8 @@ label {
 	padding: 5px;
 	display: flex;
 	align-items: center;
-	gap: 5px
+	gap: 5px;
+	position: relative
 }
 
 .terminal-prompt,
@@ -378,10 +395,9 @@ label {
 
 .terminal-status-bottom {
 	position: absolute;
-	bottom: 0;
-	right: 15px;
+	top: 4px;
+	right: 25px;
 	color: #ccc;
-	font-size: .75rem;
 	z-index: 10;
 	background: #300a24
 }

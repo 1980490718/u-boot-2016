@@ -3,12 +3,12 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Web终端</title>
+	<title>终端变量</title>
 	<link rel="stylesheet" href="style.css">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2>Web终端</h2>
+		<h2>终端变量</h2>
 		<div class="terminal-container">
 			<a href="term.html" target="_blank" class="terminal-expand" id="expandBtn" title="独立窗口打开">⧉</a>
 			<div class="terminal-output-wrapper">
@@ -17,11 +17,18 @@
 			</div>
 			<div class="terminal-input-line">
 				<span class="terminal-prompt">></span>
-				<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令并按回车执行" autofocus>
+				<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令或变量名" autofocus>
 				<button class="terminal-btn" id="sendBtn">发送</button>
 				<button class="terminal-btn terminal-clear" id="clearBtn">清屏</button>
+				<button class="terminal-btn active" id="rebootDev">重启</button>
+				<button class="terminal-btn active" id="envToggle">折叠</button>
+				<div class="terminal-dropdown-menu" id="envMenu">
+					<button class="terminal-btn active" id="queryEnv">查询</button>
+					<button class="terminal-btn" id="updateEnv">修改</button>
+					<button class="terminal-btn" id="deleteEnv">删除</button>
+					<button class="terminal-btn active" id="resetEnv">重置</button>
+				</div>
 			</div>
-		</div>
 	</div>
 	<script src="term.js"></script>
 </body>
