@@ -304,15 +304,6 @@ void httpd_appcall(void) {
 							uip_abort();
 							return;
 						}
-						if (hs->upload_total < 10240) {
-							/* Allow webterm command requests which are typically small */
-							if (strncmp((char *)&uip_appdata[5], "/webterm/cmd", 12) != 0) {
-								print_error("request for upload < 10 KB data!");
-								httpd_state_reset();
-								uip_abort();
-								return;
-							}
-						}
 					}
 					hs->state = STATE_UPLOAD_REQUEST;
 					led_off("blink_led");
