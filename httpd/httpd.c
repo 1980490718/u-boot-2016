@@ -20,6 +20,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define STATE_NONE					0
 #define STATE_FILE_REQUEST			1
 #define STATE_UPLOAD_REQUEST		2
+#define WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES	184
 
 #define ISO_G		0x47
 #define ISO_E		0x45
@@ -119,6 +120,28 @@ static void print_file_size_error(unsigned long max_size) {
 
 static void print_error(const char *msg) {
 	printf("## Error: %s\n", msg);
+}
+
+static void httpd_upload_complete(void) {
+	if (webfailsafe_upload_failed) {
+		printf("\nfailed!\n");
+	}
+	led_on("blink_led");
+	webfailsafe_post_done = 1;
+	upgrade_status = 0;
+	net_boot_file_size = (ulong)hs->upload_total;
+	static const char resp_ok[] = "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
+	static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
+	httpd_state_reset();
+	hs->state = STATE_FILE_REQUEST;
+	if (!webfailsafe_upload_failed) {
+		hs->dataptr = (u8_t *)resp_ok;
+		hs->upload = sizeof(resp_ok) - 1;
+	} else {
+		hs->dataptr = (u8_t *)resp_err;
+		hs->upload = sizeof(resp_err) - 1;
+	}
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
 }
 
 static int httpd_findandstore_firstchunk(void) {
@@ -364,12 +387,6 @@ void httpd_appcall(void) {
 						uip_abort();
 						return;
 					}
-					if (hs->upload_total < 10240) {
-						print_error("request for upload < 10 KB data!");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					}
 					start = NULL;
 					end = NULL;
 					start = (char *)strstr((char *)uip_appdata, "boundary=");
@@ -421,6 +438,22 @@ void httpd_appcall(void) {
 					}
 					if (httpd_findandstore_firstchunk()) {
 						data_start_found = 1;
+						if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
+							print_error("request for upload < 10 KB data!");
+							httpd_state_reset();
+							uip_abort();
+							return;
+						}
+						if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT && hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
+							printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
+							httpd_state_reset();
+							uip_abort();
+							return;
+						}
+						if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
+							httpd_upload_complete();
+							return;
+						}
 					} else {
 						data_start_found = 0;
 					}
@@ -465,6 +498,22 @@ void httpd_appcall(void) {
 							return;
 						} else {
 							data_start_found = 1;
+							if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
+								print_error("request for upload < 10 KB data!");
+								httpd_state_reset();
+								uip_abort();
+								return;
+							}
+							if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT && hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
+								printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
+								httpd_state_reset();
+								uip_abort();
+								return;
+							}
+							if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
+								httpd_upload_complete();
+								return;
+							}
 						}
 						return;
 					}
@@ -485,25 +534,7 @@ void httpd_appcall(void) {
 						httpd_download_progress();
 					}
 					if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
-						if (webfailsafe_upload_failed) {
-							printf("\nfailed!\n");
-						}
-						led_on("blink_led");
-						webfailsafe_post_done = 1;
-						upgrade_status = 0;
-						net_boot_file_size = (ulong)hs->upload_total;
-						static const char resp_ok[] = "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
-						static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
-						httpd_state_reset();
-						hs->state = STATE_FILE_REQUEST;
-						if (!webfailsafe_upload_failed) {
-							hs->dataptr = (u8_t *)resp_ok;
-							hs->upload = sizeof(resp_ok) - 1;
-						} else {
-							hs->dataptr = (u8_t *)resp_err;
-							hs->upload = sizeof(resp_err) - 1;
-						}
-						uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+						httpd_upload_complete();
 					}
 				}
 				return;
