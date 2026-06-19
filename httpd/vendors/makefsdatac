@@ -27,6 +27,12 @@ debug_mode=1
 zopfli_iterations=30
 # =====================================
 
+# ===== CLASS RENAME CONFIGURATION =====
+# Set rename_classes to 1 to enable CSS class name shortening
+# Set rename_classes to 0 to disable
+rename_classes=1
+# ======================================
+
 # Parse arguments (command line argument overrides the default setting)
 vendor_dir=${1:-pig}
 
@@ -182,6 +188,15 @@ echo "  - JS Minifier: $([ $js_minifier_available -eq 1 ] && echo "Yes" || echo 
 echo "  - Compression backend: $compression_backend"
 if [ "$compression_backend" = "zopfli" ]; then
     echo "    (using zopfli with $zopfli_iterations iterations)"
+fi
+
+# Check for class rename script
+rename_available=0
+if [ $node_available -eq 1 ] && [ -f "vendors/rename_classes.js" ]; then
+	rename_available=1
+	echo "  - Class rename: Yes"
+else
+	echo "  - Class rename: No (rename_classes.js not found)"
 fi
 
 # Previous fsdata_file var name
@@ -572,9 +587,26 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 	# Create temporary files
 	touch "$files_content_tmp" "$files_list_tmp"
 
+	# Apply class renaming if enabled
+	source_dir="vendors/$vendor_dir"
+	renamed_dir=""
+	if [ $rename_classes -eq 1 ] && [ $rename_available -eq 1 ]; then
+		renamed_dir="vendors/debug_output/rename_classes"
+		rm -rf "$renamed_dir"
+		echo "Renaming CSS classes for smaller file size..." >&2
+		node vendors/rename_classes.js "$source_dir" "$renamed_dir"
+		if [ $? -eq 0 ]; then
+			source_dir="$renamed_dir"
+		else
+			echo "Warning: Class rename failed, using original files" >&2
+			rm -rf "$renamed_dir"
+			renamed_dir=""
+		fi
+	fi
+
 	# Loop through all files in vendor dir (sort for consistency)
 	files_processed=0
-	for file in $(ls -1 "vendors/$vendor_dir"/* 2>/dev/null | sort); do
+	for file in $(ls -1 "$source_dir"/* 2>/dev/null | sort); do
 		if [ -f "$file" ]; then
 			print_data_array "$file"
 			print_data_struct "$file"
@@ -598,6 +630,15 @@ if [ -d "vendors/$vendor_dir" ]; then # If vendor dir exists
 
 	# Clean up
 	rm -f "$files_content_tmp" "$files_list_tmp"
+
+	# Clean up renamed directory
+	if [ -n "$renamed_dir" ] && [ -d "$renamed_dir" ]; then
+		if [ $debug_mode -eq 1 ]; then
+			echo "Debug: Renamed files retained at $renamed_dir" >&2
+		else
+			rm -rf "$renamed_dir"
+		fi
+	fi
 
 	echo "Successfully generated fsdata.c with $files_processed files" >&2
 	echo "FS_ROOT: $prev_fsdata_struct" >&2
