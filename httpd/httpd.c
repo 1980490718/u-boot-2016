@@ -140,113 +140,80 @@ static void httpd_upload_complete(void) {
 	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
 }
 
+typedef unsigned long (*get_max_size_fn)(void);
+
+static const struct {
+	const char *name;
+	int type;
+	const char *label;
+	get_max_size_fn get_max_size;
+} upload_types[] = {
+	{"name=\"firmware\"",	WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE,	"firmware",	get_firmware_upgrade_max_size},
+	{"name=\"uboot\"",		WEBFAILSAFE_UPGRADE_TYPE_UBOOT,		"U-Boot",	get_uboot_size},
+	{"name=\"art\"",		WEBFAILSAFE_UPGRADE_TYPE_ART,		"ART",		get_art_size},
+	{"name=\"img\"",		WEBFAILSAFE_UPGRADE_TYPE_IMG,		"IMG",		NULL},
+	{"name=\"cdt\"",		WEBFAILSAFE_UPGRADE_TYPE_CDT,		"CDT",		get_cdt_size},
+	{"name=\"mibib\"",		WEBFAILSAFE_UPGRADE_TYPE_MIBIB,		"MIBIB",	get_mibib_size},
+	{"name=\"ptable\"",		WEBFAILSAFE_UPGRADE_TYPE_PTABLE,	"PTABLE",	NULL},
+	{"name=\"initramfs\"",	WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS,	"INITRAMFS",NULL},
+};
+
 static int httpd_findandstore_firstchunk(void) {
 	char *start = NULL;
 	char *end = NULL;
+	unsigned int i;
 	if (!boundary_value) {
 		return 0;
 	}
 	start = (char *)strstr((char *)uip_appdata, (char *)boundary_value);
-	if (start) {
-		end = (char *)strstr((char *)start, "name=\"firmware\"");
-		if (end) {
-			printf("Upgrade type: firmware\n");
-			webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
-		} else {
-			end = (char *)strstr((char *)start, "name=\"uboot\"");
-			if (end) {
-				webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_UBOOT;
-				printf("Upgrade type: U-Boot\n");
-			} else {
-				end = (char *)strstr((char *)start, "name=\"art\"");
-				if (end) {
-					printf("Upgrade type: ART\n");
-					webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_ART;
-				} else {
-					end = (char *)strstr((char *)start, "name=\"img\"");
-					if (end) {
-						printf("Upgrade type: IMG\n");
-						webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_IMG;
-					} else {
-						end = (char *)strstr((char *)start, "name=\"cdt\"");
-						if (end) {
-							printf("Upgrade type: CDT\n");
-							webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_CDT;
-						} else {
-							end = (char *)strstr((char *)start, "name=\"mibib\"");
-							if (end) {
-								printf("Upgrade type: MIBIB\n");
-								webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_MIBIB;
-							} else {
-								end = (char *)strstr((char *)start, "name=\"ptable\"");
-								if (end) {
-									printf("Upgrade type: PTABLE\n");
-									webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_PTABLE;
-								} else {
-									end = (char *)strstr((char *)start, "name=\"initramfs\"");
-									if (end) {
-										printf("Upgrade type: INITRAMFS\n");
-										webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS;
-									} else {
-										print_error("input name not found!");
-										return 0;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		end = NULL;
-		end = (char *)strstr((char *)start, eol2);
-		if (end) {
-			if ((end - (char *)uip_appdata) < uip_len) {
-				end += 4;
-				hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
-				printf("Upload size: %lu.%02lu MiB [%lu bytes | 0x%lx]\n", (unsigned long)hs->upload_total / (1024 * 1024), ((unsigned long)hs->upload_total % (1024 * 1024)) * 100 / (1024 * 1024), (unsigned long)hs->upload_total, (unsigned long)hs->upload_total);
-				if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE) && (hs->upload_total > WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES)) {
-					print_file_size_error(WEBFAILSAFE_UPLOAD_FIRMWARE_SIZE_IN_BYTES);
-					webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)) {
-					print_file_size_error(WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
-						webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ART) && (hs->upload_total > WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES)) {
-					print_file_size_error(WEBFAILSAFE_UPLOAD_ART_SIZE_IN_BYTES);
-						webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES)) {
-					print_file_size_error(WEBFAILSAFE_UPLOAD_CDT_SIZE_IN_BYTES);
-						webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				} else if ((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_MIBIB) && (hs->upload_total > WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES)) {
-					print_file_size_error(WEBFAILSAFE_UPLOAD_MIBIB_SIZE_IN_BYTES);
-					webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-				}
-				hs->upload = (unsigned int)(uip_len - (end - (char *)uip_appdata));
-				if (file_too_big) {
-					return 1;
-				}
-				if (webfailsafe_data_pointer + hs->upload > (u8_t *)upload_ram_end) {
-					print_error("data larger than available RAM space!");
-					webfailsafe_upload_failed = 1;
-					file_too_big = 1;
-					return 1;
-				}
-				printf("Uploading:\n");
-				memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
-				webfailsafe_data_pointer += hs->upload;
-				httpd_download_progress();
-				return 1;
-			}
-		} else {
-			print_error("couldn't find start of data!");
+	if (!start) {
+		return 0;
+	}
+	for (i = 0; i < ARRAY_SIZE(upload_types); i++) {
+		if (strstr((char *)start, upload_types[i].name)) {
+			printf("Upgrade type: %s\n", upload_types[i].label);
+			webfailsafe_upgrade_type = upload_types[i].type;
+			break;
 		}
 	}
-	return 0;
+	if (i == ARRAY_SIZE(upload_types)) {
+		print_error("input name not found!");
+		return 0;
+	}
+	end = (char *)strstr((char *)start, eol2);
+	if (!end) {
+		print_error("couldn't find start of data!");
+		return 0;
+	}
+	if ((end - (char *)uip_appdata) >= uip_len) {
+		return 0;
+	}
+	end += 4;
+	hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
+	printf("Upload size: %lu.%02lu MiB [%lu bytes | 0x%lx]\n", (unsigned long)hs->upload_total / (1024 * 1024), ((unsigned long)hs->upload_total % (1024 * 1024)) * 100 / (1024 * 1024), (unsigned long)hs->upload_total, (unsigned long)hs->upload_total);
+	if (upload_types[i].get_max_size) {
+		unsigned long max_size = upload_types[i].get_max_size();
+		if (hs->upload_total > max_size) {
+			print_file_size_error(max_size);
+			webfailsafe_upload_failed = 1;
+			file_too_big = 1;
+		}
+	}
+	hs->upload = (unsigned int)(uip_len - (end - (char *)uip_appdata));
+	if (file_too_big) {
+		return 1;
+	}
+	if (webfailsafe_data_pointer + hs->upload > (u8_t *)upload_ram_end) {
+		print_error("data larger than available RAM space!");
+		webfailsafe_upload_failed = 1;
+		file_too_big = 1;
+		return 1;
+	}
+	printf("Uploading:\n");
+	memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
+	webfailsafe_data_pointer += hs->upload;
+	httpd_download_progress();
+	return 1;
 }
 
 static int httpd_parse_content_length(void) {
