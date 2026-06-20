@@ -46,8 +46,7 @@
 			});
 
 			document.getElementById('rebootBtn').addEventListener('click', function () {
-				var btn = frame.contentDocument.getElementById('rebootDev');
-				if (btn) btn.click();
+				if (confirm('确认重启？')) fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
 			});
 		})();
 	</script>
