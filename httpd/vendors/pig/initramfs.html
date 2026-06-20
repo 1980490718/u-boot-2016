@@ -9,15 +9,16 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>内存启动</h2>
-		<p>即将从内存中运行<strong>INITRAMFS系统</strong>。<br>选择适合本设备启动的<strong>initramfs文件</strong>并点击<strong>确认启动</strong>按钮。</p>
-		<form enctype="multipart/form-data" name="initramfs" onsubmit="return handleSubmit(event)">
+		<p>即将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认启动</b>按钮。</p>
+		<form enctype="multipart/form-data" name="initramfs">
 			<div class="form-group">
-				<label for="initramfs-file">请选择<strong>INITRAMFS文件</strong></label>
+				<label for="initramfs-file">请选择<b>INITRAMFS文件</b></label>
 				<input type="file" name="initramfs" id="initramfs-file" accept=".itb,.uImage,.zImage" required>
 			</div>
 			<div class="button-container"><button type="submit">确认启动</button></div>
 		</form>
-		<div class="tips"><strong>提示：</strong>
+		<p id="sha256-display"></p>
+		<div class="tips"><b>提示：</b>
 			<ul>
 				<li>请确认所选的initramfs文件是正确的,文件名称通常包含uimage或zImage，如uImage.itb或zImage.itb;</li>
 				<li>启动后系统将从内存中运行,内存运行系统不影响闪存中的系统，一般用于调试或者备份目的;</li>
