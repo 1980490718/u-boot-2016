@@ -22,12 +22,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define STATE_UPLOAD_REQUEST		2
 #define WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES	184
 
-#define ISO_G		0x47
-#define ISO_E		0x45
-#define ISO_T		0x54
-#define ISO_P		0x50
-#define ISO_O		0x4f
-#define ISO_S		0x53
 #define ISO_slash	0x2f
 #define ISO_space	0x20
 #define ISO_nl		0x0a
@@ -35,6 +29,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ISO_tab		0x09
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
+#define is_http_whitespace(c) ((c) == ISO_space || (c) == ISO_cr || (c) == ISO_nl || (c) == ISO_tab)
+#define is_http_method_separator(c) ((c) == ISO_space || (c) == ISO_tab)
 
 extern const struct fsdata_file file_index_html;
 extern const struct fsdata_file file_404_html;
@@ -253,296 +249,277 @@ static int httpd_findandstore_firstchunk(void) {
 	return 0;
 }
 
+static int httpd_parse_content_length(void) {
+	char *start = (char *)strstr((char *)uip_appdata, "Content-Length:");
+	char *end;
+	if (start) {
+		start += sizeof("Content-Length:");
+		end = (char *)strstr(start, eol);
+		if (end) {
+			hs->upload_total = atoi(start);
+			return 0;
+		}
+	}
+	print_error("couldn't find \"Content-Length\"!");
+	return -1;
+}
 
-void httpd_appcall(void) {
+static int httpd_parse_boundary(void) {
+	char *start = (char *)strstr((char *)uip_appdata, "boundary=");
+	char *end;
+	if (start) {
+		start += 9;
+		end = (char *)strstr((char *)start, eol);
+		if (end) {
+			boundary_value = (char *)malloc(end - start + 3);
+			if (boundary_value) {
+				memcpy(&boundary_value[2], start, end - start);
+				boundary_value[0] = '-';
+				boundary_value[1] = '-';
+				boundary_value[end - start + 2] = 0;
+				return 0;
+			}
+			print_error("couldn't allocate memory for boundary!");
+			return -1;
+		}
+	}
+	print_error("couldn't find boundary!");
+	return -1;
+}
+
+static int httpd_init_upload_ram(void) {
+	unsigned long memset_len;
+	webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+	upload_ram_end = CONFIG_SYS_SDRAM_END;
+	if (!webfailsafe_data_pointer) {
+		print_error("couldn't allocate RAM for data!");
+		return -1;
+	}
+	printf("Upload RAM address: 0x%lx\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
+	printf("Available RAM space: %lu.%02lu MiB\n", (upload_ram_end - (unsigned long)webfailsafe_data_pointer) / (1024 * 1024), ((upload_ram_end - (unsigned long)webfailsafe_data_pointer) % (1024 * 1024)) * 100 / (1024 * 1024));
+	memset_len = WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES;
+	if (webfailsafe_data_pointer + memset_len > (u8_t *)upload_ram_end)
+		memset_len = upload_ram_end - (unsigned long)webfailsafe_data_pointer;
+	if (memset_len > 0)
+		memset((void *)webfailsafe_data_pointer, 0xFF, memset_len);
+	return 0;
+}
+
+static int httpd_check_upload_size(void) {
+	if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
+		print_error("request for upload < 10 KB data!");
+		return -1;
+	}
+	if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT && hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
+		printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
+		return -1;
+	}
+	return 0;
+}
+
+static int httpd_check_upload_complete(void) {
+	if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
+		httpd_upload_complete();
+		return 1;
+	}
+	return 0;
+}
+
+static void httpd_handle_upgrade_status(void) {
+	static const char *status_text[] = {"idle", "flashing", "failed", "rebooting"};
+	char resp[128];
+	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)resp;
+	hs->upload = len;
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+}
+
+static void httpd_handle_file_request(void) {
 	struct fs_file fsfile;
 	unsigned int i;
-	switch (uip_conn->lport) {
-		case HTONS(80):
-			hs = (struct httpd_state *)(uip_conn->appstate);
-			if (uip_closed()) {
-				httpd_state_reset();
-				uip_close();
-				return;
-			}
-			if (uip_aborted() || uip_timedout()) {
+	for (i = 4; i < 30; i++) {
+		if (is_http_whitespace(uip_appdata[i])) {
+			uip_appdata[i] = 0;
+			i = 0;
+			break;
+		}
+	}
+	if (i != 0) {
+		print_error("request file name too long!");
+		httpd_state_reset();
+		uip_abort();
+		return;
+	}
+	printf("Request for: ");
+	printf("%s\n", &uip_appdata[4]);
+	if (uip_appdata[4] == ISO_slash && uip_appdata[5] == 0) {
+		fs_open(file_index_html.name, &fsfile);
+	} else {
+		if (!fs_open((const char *)&uip_appdata[4], &fsfile)) {
+			print_error("file not found!");
+			fs_open(file_404_html.name, &fsfile);
+		}
+	}
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)fsfile.data;
+	hs->upload = fsfile.len;
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+}
+
+static void httpd_handle_upload_data(void) {
+	unsigned long bytes_to_write = uip_len;
+	unsigned long data_written = webfailsafe_data_pointer - (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+	if (data_written + bytes_to_write > hs->upload_total)
+		bytes_to_write = hs->upload_total - data_written;
+	if (bytes_to_write > 0 && webfailsafe_data_pointer + bytes_to_write > (u8_t *)upload_ram_end) {
+		print_error("data larger than available RAM space!");
+		webfailsafe_upload_failed = 1;
+		file_too_big = 1;
+	} else if (bytes_to_write > 0) {
+		memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, bytes_to_write);
+		webfailsafe_data_pointer += bytes_to_write;
+	}
+	httpd_download_progress();
+}
+
+static void httpd_handle_initial_request(void) {
+	hs->last_activity = get_timer(0);
+	if (strncmp((char *)uip_appdata, "GET", 3) == 0 && is_http_method_separator(uip_appdata[3])) {
+		if (strncmp((char *)&uip_appdata[4], "/webterm", 8) == 0) {
+			webterm_http_handler();
+			return;
+		}
+		if (strncmp((char *)&uip_appdata[4], "/upgrade_status", 15) == 0) {
+			httpd_handle_upgrade_status();
+			return;
+		}
+		hs->state = STATE_FILE_REQUEST;
+		httpd_handle_file_request();
+		return;
+	}
+	if (strncmp((char *)uip_appdata, "POST", 4) == 0 && is_http_method_separator(uip_appdata[4])) {
+		if (strncmp((char *)&uip_appdata[5], "/webterm", 8) == 0) {
+			webterm_http_handler();
+			return;
+		}
+		uip_appdata[uip_len] = '\0';
+		if (httpd_parse_content_length() < 0) {
+			httpd_state_reset();
+			uip_abort();
+			return;
+		}
+		hs->state = STATE_UPLOAD_REQUEST;
+		led_off("blink_led");
+		if (httpd_parse_boundary() < 0 || httpd_init_upload_ram() < 0) {
+			httpd_state_reset();
+			uip_abort();
+			return;
+		}
+		if (httpd_findandstore_firstchunk()) {
+			data_start_found = 1;
+			if (httpd_check_upload_size() < 0) {
 				httpd_state_reset();
 				uip_abort();
 				return;
 			}
-			if (uip_poll()) {
-				if (get_timer(hs->last_activity) >= 30000) {
-					httpd_state_reset();
-					uip_abort();
-				}
+			if (httpd_check_upload_complete())
 				return;
-			}
-			if (uip_connected()) {
-				httpd_state_reset();
-				return;
-			}
-			if (uip_newdata() && hs->state == STATE_NONE) {
-				hs->last_activity = get_timer(0);
-				if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T && (uip_appdata[3] == ISO_space || uip_appdata[3] == ISO_tab)) {
-					if (strncmp((char *)&uip_appdata[4], "/webterm", 8) == 0) {
-						webterm_http_handler();
-						return;
-					}
-					if (strncmp((char *)&uip_appdata[4], "/upgrade_status", 15) == 0) {
-					static const char *status_text[] = {"idle", "flashing", "failed", "rebooting"};
-					char resp[128];
-					int len = sprintf(resp, "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
-					hs->state = STATE_FILE_REQUEST;
-					hs->dataptr = (u8_t *)resp;
-					hs->upload = len;
-					uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-					return;
-				}
-					hs->state = STATE_FILE_REQUEST;
-				} else if (uip_appdata[0] == ISO_P && uip_appdata[1] == ISO_O && uip_appdata[2] == ISO_S && uip_appdata[3] == ISO_T && (uip_appdata[4] == ISO_space || uip_appdata[4] == ISO_tab)) {
-					/* Check for web terminal requests first */
-					if (strncmp((char *)&uip_appdata[5], "/webterm", 8) == 0) {
-						webterm_http_handler();
-						return;
-					}
-					if (hs->state == STATE_NONE) {
-						char *start = NULL;
-						char *end = NULL;
-						uip_appdata[uip_len] = '\0';
-						start = (char *)strstr((char*)uip_appdata, "Content-Length:");
-						if (start) {
-							start += sizeof("Content-Length:");
-							end = (char *)strstr(start, eol);
-							if (end) {
-								hs->upload_total = atoi(start);
-							} else {
-								print_error("couldn't find \"Content-Length\"!");
-								httpd_state_reset();
-								uip_abort();
-								return;
-							}
-						} else {
-							print_error("couldn't find \"Content-Length\"!");
-							httpd_state_reset();
-							uip_abort();
-							return;
-						}
-					}
-					hs->state = STATE_UPLOAD_REQUEST;
-					led_off("blink_led");
-				}
-				if (hs->state == STATE_NONE) {
-					httpd_state_reset();
-					uip_abort();
-					return;
-				}
-				if (hs->state == STATE_FILE_REQUEST) {
-					for (i = 4; i < 30; i++) {
-						if (uip_appdata[i] == ISO_space || uip_appdata[i] == ISO_cr || uip_appdata[i] == ISO_nl || uip_appdata[i] == ISO_tab) {
-							uip_appdata[i] = 0;
-							i = 0;
-							break;
-						}
-					}
-					if (i != 0) {
-						print_error("request file name too long!");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					}
-					printf("Request for: ");
-					printf("%s\n", &uip_appdata[4]);
-					if (uip_appdata[4] == ISO_slash && uip_appdata[5] == 0) {
-						fs_open(file_index_html.name, &fsfile);
-					} else {
-						if (!fs_open((const char *)&uip_appdata[4], &fsfile)) {
-							print_error("file not found!");
-							fs_open(file_404_html.name, &fsfile);
-						}
-					}
-					hs->state = STATE_FILE_REQUEST;
-					hs->dataptr = (u8_t *)fsfile.data;
-					hs->upload = fsfile.len;
-					uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-					return;
-				} else if (hs->state == STATE_UPLOAD_REQUEST) {
-					char *start = NULL;
-					char *end = NULL;
-					uip_appdata[uip_len] = '\0';
-					start = (char *)strstr((char*)uip_appdata, "Content-Length:");
-					if (start) {
-						start += sizeof("Content-Length:");
-						end = (char *)strstr(start, eol);
-						if (end) {
-							hs->upload_total = atoi(start);
-						} else {
-							print_error("couldn't find \"Content-Length\"!");
-							httpd_state_reset();
-							uip_abort();
-							return;
-						}
-					} else {
-						print_error("couldn't find \"Content-Length\"!");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					}
-					start = NULL;
-					end = NULL;
-					start = (char *)strstr((char *)uip_appdata, "boundary=");
-					if (start) {
-						start += 9;
-						end = (char *)strstr((char *)start, eol);
-						if (end) {
-							boundary_value = (char*)malloc(end - start + 3);
-							if (boundary_value) {
-								memcpy(&boundary_value[2], start, end - start);
-								boundary_value[0] = '-';
-								boundary_value[1] = '-';
-								boundary_value[end - start + 2] = 0;
-							} else {
-								print_error("couldn't allocate memory for boundary!");
-								httpd_state_reset();
-								uip_abort();
-								return;
-							}
-						} else {
-							print_error("couldn't find boundary!");
-							httpd_state_reset();
-							uip_abort();
-							return;
-						}
-					} else {
-						print_error("couldn't find boundary!");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					}
-					webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-					upload_ram_end = CONFIG_SYS_SDRAM_END;
-					if (!webfailsafe_data_pointer) {
-						print_error("couldn't allocate RAM for data!");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					} else {
-						printf("Upload RAM address: 0x%lx\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
-						printf("Available RAM space: %lu.%02lu MiB\n", (upload_ram_end - (unsigned long)webfailsafe_data_pointer) / (1024 * 1024), ((upload_ram_end - (unsigned long)webfailsafe_data_pointer) % (1024 * 1024)) * 100 / (1024 * 1024));
-					}
-					{
-						unsigned long memset_len = WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES;
-						if (webfailsafe_data_pointer + memset_len > (u8_t *)upload_ram_end)
-							memset_len = upload_ram_end - (unsigned long)webfailsafe_data_pointer;
-						if (memset_len > 0)
-							memset((void *)webfailsafe_data_pointer, 0xFF, memset_len);
-					}
-					if (httpd_findandstore_firstchunk()) {
-						data_start_found = 1;
-						if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
-							print_error("request for upload < 10 KB data!");
-							httpd_state_reset();
-							uip_abort();
-							return;
-						}
-						if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT && hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
-							printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
-							httpd_state_reset();
-							uip_abort();
-							return;
-						}
-						if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
-							httpd_upload_complete();
-							return;
-						}
-					} else {
-						data_start_found = 0;
-					}
-					return;
-				}
-			}
-			if (uip_acked()) {
-				if (hs->state == STATE_FILE_REQUEST) {
-					if (hs->upload <= uip_mss()) {
-						if (webfailsafe_post_done) {
-							if (!webfailsafe_upload_failed) {
-								webfailsafe_ready_for_upgrade = 1;
-							}
-							webfailsafe_post_done = 0;
-							webfailsafe_upload_failed = 0;
-						}
-						httpd_state_reset();
-						uip_close();
-						return;
-					}
-					hs->dataptr += uip_conn->len;
-					hs->upload -= uip_conn->len;
-					uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-				}
-				return;
-			}
-			if (uip_rexmit()) {
-				if (hs->state == STATE_FILE_REQUEST) {
-					uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-				}
-				return;
-			}
-			if (uip_newdata()) {
-				hs->last_activity = get_timer(0);
-				if (hs->state == STATE_UPLOAD_REQUEST) {
-					uip_appdata[uip_len] = '\0';
-					if (!data_start_found) {
-						if (!httpd_findandstore_firstchunk()) {
-							print_error("couldn't find start of data in next packet!");
-							httpd_state_reset();
-							uip_abort();
-							return;
-						} else {
-							data_start_found = 1;
-							if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
-								print_error("request for upload < 10 KB data!");
-								httpd_state_reset();
-								uip_abort();
-								return;
-							}
-							if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT && hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
-								printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
-								httpd_state_reset();
-								uip_abort();
-								return;
-							}
-							if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
-								httpd_upload_complete();
-								return;
-							}
-						}
-						return;
-					}
-					hs->upload += (unsigned int)uip_len;
-					if (!webfailsafe_upload_failed) {
-						unsigned long bytes_to_write = uip_len;
-						unsigned long data_written = webfailsafe_data_pointer - (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-						if (data_written + bytes_to_write > hs->upload_total)
-							bytes_to_write = hs->upload_total - data_written;
-						if (bytes_to_write > 0 && webfailsafe_data_pointer + bytes_to_write > (u8_t *)upload_ram_end) {
-							print_error("data larger than available RAM space!");
-							webfailsafe_upload_failed = 1;
-							file_too_big = 1;
-						} else if (bytes_to_write > 0) {
-							memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, bytes_to_write);
-							webfailsafe_data_pointer += bytes_to_write;
-						}
-						httpd_download_progress();
-					}
-					if (hs->upload >= hs->upload_total + strlen(boundary_value) + 6) {
-						httpd_upload_complete();
-					}
-				}
-				return;
-			}
-			break;
-		default:
+		} else {
+			data_start_found = 0;
+		}
+		return;
+	}
+	httpd_state_reset();
+	uip_abort();
+}
+
+static void httpd_handle_file_acked(void) {
+	if (hs->upload <= uip_mss()) {
+		if (webfailsafe_post_done) {
+			if (!webfailsafe_upload_failed)
+				webfailsafe_ready_for_upgrade = 1;
+			webfailsafe_post_done = 0;
+			webfailsafe_upload_failed = 0;
+		}
+		httpd_state_reset();
+		uip_close();
+		return;
+	}
+	hs->dataptr += uip_conn->len;
+	hs->upload -= uip_conn->len;
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+}
+
+static void httpd_handle_upload_packet(void) {
+	hs->last_activity = get_timer(0);
+	uip_appdata[uip_len] = '\0';
+	if (!data_start_found) {
+		if (!httpd_findandstore_firstchunk()) {
+			print_error("couldn't find start of data in next packet!");
+			httpd_state_reset();
 			uip_abort();
-			break;
+			return;
+		}
+		data_start_found = 1;
+		if (httpd_check_upload_size() < 0) {
+			httpd_state_reset();
+			uip_abort();
+			return;
+		}
+		if (httpd_check_upload_complete())
+			return;
+		return;
+	}
+	hs->upload += (unsigned int)uip_len;
+	if (!webfailsafe_upload_failed)
+		httpd_handle_upload_data();
+	if (httpd_check_upload_complete())
+		return;
+}
+
+void httpd_appcall(void) {
+	if (uip_conn->lport != HTONS(80)) {
+		uip_abort();
+		return;
+	}
+	hs = (struct httpd_state *)(uip_conn->appstate);
+	if (uip_closed()) {
+		httpd_state_reset();
+		uip_close();
+		return;
+	}
+	if (uip_aborted() || uip_timedout()) {
+		httpd_state_reset();
+		uip_abort();
+		return;
+	}
+	if (uip_poll()) {
+		if (get_timer(hs->last_activity) >= 30000) {
+			httpd_state_reset();
+			uip_abort();
+		}
+		return;
+	}
+	if (uip_connected()) {
+		httpd_state_reset();
+		return;
+	}
+	switch (hs->state) {
+	case STATE_NONE:
+		if (uip_newdata())
+			httpd_handle_initial_request();
+		break;
+	case STATE_FILE_REQUEST:
+		if (uip_acked())
+			httpd_handle_file_acked();
+		else if (uip_rexmit())
+			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+		break;
+	case STATE_UPLOAD_REQUEST:
+		if (uip_newdata())
+			httpd_handle_upload_packet();
+		break;
 	}
 }
 
