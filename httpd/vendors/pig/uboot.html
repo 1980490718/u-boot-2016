@@ -9,15 +9,16 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>更新U-BOOT</h2>
-		<p>即将更新此设备的<strong>U-BOOT</strong>。<br>请从选择要更新的<strong>U-BOOT文件</strong>并点击<strong>确认更新</strong>按钮。</p>
-		<form enctype="multipart/form-data" name="uboot" onsubmit="return handleSubmit(event)">
+		<p>即将更新此设备的<b>U-BOOT</b>。<br>请从选择要更新的<b>U-BOOT文件</b>并点击<b>确认更新</b>按钮。</p>
+		<form enctype="multipart/form-data" name="uboot">
 			<div class="form-group">
-				<label for="uboot-file">请选择<strong>U-BOOT文件</strong></label>
+				<label for="uboot-file">请选择<b>U-BOOT文件</b></label>
 				<input type="file" name="uboot" id="uboot-file" accept=".elf,.ELF,.bin,.BIN,.img,.IMG,.mbn,.MBN" required>
 			</div>
 			<div class="button-container"><button type="submit">确认更新</button></div>
 		</form>
-		<div class="tips"><strong>提示：</strong>
+		<p id="sha256-display"></p>
+		<div class="tips"><b>提示：</b>
 			<ul>
 				<li>请确认所选的U-BOOT文件是正确的;</li>
 				<li>请勿在更新过程中,断开路由器电源;</li>

@@ -9,15 +9,16 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>更新固件</h2>
-		<p>即将更新此设备的<strong>固件</strong>。<br>请选择要更新的<strong>固件文件</strong>并点击<strong>确认更新</strong>按钮。</p>
-		<form enctype="multipart/form-data" name="firmware" onsubmit="return handleSubmit(event)">
+		<p>即将更新此设备的<b>固件</b>。<br>请选择要更新的<b>固件文件</b>并点击<b>确认更新</b>按钮。</p>
+		<form enctype="multipart/form-data" name="firmware">
 			<div class="form-group">
-				<label for="fw-file">请选择<strong>固件文件</strong></label>
+				<label for="fw-file">请选择<b>固件文件</b></label>
 				<input type="file" name="firmware" id="fw-file" accept=".ubi,.UBI,.bin,.BIN,.trx,.TRX,.img,.IMG" required>
 			</div>
 			<div class="button-container"><button type="submit">确认更新</button></div>
 		</form>
-		<div class="tips"><strong>提示：</strong>
+		<p id="sha256-display"></p>
+		<div class="tips"><b>提示：</b>
 			<ul>
 				<li>请确认所选的固件文件是正确的;</li>
 				<li>请勿在更新过程中,断开路由器电源;</li>

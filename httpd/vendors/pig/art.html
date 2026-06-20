@@ -9,15 +9,16 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>更新ART</h2>
-		<p>即将更新设备的<strong> ART</strong>(Atheros无线芯片的频率校正数据)。<br>请选择要更新的<strong>ART文件</strong>，然后点击<strong>确认更新</strong>按钮。</p>
-		<form enctype="multipart/form-data" name="art" onsubmit="return handleSubmit(event)">
+		<p>即将更新设备的<b> ART</b>(Atheros无线芯片的频率校正数据)。<br>请选择要更新的<b>ART文件</b>，然后点击<b>确认更新</b>按钮。</p>
+		<form enctype="multipart/form-data" name="art">
 			<div class="form-group">
-				<label for="art-file">请选择<strong> ART文件</strong></label>
+				<label for="art-file">请选择<b> ART文件</b></label>
 				<input type="file" name="art" id="art-file" accept=".art,.ART,.bin,.BIN,.img,.IMG,art.*,ART.*" required>
 			</div>
 			<div class="button-container"><button type="submit">确认更新</button></div>
 		</form>
-		<div class="tips"><strong>提示：</strong>
+		<p id="sha256-display"></p>
+		<div class="tips"><b>提示：</b>
 			<ul>
 				<li>请确认所选的ART文件是正确的;</li>
 				<li>请勿在更新过程中,断开路由器电源;</li>

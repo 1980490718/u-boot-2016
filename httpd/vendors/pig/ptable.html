@@ -9,15 +9,16 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>更新GPT/MIBIB</h2>
-		<p>即将更新此设备的<strong>PARTITION TABLE</strong>(GPT/MIBIB)，EMMC闪存选<strong>GPT</strong>文件。<br>NOR/NAND闪存选<strong>MIBIB</strong>文件，选择适合此设备的<strong>分区表文件</strong>后点击<strong>确认更新</strong>按钮。</p>
-		<form enctype="multipart/form-data" name="ptable" onsubmit="return handleSubmit(event)">
+		<p>即将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)，EMMC闪存选<b>GPT</b>文件。<br>NOR/NAND闪存选<b>MIBIB</b>文件，选择适合此设备的<b>分区表文件</b>后点击<b>确认更新</b>按钮。</p>
+		<form enctype="multipart/form-data" name="ptable">
 			<div class="form-group">
-				<label for="ptable-file">请选择<strong>GPT/MIBIB文件</strong></label>
+				<label for="ptable-file">请选择<b>GPT/MIBIB文件</b></label>
 				<input type="file" name="ptable" id="ptable-file" accept=".gpt,.GPT,.mibib,.MIBIB,.bin,.BIN,.img,.IMG" required>
 			</div>
 			<div class="button-container"><button type="submit">确认更新</button></div>
 		</form>
-		<div class="tips"><strong>提示：</strong>
+		<p id="sha256-display"></p>
+		<div class="tips"><b>提示：</b>
 			<ul>
 				<li>请确认所选的分区表文件是正确的，不同平台不同型号的分区表文件不一定通用;</li>
 				<li>NOR/NAND闪存请选择MIBIB分区表文件，EMMC闪存请选择GPT分区表文件;</li>
