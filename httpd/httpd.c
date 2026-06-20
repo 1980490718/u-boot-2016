@@ -293,7 +293,7 @@ static int httpd_check_upload_complete(void) {
 }
 
 static void httpd_handle_upgrade_status(void) {
-	static const char *status_text[] = {"idle", "flashing", "failed", "rebooting"};
+	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting"};
 	char resp[128];
 	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
 	hs->state = STATE_FILE_REQUEST;
@@ -514,15 +514,18 @@ void httpd_poll(void) {
 
 		httpd_poll_wait(20);
 
+		upgrade_status = 2;
+		httpd_poll_wait(20);
+
 		if (do_http_upgrade(net_boot_file_size, webfailsafe_upgrade_type) < 0) {
 			do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
-			upgrade_status = 2;
+			upgrade_status = 3;
+			httpd_poll_wait(20);
 			return;
 		}
-		/* Upgrade successful */
-		upgrade_status = 3;
+		upgrade_status = 4;
 
-		httpd_poll_wait(50);
+		httpd_poll_wait(35);
 		HttpdDone();
 		do_reset(NULL, 0, 0, NULL);
 		/* Shouldn't reach here */

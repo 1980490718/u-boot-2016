@@ -27,15 +27,15 @@ function showVerifying() {
 }
 
 function showFlashing() {
-	document.querySelector('.card').innerHTML = '<h2>更新中</h2><p>正在擦写对应分区</p><div class="spinner"></div>';
+	document.querySelector('.card').innerHTML = '<h2>更新中</h2><p>正在处理更新</p><div class="spinner"></div>';
 }
 
 function showRebooting() {
 	document.querySelector('.card').innerHTML = '<h2>更新完成</h2><p>正在重启</p>';
 }
 
-function showFail() {
-	document.querySelector('.card').innerHTML = '<h2>失败</h2><div class="error"><p>查看终端信息排查</p></div><button onclick="window.open(\'term.html\',\'_blank\')">失败详情</button>';
+function showFail(isTypeMismatch) {
+	document.querySelector('.card').innerHTML = '<h2>验证失败</h2><div class="error"><p>' + (isTypeMismatch ? '类型不匹配' : '大小不匹配') + '</p></div><button onclick="window.open(\'term.html\',\'_blank\')">终端详情</button>';
 }
 
 function pollUpgradeStatus() {
@@ -45,8 +45,8 @@ function pollUpgradeStatus() {
 			return resp.text();
 		}).then(function(status) {
 			switch (status) {
-				case 'failed':
-					showFail();
+				case 'type_mismatch':
+					showFail(true);
 					break;
 				case 'rebooting':
 					if (phase !== 'rebooting') {
@@ -63,7 +63,7 @@ function pollUpgradeStatus() {
 					setTimeout(check, 3000);
 					break;
 				default:
-					setTimeout(check, 500);
+					setTimeout(check, 100);
 			}
 		}).catch(function() {
 			setTimeout(check, 3000);
