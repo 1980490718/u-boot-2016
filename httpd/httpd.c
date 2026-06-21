@@ -48,8 +48,9 @@ static int webfailsafe_upload_failed = 0;
 static int data_start_found = 0;
 int upgrade_status = 0;
 
-static unsigned char post_packet_counter = 0;
-static unsigned char post_line_counter = 0;
+static unsigned char post_packet_counter = 255;
+static unsigned short post_led_counter = 0;
+static unsigned long upload_start_time = 0;
 
 static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
@@ -74,18 +75,38 @@ static int atoi(const char *s) {
 	return i;
 }
 
-static void httpd_download_progress(void) {
-	if (post_packet_counter == 80) {
-		puts("\n");
-		post_packet_counter = 0;
-		post_line_counter++;
+static void httpd_upload_progress(void) {
+	enum { bar_width = 25 };
+	unsigned long data_written, elapsed, speed;
+	unsigned int percent, filled, i;
+	char bar[bar_width + 1];
+
+	if (hs->upload_total == 0)
+		return;
+
+	data_written = webfailsafe_data_pointer - (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+
+	percent = (unsigned int)((unsigned long long)data_written * 100 / hs->upload_total);
+	if (percent > 100)
+		percent = 100;
+
+	if (percent / 25 != post_packet_counter / 25) {
+		filled = (percent * bar_width) / 100;
+		for (i = 0; i < bar_width; i++)
+			bar[i] = (i < filled) ? '#' : '.';
+		bar[bar_width] = '\0';
+
+		elapsed = get_timer(upload_start_time);
+		speed = (elapsed > 0) ? (unsigned long)((unsigned long long)data_written * 1000 / elapsed) : 0;
+		printf("\rUploading: [%s] %3u%% %lu.%02lu MiB/s", bar, percent, speed / (1024 * 1024), (speed % (1024 * 1024)) * 100 / (1024 * 1024));
+		post_packet_counter = (unsigned char)percent;
 	}
-	if (post_line_counter == 10) {
-		post_line_counter = 0;
+
+	post_led_counter++;
+	if (post_led_counter >= 10000) {
+		post_led_counter = 0;
 		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOADING);
 	}
-	puts("#");
-	post_packet_counter++;
 }
 
 void httpd_init(void) {
@@ -100,7 +121,9 @@ static void httpd_state_reset(void) {
 	hs->upload = 0;
 	hs->upload_total = 0;
 	data_start_found = 0;
-	post_packet_counter = 0;
+	post_packet_counter = 255;
+	post_led_counter = 0;
+	upload_start_time = 0;
 	file_too_big = 0;
 	led_on("blink_led");
 	if (boundary_value) {
@@ -115,12 +138,14 @@ static void print_file_size_error(unsigned long max_size) {
 }
 
 static void print_error(const char *msg) {
-	printf("## Error: %s\n", msg);
+	printf("\n## Error: %s\n", msg);
 }
 
 static void httpd_upload_complete(void) {
 	if (webfailsafe_upload_failed) {
 		printf("\nfailed!\n");
+	} else {
+		printf("  Done!\n");
 	}
 	led_on("blink_led");
 	webfailsafe_post_done = 1;
@@ -209,10 +234,10 @@ static int httpd_findandstore_firstchunk(void) {
 		file_too_big = 1;
 		return 1;
 	}
-	printf("Uploading:\n");
 	memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
 	webfailsafe_data_pointer += hs->upload;
-	httpd_download_progress();
+	upload_start_time = get_timer(0);
+	httpd_upload_progress();
 	return 1;
 }
 
@@ -347,7 +372,7 @@ static void httpd_handle_upload_data(void) {
 		memcpy((void *)webfailsafe_data_pointer, (void *)uip_appdata, bytes_to_write);
 		webfailsafe_data_pointer += bytes_to_write;
 	}
-	httpd_download_progress();
+	httpd_upload_progress();
 }
 
 static void httpd_handle_initial_request(void) {

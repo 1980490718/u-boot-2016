@@ -511,7 +511,6 @@ int do_http_progress(const int state) {
 			break;
 		case WEBFAILSAFE_PROGRESS_UPLOAD_READY:
 			led_on("blink_led");
-			printf(" Done!\n");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPLOADING:
 #if defined(CONFIG_IPQ807X_ALIYUN_AP8220)
@@ -535,7 +534,7 @@ int do_http_progress(const int state) {
 			led_on("power_led");
 			led_off("blink_led");
 			led_off("system_led");
-			printf("HTTP upgrade failed!");
+			printf("HTTP upgrade failed!\n");
 			break;
 	}
 	return 0;
