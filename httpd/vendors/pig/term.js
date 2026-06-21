@@ -9,11 +9,8 @@
 	var FETCH_OPTS = { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } };
 	var CMD_HEADERS = { 'Content-Type': 'text/plain' };
 
-	var terminalOutput = document.getElementById('terminalOutput');
-	var terminalInput = document.getElementById('terminalInput');
-	var sendBtn = document.getElementById('sendBtn');
-	var clearBtn = document.getElementById('clearBtn');
-	var connectionStatus = document.getElementById('connectionStatus');
+	var [terminalOutput, terminalInput, sendBtn, clearBtn, connectionStatus] =
+		['terminalOutput', 'terminalInput', 'sendBtn', 'clearBtn', 'connectionStatus'].map(document.getElementById, document);
 
 	var pollTimer = null;
 	var lastSeq = -1;
@@ -32,6 +29,7 @@
 	}
 
 	async function fetchStatus() {
+		var ok = false;
 		try {
 			var response = await fetch(URL.STATUS, FETCH_OPTS);
 			if (response.ok) {
@@ -40,13 +38,11 @@
 					lastSeq = seq;
 					await fetchOutput();
 				}
-				connectionStatus.textContent = '✓';
-				connectionStatus.style.color = 'green';
+				ok = true;
 			}
-		} catch (error) {
-			connectionStatus.textContent = '✗';
-			connectionStatus.style.color = 'red';
-		}
+		} catch (error) {}
+		connectionStatus.textContent = ok ? '✓' : '✗';
+		connectionStatus.style.color = ok ? 'green' : 'red';
 		restartPoll(POLL_INTERVAL);
 	}
 
@@ -59,7 +55,7 @@
 				terminalOutput.scrollTop = terminalOutput.scrollHeight;
 				updateButtonStyles();
 			}
-		} catch (error) { }
+		} catch (error) {}
 	}
 
 	async function sendCommand() {
@@ -82,12 +78,15 @@
 		updateButtonStyles();
 	}
 
+	var updateEnv = document.getElementById('updateEnv');
+	var deleteEnv = document.getElementById('deleteEnv');
+
 	function updateButtonStyles() {
 		var hasInput = terminalInput.value.trim().length > 0;
-		sendBtn.classList.toggle('active', hasInput);
+		[sendBtn, updateEnv, deleteEnv].forEach(function (el) {
+			el.classList.toggle('active', hasInput);
+		});
 		clearBtn.classList.toggle('active', terminalOutput.textContent.trim().length > 0);
-		document.getElementById('updateEnv').classList.toggle('active', hasInput);
-		document.getElementById('deleteEnv').classList.toggle('active', hasInput);
 	}
 
 	terminalInput.addEventListener('input', updateButtonStyles);
@@ -100,14 +99,10 @@
 	});
 
 	var expandBtn = document.getElementById('expandBtn');
-	if (window.self !== window.top) {
-		expandBtn.href = 'term.html';
-		expandBtn.target = '_blank';
-		expandBtn.title = '大窗';
-	} else {
-		expandBtn.href = 'index.html';
-		expandBtn.title = '返回';
-	}
+	var isFrame = window.self !== window.top;
+	expandBtn.href = isFrame ? 'term.html' : 'index.html';
+	expandBtn.target = isFrame ? '_blank' : '';
+	expandBtn.title = isFrame ? '大窗' : '返回';
 
 	restartPollFast();
 
@@ -127,8 +122,7 @@
 	envToggle.textContent = '折叠';
 
 	envToggle.addEventListener('click', function () {
-		envMenu.classList.toggle('show');
-		envToggle.textContent = envMenu.classList.contains('show') ? '折叠' : '展开';
+		envToggle.textContent = envMenu.classList.toggle('show') ? '折叠' : '展开';
 	});
 
 	document.getElementById('queryEnv').addEventListener('click', function () {
@@ -139,23 +133,33 @@
 
 	document.getElementById('updateEnv').addEventListener('click', function () {
 		var n = api.getInput();
-		if (!n) { alert('请先输入变量名'); return; }
-		var v = prompt('修改变量 ' + n + ' 的值:');
+		if (!n) { alert('输入变量名'); return; }
+		var v = prompt('修改 ' + n + ' 的值:');
 		if (v !== null) { api.postCommand('setenv ' + n + ' ' + v + '; saveenv'); api.restartPollFast(); }
 	});
 
 	document.getElementById('deleteEnv').addEventListener('click', function () {
 		var n = api.getInput();
-		if (!n) { alert('请先输入变量名'); return; }
-		if (confirm('确认删除变量 ' + n + '？')) { api.postCommand('setenv ' + n + '; saveenv'); api.restartPollFast(); }
+		if (!n) { alert('输入变量名'); return; }
+		if (confirm('确认删除 ' + n + '？')) { api.postCommand('setenv ' + n + '; saveenv'); api.restartPollFast(); }
 	});
 
 	document.getElementById('resetEnv').addEventListener('click', function () {
 		var n = api.getInput();
-		if (n) {
-			if (confirm('确认将变量 ' + n + ' 重置为内置默认值？')) { api.postCommand('env default -f ' + n + '; saveenv'); api.restartPollFast(); }
-		} else {
-			if (confirm('确认重置所有环境变量为内置默认值？')) { api.postCommand('env default -a; saveenv'); api.restartPollFast(); }
-		}
+		var msg = n ? '将 ' + n + ' 重置为缺省值？' : '重置全部为缺省值？';
+		var cmd = n ? 'env default -f ' + n + '; saveenv' : 'env default -a; saveenv';
+		if (confirm(msg)) { api.postCommand(cmd); api.restartPollFast(); }
+	});
+})();
+
+(function() {
+	function apply(v) {
+		v ? document.documentElement.setAttribute('data-theme', v) : document.documentElement.removeAttribute('data-theme');
+	}
+	window.addEventListener('storage', function(e) {
+		if (e.key === 'theme') apply(e.newValue || '');
+	});
+	window.addEventListener('message', function(e) {
+		if (e.data && e.data.type === 'theme') apply(e.data.theme || '');
 	});
 })();

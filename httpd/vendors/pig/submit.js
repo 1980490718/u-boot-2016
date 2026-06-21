@@ -29,7 +29,7 @@ var sha256 = (function () {
 
 function calcSHA256(input) {
 	var display = document.getElementById('sha256-display');
-	display.textContent = '计算校验值...';
+	display.textContent = '计算中...';
 	var reader = new FileReader();
 	reader.onload = function () {
 		display.textContent = 'SHA256: ' + sha256(reader.result);
@@ -42,33 +42,20 @@ function handleSubmit(e) {
 	var form = e.target;
 	var btn = form.querySelector('button[type=submit]');
 	btn.disabled = true;
-	btn.textContent = '正在上传';
+	btn.textContent = '上传中...';
 
 	fetch('/', {
 		method: 'POST',
 		body: new FormData(form)
 	}).then(function(resp) {
-		if (resp.ok) {
-			showVerifying();
-			pollUpgradeStatus();
-		} else {
-			showFail();
-		}
-	}).catch(function() {
-		showFail();
-	});
+		if (!resp.ok) return showFail();
+		showStatus('验证中', '验证文件类型及大小', true);
+		pollUpgradeStatus();
+	}).catch(function() { showFail(); });
 }
 
-function showVerifying() {
-	document.querySelector('.card').innerHTML = '<h2>验证中</h2><p>验证文件类型及大小</p><div class="spinner"></div>';
-}
-
-function showFlashing() {
-	document.querySelector('.card').innerHTML = '<h2>更新中</h2><p>正在处理更新</p><div class="spinner"></div>';
-}
-
-function showRebooting() {
-	document.querySelector('.card').innerHTML = '<h2>更新完成</h2><p>正在重启</p>';
+function showStatus(title, desc, spinner) {
+	document.querySelector('.card').innerHTML = '<h2>' + title + '</h2><p>' + desc + '</p>' + (spinner ? '<div class="spinner"></div>' : '');
 }
 
 function showFail(isTypeMismatch) {
@@ -88,14 +75,14 @@ function pollUpgradeStatus() {
 				case 'rebooting':
 					if (phase !== 'rebooting') {
 						phase = 'rebooting';
-						showRebooting();
+						showStatus('更新完成', '正在重启', false);
 					}
 					setTimeout(check, 3000);
 					break;
 				case 'flashing':
 					if (phase !== 'flashing') {
 						phase = 'flashing';
-						showFlashing();
+						showStatus('更新中', '正在处理更新', true);
 					}
 					setTimeout(check, 3000);
 					break;
@@ -113,3 +100,15 @@ document.querySelector('form').addEventListener('submit', handleSubmit);
 document.querySelector('input[type=file]').addEventListener('change', function () {
 	calcSHA256(this);
 });
+
+(function() {
+	function apply(v) {
+		v ? document.documentElement.setAttribute('data-theme', v) : document.documentElement.removeAttribute('data-theme');
+	}
+	window.addEventListener('storage', function(e) {
+		if (e.key === 'theme') apply(e.newValue || '');
+	});
+	window.addEventListener('message', function(e) {
+		if (e.data && e.data.type === 'theme') apply(e.data.theme || '');
+	});
+})();

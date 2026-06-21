@@ -6,6 +6,35 @@
 	font-family: Arial, sans-serif
 }
 
+/* ===== 主题变量 ===== */
+:root {
+	--c-primary: #5dade2;
+	--c-primary-hover: #85c1e9;
+	--c-primary-active: #4a90c9;
+	--c-text: #d0d0d0;
+	--c-text-light: #999;
+	--c-text-white: #fff;
+	--c-link: #c0c0c0;
+	--c-link-hover: #5dade2;
+	--c-heading: #5dade2;
+	--c-bg: #151525;
+	--c-card-bg: #1c2541;
+	--c-sidebar-hover: #252545;
+	--c-tip-bg: #151525;
+	--c-tip-border: #252545;
+	--c-border: #3a3a5a;
+	--c-shadow: rgba(0, 0, 0, .4);
+	--c-term-bg: #0a0a15;
+	--c-term-dropdown: #1a0a14;
+	--c-term-prompt: #888;
+	--c-term-btn: #444;
+	--c-term-btn-hover: #555;
+	--c-term-placeholder: #666;
+	--c-term-scroll-track: #111;
+	--c-term-scroll-thumb: #4ecb71;
+	--c-spinner-border: #333
+}
+
 /* ===== 公共属性 ===== */
 body,
 body.iframe-content,
@@ -38,13 +67,13 @@ body.iframe-content,
 .main-container,
 .card,
 .sidebar {
-	background: #fff
+	background: var(--c-card-bg)
 }
 
 .terminal-container,
 .terminal-output,
 .terminal-status-bottom {
-	background: #300a24
+	background: var(--c-term-bg)
 }
 
 body.iframe-content .card,
@@ -53,23 +82,27 @@ body.iframe-content .card,
 .card,
 .sidebar,
 .tips {
-	box-shadow: 0 4px 20px rgba(0, 0, 0, .1)
+	box-shadow: 0 4px 20px var(--c-shadow)
 }
 
 /* --- 颜色 --- */
 a,
 label {
-	color: #2c3e50
+	color: var(--c-link)
 }
 
-a:hover,
-.sidebar-nav-item.active a {
-	color: #3498db
+b {
+	color: var(--c-text)
+}
+
+a:hover {
+	color: var(--c-link-hover)
 }
 
 .card h2,
+.sidebar-nav-item.active a,
 .additional-links .link-tip a {
-	color: #2980b9
+	color: var(--c-heading)
 }
 
 button,
@@ -77,25 +110,25 @@ button,
 .terminal-input,
 .terminal-output,
 .terminal-expand:hover {
-	color: #fff
+	color: var(--c-text-white)
 }
 
 .terminal-status-bottom,
 .terminal-expand {
-	color: #ccc;
+	color: var(--c-term-prompt);
 	top: 6px
 }
 
 button,
 .terminal-btn.active,
 .terminal-clear.active {
-	background: #3498db
+	background: var(--c-primary)
 }
 
 button:hover,
 .terminal-btn.active:hover,
 .terminal-clear.active:hover {
-	background: #2980b9
+	background: var(--c-primary-hover)
 }
 
 /* --- 定位 --- */
@@ -156,8 +189,8 @@ body,
 	align-items: center
 }
 
-.main-container,
 .content-frame-wrapper,
+.main-container,
 .terminal-container {
 	overflow: hidden
 }
@@ -181,6 +214,11 @@ button,
 	font-size: .8rem
 }
 
+.error p {
+	color: #dc3545;
+	font-size: .8rem
+}
+
 .card h2,
 .sidebar-nav-item a,
 .button-container button {
@@ -198,8 +236,8 @@ a {
 }
 
 body {
-	color: #333;
-	background: #f5f6fa;
+	color: var(--c-text);
+	background: var(--c-bg);
 	min-height: 100vh;
 	line-height: 1.6;
 	animation: pageIn .15s ease-out
@@ -255,7 +293,7 @@ button {
 }
 
 p {
-	color: #555;
+	color: var(--c-text-light);
 	font-size: 15px
 }
 
@@ -268,14 +306,13 @@ p {
 	margin: 1.5rem auto
 }
 
-
 .content-frame-wrapper {
 	min-width: 800px;
 	margin-left: 1.5rem
 }
 
 .card h2 {
-	border-bottom: 1px solid #e2e2e2;
+	border-bottom: 1px solid var(--c-border);
 	padding-bottom: 1rem;
 	margin: 0 auto 1.5rem;
 	font-size: 2rem
@@ -302,7 +339,7 @@ p {
 }
 
 .sidebar-nav-item a:hover {
-	background: #f5f5f5
+	background: var(--c-sidebar-hover)
 }
 
 .sidebar-nav-item.active a {
@@ -322,8 +359,8 @@ label {
 
 /* ===== 提示框 ===== */
 .tips {
-	background: #fbfbfc;
-	border: 2px solid #eef2f7;
+	background: var(--c-tip-bg);
+	border: 2px solid var(--c-tip-border);
 	padding: .8rem;
 	margin-top: .3rem;
 	min-height: 8rem;
@@ -331,7 +368,7 @@ label {
 	overflow: auto
 }
 
-.tips strong {
+.tips b {
 	font-size: .9rem
 }
 
@@ -351,8 +388,8 @@ label {
 
 /* ===== 加载动画（flashing页面） ===== */
 .spinner {
-	border: 3px solid #f3f3f3;
-	border-top: 3px solid #2980b9;
+	border: 3px solid var(--c-spinner-border);
+	border-top: 3px solid var(--c-primary-hover);
 	border-radius: 50%;
 	width: 24px;
 	height: 24px;
@@ -372,7 +409,7 @@ label {
 
 /* ===== 终端页面 ===== */
 .terminal-dropdown-menu {
-	background: #2a0e1e;
+	background: var(--c-term-dropdown);
 	display: none;
 	bottom: 100%;
 	padding: 3px 5px
@@ -390,11 +427,11 @@ label {
 }
 
 .terminal-output::-webkit-scrollbar-track {
-	background: #1e1e1e
+	background: var(--c-term-scroll-track)
 }
 
 .terminal-output::-webkit-scrollbar-thumb {
-	background: #4ecb71
+	background: var(--c-term-scroll-thumb)
 }
 
 .terminal-input-line {
@@ -420,12 +457,12 @@ label {
 }
 
 .terminal-input::placeholder {
-	color: #5a5a5a
+	color: var(--c-term-placeholder)
 }
 
 .terminal-btn,
 .terminal-clear {
-	background: #5a5a5a;
+	background: var(--c-term-btn);
 	padding: 5px 15px;
 	font-size: .7rem;
 	transition: background-color 0.3s
@@ -433,12 +470,12 @@ label {
 
 .terminal-btn.active:active,
 .terminal-clear.active:active {
-	background: #2573a7
+	background: var(--c-primary-active)
 }
 
 .terminal-btn:hover:not(.active),
 .terminal-clear:hover:not(.active) {
-	background: #6a6a6a
+	background: var(--c-term-btn-hover)
 }
 
 .terminal-status-bottom {
@@ -451,4 +488,66 @@ label {
 	line-height: 1;
 	font-size: 1.1rem;
 	transform: scaleX(-1)
+}
+
+/* ===== 主题 ===== */
+[data-theme="light"] {
+	--c-primary: #3498db;
+	--c-primary-hover: #2980b9;
+	--c-primary-active: #2573a7;
+	--c-text: #333;
+	--c-text-light: #555;
+	--c-link: #2c3e50;
+	--c-link-hover: #3498db;
+	--c-heading: #2980b9;
+	--c-bg: #f5f6fa;
+	--c-card-bg: #fff;
+	--c-sidebar-hover: #f5f5f5;
+	--c-tip-bg: #fbfbfc;
+	--c-tip-border: #eef2f7;
+	--c-border: #e2e2e2;
+	--c-shadow: rgba(0, 0, 0, .1);
+	--c-term-bg: #300a24;
+	--c-term-dropdown: #2a0e1e;
+	--c-term-prompt: #ccc;
+	--c-term-btn: #5a5a5a;
+	--c-term-btn-hover: #6a6a6a;
+	--c-term-placeholder: #5a5a5a;
+	--c-term-scroll-track: #1e1e1e;
+	--c-term-scroll-thumb: #4ecb71;
+	--c-spinner-border: #f3f3f3
+}
+
+/* ===== 主题选择器 ===== */
+.theme-switch {
+	align-self: flex-start;
+	margin-top: auto;
+	padding: .5rem 1rem .5rem 1.8rem;
+	cursor: pointer;
+	-webkit-user-select: none;
+	user-select: none
+}
+
+.theme-track {
+	width: 40px;
+	height: 22px;
+	border-radius: 11px;
+	background: var(--c-border);
+	position: relative;
+	transition: background .3s
+}
+
+.theme-thumb {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--c-primary);
+	transition: transform .3s
+}
+
+[data-theme="light"] .theme-thumb {
+	transform: translateX(18px)
 }
