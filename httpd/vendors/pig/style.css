@@ -6,62 +6,236 @@
 	font-family: Arial, sans-serif
 }
 
-a {
-	text-decoration: none;
-	color: #2c3e50;
-	transition: color .3s ease
+/* ===== 公共属性 ===== */
+body,
+body.iframe-content,
+body.iframe-content .card,
+.sidebar,
+.sidebar-nav,
+.terminal-dropdown-menu.show,
+.terminal-container,
+.terminal-output-wrapper,
+.main-container,
+.content-frame-wrapper,
+.button-container,
+.additional-links,
+.terminal-input-line {
+	display: flex
 }
 
-a:hover {
-	color: #3498db
+body,
+body.iframe-content,
+body.iframe-content .card,
+.sidebar,
+.sidebar-nav,
+.terminal-dropdown-menu.show,
+.terminal-container,
+.terminal-output-wrapper {
+	flex-direction: column
 }
 
-html {
-	height: 100%
+body.iframe-content,
+.main-container,
+.card,
+.sidebar {
+	background: #fff
 }
 
-body {
-	background: #f5f6fa;
-	color: #333;
-	line-height: 1.6;
-	min-height: 100vh;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	animation: pageIn .15s ease-out
+.terminal-container,
+.terminal-output,
+.terminal-status-bottom {
+	background: #300a24
 }
 
-body.iframe-content {
-	background: #fff;
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	animation: none;
-	overflow-y: auto
-}
-
-body.iframe-content .card {
-	display: flex;
-	flex-direction: column;
-	max-width: 900px;
-	width: calc(100% - 2.5rem);
-	margin: 0 auto;
+body.iframe-content .card,
+.main-container,
+.content-frame-wrapper,
+.card,
+.sidebar,
+.tips {
 	box-shadow: 0 4px 20px rgba(0, 0, 0, .1)
 }
 
-body.iframe-content .card:has(.terminal-container) {
-	flex: 1;
+/* --- 颜色 --- */
+a,
+label {
+	color: #2c3e50
+}
+
+a:hover,
+.sidebar-nav-item.active a {
+	color: #3498db
+}
+
+.card h2,
+.additional-links .link-tip a {
+	color: #2980b9
+}
+
+button,
+.terminal-prompt,
+.terminal-input,
+.terminal-output,
+.terminal-expand:hover {
+	color: #fff
+}
+
+.terminal-status-bottom,
+.terminal-expand {
+	color: #ccc;
+	top: 6px
+}
+
+button,
+.terminal-btn.active,
+.terminal-clear.active {
+	background: #3498db
+}
+
+button:hover,
+.terminal-btn.active:hover,
+.terminal-clear.active:hover {
+	background: #2980b9
+}
+
+/* --- 定位 --- */
+.terminal-dropdown-menu,
+.terminal-status-bottom,
+.terminal-expand {
+	position: absolute
+}
+
+body.iframe-content .terminal-container,
+.terminal-input-line,
+.terminal-output-wrapper {
+	position: relative
+}
+
+.terminal-dropdown-menu,
+.terminal-expand {
+	right: 8px
+}
+
+/* --- 布局 --- */
+.sidebar-nav,
+.terminal-dropdown-menu {
+	gap: 4px
+}
+
+body,
+.button-container,
+.additional-links {
+	justify-content: center
+}
+
+.sidebar-nav-item a,
+label {
+	display: block
+}
+
+p,
+.form-group {
+	margin-bottom: 1rem
+}
+
+html,
+body.iframe-content,
+.content-frame {
+	height: 100%
+}
+
+.content-frame,
+.card h2,
+.card,
+.form-group input {
+	width: 100%
+}
+
+body,
+.terminal-input-line {
+	align-items: center
+}
+
+.main-container,
+.content-frame-wrapper,
+.terminal-container {
+	overflow: hidden
+}
+
+button,
+.content-frame,
+.terminal-input {
+	border: none
+}
+
+/* --- 排版 --- */
+.terminal-prompt,
+.terminal-input,
+.terminal-output,
+.terminal-btn,
+.terminal-clear {
+	font-family: monospace
+}
+
+.tips ul {
+	font-size: .8rem
+}
+
+.card h2,
+.sidebar-nav-item a,
+.button-container button {
+	white-space: nowrap
+}
+
+p,
+.card h2 {
+	text-align: center
+}
+
+a {
+	text-decoration: none;
+	transition: color .3s ease
+}
+
+body {
+	color: #333;
+	background: #f5f6fa;
+	min-height: 100vh;
+	line-height: 1.6;
+	animation: pageIn .15s ease-out
+}
+
+body.iframe-content,
+.terminal-output {
+	overflow-y: auto
+}
+
+body.iframe-content {
+	animation: none
+}
+
+body.iframe-content .card {
+	max-width: 900px;
+	width: calc(100% - 2.5rem);
+	margin: 0 auto
+}
+
+body.iframe-content .card:has(.terminal-container),
+.terminal-output-wrapper {
 	min-height: 0
+}
+
+body.iframe-content .card:has(.terminal-container),
+body.iframe-content .terminal-container,
+.content-frame-wrapper,
+.terminal-output,
+.terminal-input,
+.terminal-output-wrapper {
+	flex: 1
 }
 
 body.iframe-content .tips {
 	margin: 0
-}
-
-body.iframe-content .terminal-container {
-	flex: 1;
-	position: relative
 }
 
 @keyframes pageIn {
@@ -75,95 +249,56 @@ body.iframe-content .terminal-container {
 }
 
 button {
-	background: #3498db;
-	color: #fff;
 	padding: .8rem 1.5rem;
-	border: none;
 	cursor: pointer;
 	transition: background-color .3s ease
 }
 
-button:hover {
-	background: #2980b9
-}
-
 p {
-	font-size: 15px;
 	color: #555;
-	text-align: center;
-	margin-bottom: 1rem
+	font-size: 15px
 }
 
 /* ===== 布局 ===== */
 .main-container {
-	background: #fff;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
-	display: flex;
 	width: 1100px;
 	max-width: 1100px;
 	height: 650px;
 	padding: 20px;
-	margin: 1.5rem auto;
-	overflow: hidden
+	margin: 1.5rem auto
 }
 
 
 .content-frame-wrapper {
-	flex: 1;
 	min-width: 800px;
-	margin-left: 1.5rem;
-	overflow: hidden;
-	display: flex;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, .1)
-}
-
-.content-frame {
-	width: 100%;
-	height: 100%;
-	border: none
+	margin-left: 1.5rem
 }
 
 .card h2 {
-	color: #2980b9;
-	font-size: 2rem;
-	margin: 0 auto 1.5rem;
-	white-space: nowrap;
-	text-align: center;
 	border-bottom: 1px solid #e2e2e2;
 	padding-bottom: 1rem;
-	width: 100%
+	margin: 0 auto 1.5rem;
+	font-size: 2rem
 }
 
 .card {
-	background: #fff;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
-	padding: 1rem 2rem;
-	width: 100%
+	padding: 1rem 2rem
 }
 
 /* ===== 侧边栏 ===== */
 .sidebar {
-	background: #fff;
-	display: flex;
-	padding: .5rem 0;
-	flex-direction: column;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, .1)
+	padding: .5rem 0
 }
 
 .sidebar-nav {
 	list-style: none;
 	padding: 1rem 0;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
 	justify-content: flex-end
 }
 
 .sidebar-nav-item a {
 	padding: .8rem 1.8rem;
-	display: block;
-	transition: all .3s ease;
-	white-space: nowrap
+	transition: all .3s ease
 }
 
 .sidebar-nav-item a:hover {
@@ -171,47 +306,18 @@ p {
 }
 
 .sidebar-nav-item.active a {
-	color: #3498db;
 	font-weight: 700
 }
 
 /* ===== 表单 ===== */
 .button-container {
-	display: flex;
 	gap: 1rem;
-	justify-content: center;
 	flex-wrap: wrap;
 	margin: 1rem 0
 }
 
-.button-container button {
-	white-space: nowrap
-}
-
-.form-group {
-	margin-bottom: 1rem
-}
-
-.form-group input {
-	width: 100%
-}
-
 label {
-	display: block;
-	font-weight: 500;
-	color: #2c3e50
-}
-
-
-
-.error {
-	color: #dc3545;
-	font-size: .8rem
-}
-
-.success {
-	color: #28a745;
-	font-size: .8rem
+	font-weight: 500
 }
 
 /* ===== 提示框 ===== */
@@ -220,9 +326,8 @@ label {
 	border: 2px solid #eef2f7;
 	padding: .8rem;
 	margin-top: .3rem;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
-	max-height: 8rem;
 	min-height: 8rem;
+	max-height: 8rem;
 	overflow: auto
 }
 
@@ -232,22 +337,12 @@ label {
 
 .tips ul {
 	list-style: disc;
-	margin-left: 2rem;
-	font-size: .8rem
+	margin-left: 2rem
 }
 
 /* ===== 页脚链接 ===== */
-.additional-links {
-	display: flex;
-	justify-content: center
-}
-
 .additional-links .link-tip {
 	font-size: 12px
-}
-
-.additional-links .link-tip a {
-	color: #2980b9
 }
 
 .additional-links .link-tip a:hover {
@@ -256,13 +351,13 @@ label {
 
 /* ===== 加载动画（flashing页面） ===== */
 .spinner {
-	width: 24px;
-	height: 24px;
 	border: 3px solid #f3f3f3;
 	border-top: 3px solid #2980b9;
 	border-radius: 50%;
-	animation: spin 1s linear infinite;
-	margin: 15px auto
+	width: 24px;
+	height: 24px;
+	margin: 15px auto;
+	animation: spin 1s linear infinite
 }
 
 @keyframes spin {
@@ -277,35 +372,17 @@ label {
 
 /* ===== 终端页面 ===== */
 .terminal-dropdown-menu {
-	display: none;
-	position: absolute;
-	bottom: 100%;
-	right: 8px;
 	background: #2a0e1e;
-	padding: 3px 5px;
-	gap: 4px;
-	flex-direction: column
-}
-
-.terminal-dropdown-menu.show {
-	display: flex
-}
-
-.terminal-container {
-	background: #300a24;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column
+	display: none;
+	bottom: 100%;
+	padding: 3px 5px
 }
 
 .terminal-output {
-	background: #300a24;
 	padding: 15px;
-	flex: 1;
-	overflow-y: auto;
+	line-height: 1.2;
 	white-space: pre-wrap;
-	word-wrap: break-word;
-	line-height: 1.2
+	word-wrap: break-word
 }
 
 .terminal-output::-webkit-scrollbar {
@@ -321,31 +398,24 @@ label {
 }
 
 .terminal-input-line {
-	background: #3a142e;
 	padding: 5px;
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	position: relative
+	gap: 5px
 }
 
 .terminal-prompt,
 .terminal-input,
 .terminal-output {
-	color: #fff;
-	font-family: monospace;
 	font-size: 13px
 }
 
+.terminal-btn,
+.terminal-clear,
 .terminal-prompt {
-	font-weight: bold;
-	font-size: 13px
+	font-weight: bold
 }
 
 .terminal-input {
-	flex: 1;
 	background: transparent;
-	border: none;
 	outline: none
 }
 
@@ -355,22 +425,10 @@ label {
 
 .terminal-btn,
 .terminal-clear {
-	font-family: monospace;
-	font-size: .7rem;
-	font-weight: bold;
+	background: #5a5a5a;
 	padding: 5px 15px;
-	transition: background-color 0.3s;
-	background: #5a5a5a
-}
-
-.terminal-btn.active,
-.terminal-clear.active {
-	background: #3498db
-}
-
-.terminal-btn.active:hover,
-.terminal-clear.active:hover {
-	background: #2980b9
+	font-size: .7rem;
+	transition: background-color 0.3s
 }
 
 .terminal-btn.active:active,
@@ -383,35 +441,14 @@ label {
 	background: #6a6a6a
 }
 
-.terminal-output-wrapper {
-	position: relative;
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-height: 0
-}
-
 .terminal-status-bottom {
-	position: absolute;
-	top: 4px;
 	right: 25px;
-	color: #ccc;
-	z-index: 10;
-	background: #300a24
+	z-index: 20
 }
 
 .terminal-expand {
-	position: absolute;
-	top: 6px;
-	right: 8px;
-	color: #888;
-	font-size: 1.1rem;
 	z-index: 20;
-	text-decoration: none;
 	line-height: 1;
+	font-size: 1.1rem;
 	transform: scaleX(-1)
-}
-
-.terminal-expand:hover {
-	color: #fff
 }
