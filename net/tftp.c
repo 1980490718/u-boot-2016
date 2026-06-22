@@ -89,8 +89,14 @@ static int	tftp_state;
 #ifdef CONFIG_TFTP_TSIZE
 /* The file size reported by the server */
 static int	tftp_tsize;
+#if !defined(CONFIG_HTTPD)
 /* The number of hashes we printed */
 static short	tftp_tsize_num_hash;
+#endif
+#endif
+#if defined(CONFIG_HTTPD)
+static unsigned char tftp_last_percent = 255;
+static unsigned short tftp_led_counter = 0;
 #endif
 #ifdef CONFIG_CMD_TFTPPUT
 /* 1 if writing, else 0 */
@@ -262,10 +268,69 @@ static int load_block(unsigned block, uchar *dst, unsigned len)
 static void tftp_send(void);
 static void tftp_timeout_handler(void);
 
+#if defined(CONFIG_HTTPD)
+static void tftp_show_progress(unsigned long pos, unsigned long total,
+				const char *prefix)
+{
+	enum { bar_width = 25 };
+	unsigned int percent, filled, i;
+	char bar[bar_width + 1];
+
+	if (pos > total)
+		pos = total;
+	percent = (unsigned int)((unsigned long long)pos * 100 / total);
+	if (percent > 100)
+		percent = 100;
+	if (percent / 25 != tftp_last_percent / 25) {
+		filled = (percent * bar_width) / 100;
+		for (i = 0; i < bar_width; i++)
+			bar[i] = (i < filled) ? '#' : '.';
+		bar[bar_width] = '\0';
+		printf("\r%s: [%s] %3u%%", prefix, bar, percent);
+		tftp_last_percent = (unsigned char)percent;
+	}
+}
+
+static void tftp_show_complete(unsigned long total)
+{
+	printf("  ");
+	print_size(total, "");
+}
+
+static void tftp_led_tick(void)
+{
+	tftp_led_counter++;
+	if (tftp_led_counter >= 10000) {
+		tftp_led_counter = 0;
+		led_toggle("power_led");
+	}
+}
+#endif
+
 /**********************************************************************/
 
 static void show_block_marker(void)
 {
+#if defined(CONFIG_HTTPD)
+	unsigned long pos = tftp_cur_block * tftp_block_size +
+		tftp_block_wrap_offset;
+	const char *prefix = tftp_put_active ? "Saving" : "Loading";
+#ifdef CONFIG_TFTP_TSIZE
+	if (tftp_tsize)
+		tftp_show_progress(pos, tftp_tsize, prefix);
+	else
+#endif
+#ifdef CONFIG_CMD_TFTPPUT
+	if (tftp_put_active && save_size)
+		tftp_show_progress(pos, save_size, prefix);
+	else
+#endif
+	{
+		if ((tftp_cur_block - 1) % 20000 == 0)
+			printf("\r%s: %lu KB", prefix, pos / 1024);
+	}
+	tftp_led_tick();
+#else
 #ifdef CONFIG_TFTP_TSIZE
 	if (tftp_tsize) {
 		ulong pos = tftp_cur_block * tftp_block_size +
@@ -284,11 +349,8 @@ static void show_block_marker(void)
 			putc('#');
 		else if ((tftp_cur_block % (10 * HASHES_PER_LINE)) == 0)
 			puts("\n\t ");
-#if defined(CONFIG_HTTPD)
-		else if ((tftp_cur_block % (10 * 40)) == 0)
-			led_toggle("power_led");
-#endif
 	}
+#endif
 }
 
 /**
@@ -330,14 +392,27 @@ static void update_block_number(void)
 /* The TFTP get or put is complete */
 static void tftp_complete(void)
 {
+#if defined(CONFIG_HTTPD)
 #ifdef CONFIG_TFTP_TSIZE
-	/* Print hash marks for the last packet received */
+	if (tftp_tsize)
+		tftp_show_complete(tftp_tsize);
+	else
+#endif
+#ifdef CONFIG_CMD_TFTPPUT
+	if (tftp_put_active && save_size)
+		tftp_show_complete(save_size);
+	else
+#endif
+	printf("\r%s: OK  ", tftp_put_active ? "Saving" : "Loading");
+#else
+#ifdef CONFIG_TFTP_TSIZE
 	while (tftp_tsize && tftp_tsize_num_hash < 49) {
 		putc('#');
 		tftp_tsize_num_hash++;
 	}
 	puts("  ");
 	print_size(tftp_tsize, "");
+#endif
 #endif
 	time_start = get_timer(time_start);
 	if (time_start > 0) {
@@ -894,7 +969,13 @@ void tftp_start(enum proto_t protocol)
 #endif
 #ifdef CONFIG_TFTP_TSIZE
 	tftp_tsize = 0;
+#if !defined(CONFIG_HTTPD)
 	tftp_tsize_num_hash = 0;
+#endif
+#endif
+#if defined(CONFIG_HTTPD)
+	tftp_last_percent = 255;
+	tftp_led_counter = 0;
 #endif
 
 	tftp_send();
@@ -923,7 +1004,13 @@ void tftp_start_server(void)
 
 #ifdef CONFIG_TFTP_TSIZE
 	tftp_tsize = 0;
+#if !defined(CONFIG_HTTPD)
 	tftp_tsize_num_hash = 0;
+#endif
+#endif
+#if defined(CONFIG_HTTPD)
+	tftp_last_percent = 255;
+	tftp_led_counter = 0;
 #endif
 
 	tftp_state = STATE_RECV_WRQ;
