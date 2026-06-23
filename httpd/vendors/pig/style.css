@@ -49,7 +49,8 @@ body.iframe-content .card,
 .button-container,
 .additional-links,
 .terminal-input-line,
-.tips {
+.tips,
+.backup-row {
 	display: flex
 }
 
@@ -64,10 +65,16 @@ body.iframe-content .card,
 	flex-direction: column
 }
 
+body {
+	background: var(--c-bg)
+}
+
 body.iframe-content,
 .main-container,
 .card,
-.sidebar {
+.sidebar,
+.backup-col select,
+.size-display {
 	background: var(--c-card-bg)
 }
 
@@ -92,7 +99,8 @@ label {
 	color: var(--c-link)
 }
 
-b {
+b,
+.backup-col select {
 	color: var(--c-text)
 }
 
@@ -117,7 +125,8 @@ button,
 .terminal-status-bottom,
 .terminal-expand {
 	color: var(--c-term-prompt);
-	top: 6px
+	top: 6px;
+	z-index: 20
 }
 
 button,
@@ -135,13 +144,15 @@ button:hover,
 /* --- 定位 --- */
 .terminal-dropdown-menu,
 .terminal-status-bottom,
-.terminal-expand {
+.terminal-expand,
+.theme-thumb {
 	position: absolute
 }
 
 body.iframe-content .terminal-container,
 .terminal-input-line,
-.terminal-output-wrapper {
+.terminal-output-wrapper,
+.theme-track {
 	position: relative
 }
 
@@ -181,7 +192,9 @@ body.iframe-content,
 .content-frame,
 .card h2,
 .card,
-.form-group input {
+.form-group input,
+.backup-col select,
+.size-display {
 	width: 100%
 }
 
@@ -212,13 +225,13 @@ button,
 	font-family: monospace
 }
 
-.tips ul {
+.tips ul,
+.error p {
 	font-size: .8rem
 }
 
 .error p {
-	color: #dc3545;
-	font-size: .8rem
+	color: #dc3545
 }
 
 .card h2,
@@ -239,7 +252,6 @@ a {
 
 body {
 	color: var(--c-text);
-	background: var(--c-bg);
 	min-height: 100vh;
 	line-height: 1.6;
 	animation: pageIn .15s ease-out
@@ -270,7 +282,8 @@ body.iframe-content .terminal-container,
 .content-frame-wrapper,
 .terminal-output,
 .terminal-input,
-.terminal-output-wrapper {
+.terminal-output-wrapper,
+.backup-col {
 	flex: 1
 }
 
@@ -288,9 +301,13 @@ body.iframe-content .tips {
 	}
 }
 
+button,
+.theme-switch {
+	cursor: pointer
+}
+
 button {
 	padding: .8rem 1.5rem;
-	cursor: pointer;
 	transition: background-color .3s ease
 }
 
@@ -349,10 +366,14 @@ p {
 }
 
 /* ===== 表单 ===== */
-.button-container {
+.button-container,
+.backup-row {
 	gap: 1rem;
-	flex-wrap: wrap;
 	margin: 1rem 0
+}
+
+.button-container {
+	flex-wrap: wrap
 }
 
 label {
@@ -385,10 +406,14 @@ label {
 }
 
 /* ===== 加载动画（flashing页面） ===== */
+.spinner,
+.theme-thumb {
+	border-radius: 50%
+}
+
 .spinner {
 	border: 3px solid var(--c-spinner-border);
 	border-top: 3px solid var(--c-primary-hover);
-	border-radius: 50%;
 	width: 24px;
 	height: 24px;
 	margin: 15px auto;
@@ -445,7 +470,8 @@ label {
 
 .terminal-btn,
 .terminal-clear,
-.terminal-prompt {
+.terminal-prompt,
+.backup-col label {
 	font-weight: bold
 }
 
@@ -477,12 +503,10 @@ label {
 }
 
 .terminal-status-bottom {
-	right: 25px;
-	z-index: 20
+	right: 25px
 }
 
 .terminal-expand {
-	z-index: 20;
 	line-height: 1;
 	font-size: 1.1rem;
 	transform: scaleX(-1)
@@ -516,12 +540,38 @@ label {
 	--c-spinner-border: #f3f3f3
 }
 
+/* ===== 备份页面 ===== */
+.backup-row {
+	align-items: flex-start
+}
+
+.backup-col {
+	min-width: 0
+}
+
+.backup-col label {
+	margin-bottom: .3rem
+}
+
+.backup-col label,
+.backup-col select,
+.size-display {
+	font-size: 14px
+}
+
+.backup-col select, .size-display {
+	padding: .5rem;
+	border: 1px solid var(--c-border);
+	border-radius: 4px;
+	height: 2.4em;
+	line-height: 1.4
+}
+
 /* ===== 主题选择器 ===== */
 .theme-switch {
 	align-self: flex-start;
 	margin-top: auto;
 	padding: .5rem 1rem .5rem 1.8rem;
-	cursor: pointer;
 	-webkit-user-select: none;
 	user-select: none
 }
@@ -531,17 +581,14 @@ label {
 	height: 22px;
 	border-radius: 11px;
 	background: var(--c-border);
-	position: relative;
 	transition: background .3s
 }
 
 .theme-thumb {
-	position: absolute;
 	top: 3px;
 	left: 3px;
 	width: 16px;
 	height: 16px;
-	border-radius: 50%;
 	background: var(--c-primary);
 	transition: transform .3s
 }

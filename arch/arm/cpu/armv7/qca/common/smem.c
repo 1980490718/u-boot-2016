@@ -712,6 +712,45 @@ int smem_getpart(char *part_name, uint32_t *start, uint32_t *size)
 	return 0;
 }
 
+int smem_getpart_count(void)
+{
+	return smem_ptable.len;
+}
+
+int smem_getpart_by_index(int index, char *name, int name_len,
+			  uint32_t *start, uint32_t *size)
+{
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+	struct smem_ptn *p;
+	uint32_t bsize;
+
+	if (index < 0 || index >= smem_ptable.len)
+		return -ENOENT;
+
+	p = &smem_ptable.parts[index];
+	bsize = get_part_block_size(p, sfi);
+
+	if (name && name_len > 0) {
+		strncpy(name, p->name, name_len - 1);
+		name[name_len - 1] = '\0';
+	}
+
+	*start = p->start;
+
+	if (p->size == (~0u)) {
+#ifdef CONFIG_CMD_NAND
+		*size = nand_info[get_device_id_by_part(p)].size -
+			((loff_t)p->start * bsize);
+#else
+		*size = 0;
+#endif
+	} else {
+		*size = (uint32_t)p->size * bsize;
+	}
+
+	return 0;
+}
+
 /*
  * smem_get_boot_flash - retreive the boot flash info
  * @flash_type: location where the flash type is to be stored
