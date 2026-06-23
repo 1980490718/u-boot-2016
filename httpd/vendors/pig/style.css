@@ -48,7 +48,8 @@ body.iframe-content .card,
 .content-frame-wrapper,
 .button-container,
 .additional-links,
-.terminal-input-line {
+.terminal-input-line,
+.tips {
 	display: flex
 }
 
@@ -185,7 +186,8 @@ body.iframe-content,
 }
 
 body,
-.terminal-input-line {
+.terminal-input-line,
+.tips {
 	align-items: center
 }
 
@@ -368,10 +370,6 @@ label {
 	overflow: auto
 }
 
-.tips b {
-	font-size: .9rem
-}
-
 .tips ul {
 	list-style: disc;
 	margin-left: 2rem
@@ -435,7 +433,7 @@ label {
 }
 
 .terminal-input-line {
-	padding: 5px;
+	padding: 5px 13px 5px 5px;
 	gap: 5px
 }
 
