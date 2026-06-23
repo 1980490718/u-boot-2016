@@ -10,6 +10,22 @@
 #include <asm/gpio.h>
 #include <ipq_api.h>
 #include <asm-generic/global_data.h>
+#include <asm/arch-qca-common/smem.h>
+#include <command.h>
+#ifdef CONFIG_QCA_MMC
+#include <mmc.h>
+#include <sdhci.h>
+#include <part.h>
+#ifndef CONFIG_SDHCI_SUPPORT
+extern qca_mmc mmc_host;
+#else
+extern struct sdhci_host mmc_host;
+#endif
+#endif
+
+extern int flashread_partition(const char *part_name, ulong addr,
+					 ulong user_size, ulong *out_offset,
+					 ulong *out_size);
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -327,6 +343,177 @@ static void httpd_handle_upgrade_status(void) {
 	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
 }
 
+#define PART_JSON_BUF_SIZE 2048
+static char part_json_buf[PART_JSON_BUF_SIZE];
+static ulong backup_data_addr;
+static unsigned long backup_data_size;
+static int backup_sending_header;
+
+static void httpd_handle_partitions(void) {
+	int i, pos = 0, hdr_len, count = 0;
+	char name[SMEM_PTN_NAME_MAX], hdr[128];
+	uint32_t start, size;
+	uint32_t flash_type, flash_index, flash_cs, bsize, flash_density;
+#ifdef CONFIG_QCA_MMC
+	int gpt_count;
+	block_dev_desc_t *blk_dev = NULL;
+	disk_partition_t disk_info;
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+#endif
+
+	smem_get_boot_flash(&flash_type, &flash_index, &flash_cs, &bsize, &flash_density);
+
+	pos += sprintf(part_json_buf + pos, "{\"parts\":[");
+
+#ifdef CONFIG_QCA_MMC
+	if (flash_type == SMEM_BOOT_MMC_FLASH || flash_type == SMEM_BOOT_NO_FLASH) {
+		blk_dev = mmc_get_dev(mmc_host.dev_num);
+		if (blk_dev != NULL) {
+			gpt_count = get_partition_count_efi(blk_dev);
+			for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
+				if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
+					pos += sprintf(part_json_buf + pos,
+						"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"emmc\"}",
+						(count > 0 ? "," : ""), disk_info.name,
+						(unsigned long)disk_info.start,
+						(unsigned long)disk_info.size);
+					count++;
+				}
+			}
+		}
+	} else
+#endif
+	{
+		int smem_count = smem_getpart_count();
+		for (i = 0; i < smem_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
+			if (smem_getpart_by_index(i, name, sizeof(name), &start, &size) == 0) {
+				pos += sprintf(part_json_buf + pos,
+					"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"nor\"}",
+					(count > 0 ? "," : ""), name,
+					(unsigned long)start * (unsigned long)bsize,
+					(unsigned long)size);
+				count++;
+			}
+		}
+#ifdef CONFIG_QCA_MMC
+		if (sfi->flash_type == SMEM_BOOT_SPI_FLASH &&
+			(sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
+			 sfi->rootfs.offset == 0xBAD0FF5E)) {
+			blk_dev = mmc_get_dev(mmc_host.dev_num);
+			if (blk_dev != NULL) {
+				gpt_count = get_partition_count_efi(blk_dev);
+				for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
+					if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
+						pos += sprintf(part_json_buf + pos,
+						"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"emmc\"}",
+						(count > 0 ? "," : ""), disk_info.name,
+						(unsigned long)disk_info.start,
+						(unsigned long)disk_info.size);
+					count++;
+					}
+				}
+			}
+		}
+#endif
+	}
+
+	pos += sprintf(part_json_buf + pos, "]}");
+
+	hdr_len = sprintf(hdr,
+		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
+		"Content-Type: application/json\r\n"
+		"Content-Length: %d\r\n"
+		"Connection: close\r\n\r\n", pos);
+
+	memmove(part_json_buf + hdr_len, part_json_buf, pos);
+	memcpy(part_json_buf, hdr, hdr_len);
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)part_json_buf;
+	hs->upload = hdr_len + pos;
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+}
+
+static void str_trim_crlf(char *s) {
+	char *p;
+	if ((p = strchr(s, ' ')))  *p = '\0';
+	if ((p = strchr(s, '\r')))  *p = '\0';
+	if ((p = strchr(s, '\n')))  *p = '\0';
+}
+
+static int hexval(char c) {
+	return (c >= '0' && c <= '9') ? c - '0' :
+			(c >= 'a' && c <= 'f') ? c - 'a' + 10 :
+			(c >= 'A' && c <= 'F') ? c - 'A' + 10 : 0;
+}
+
+static void url_decode(char *s) {
+	char *src = s, *dst = s;
+	while (*src) {
+		if (*src == '%' && src[1] && src[2]) {
+			*dst++ = (char)(hexval(src[1]) * 16 + hexval(src[2]));
+			src += 3;
+		} else if (*src == '+') {
+			*dst++ = ' ';
+			src++;
+		} else {
+			*dst++ = *src++;
+		}
+	}
+	*dst = '\0';
+}
+
+static void httpd_handle_backup(void) {
+	char *query = strchr((char *)&uip_appdata[4], '?');
+	char part_name[64], filename[96];
+	ulong offset, size;
+	int hdr_len;
+
+	if (!query || strncmp(query + 1, "part=", 5) != 0) {
+		static const char *err = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\nMissing partition";
+		hs->state = STATE_FILE_REQUEST;
+		hs->dataptr = (u8_t *)err;
+		hs->upload = strlen(err);
+		uip_send(hs->dataptr, hs->upload);
+		return;
+	}
+
+	strncpy(part_name, query + 6, sizeof(part_name) - 1);
+	part_name[sizeof(part_name) - 1] = '\0';
+	str_trim_crlf(part_name);
+	url_decode(part_name);
+
+	printf("Backup request: %s\n", part_name);
+
+	if (flashread_partition(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
+					  0, &offset, &size) != CMD_RET_SUCCESS) {
+		static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
+		hs->state = STATE_FILE_REQUEST;
+		hs->dataptr = (u8_t *)err;
+		hs->upload = strlen(err);
+		uip_send(hs->dataptr, hs->upload);
+		return;
+	}
+
+	sprintf(filename, "%s.bin", part_name);
+	hdr_len = sprintf(part_json_buf,
+		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
+		"Content-Type: application/octet-stream\r\n"
+		"Content-Disposition: attachment; filename=\"%s\"\r\n"
+		"Content-Length: %lu\r\n"
+		"Connection: close\r\n\r\n",
+		filename, size);
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)part_json_buf;
+	hs->upload = hdr_len;
+	uip_send(hs->dataptr, hdr_len);
+
+	backup_data_addr = WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+	backup_data_size = size;
+	backup_sending_header = 1;
+}
+
 static void httpd_handle_file_request(void) {
 	struct fs_file fsfile;
 	unsigned int i;
@@ -386,6 +573,15 @@ static void httpd_handle_initial_request(void) {
 			httpd_handle_upgrade_status();
 			return;
 		}
+		if (strncmp((char *)&uip_appdata[4], "/partitions", 11) == 0 &&
+			uip_appdata[15] == ISO_space) {
+			httpd_handle_partitions();
+			return;
+		}
+		if (strncmp((char *)&uip_appdata[4], "/backup?", 8) == 0) {
+			httpd_handle_backup();
+			return;
+		}
 		hs->state = STATE_FILE_REQUEST;
 		httpd_handle_file_request();
 		return;
@@ -427,6 +623,14 @@ static void httpd_handle_initial_request(void) {
 }
 
 static void httpd_handle_file_acked(void) {
+	if (backup_sending_header && hs->upload <= uip_mss()) {
+		backup_sending_header = 0;
+		hs->state = STATE_FILE_REQUEST;
+		hs->dataptr = (u8_t *)backup_data_addr;
+		hs->upload = backup_data_size;
+		uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+		return;
+	}
 	if (hs->upload <= uip_mss()) {
 		if (webfailsafe_post_done) {
 			if (!webfailsafe_upload_failed)

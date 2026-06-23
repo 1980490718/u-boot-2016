@@ -65,6 +65,10 @@ int smem_get_boot_flash(uint32_t *flash_type,
 			uint32_t *flash_density);
 int smem_getpart(char *name, uint32_t *start, uint32_t *size);
 int smem_getpart_from_offset(uint32_t offset, uint32_t *start, uint32_t *size);
+int smem_getpart_count(void);
+int smem_getpart_by_index(int index, char *name, int name_len,
+			  uint32_t *start, uint32_t *size);
+#define SMEM_PTN_NAME_MAX 16
 int getpart_offset_size(char *part_name, uint32_t *offset, uint32_t *size);
 unsigned int smem_get_board_machtype(void);
 uint32_t get_nand_block_size(uint8_t dev_id);
