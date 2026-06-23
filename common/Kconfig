@@ -312,6 +312,13 @@ config CMD_FLASH
 	    erase - FLASH memory
 	    protect - enable or disable FLASH write protection
 
+config CMD_FLASHREAD
+	bool "flashread - read partition from flash to RAM"
+	default y
+	help
+	  Read partition data from flash to RAM address.
+	    flashread part_name load_addr [size]
+
 config CMD_ARMFLASH
 	depends on FLASH_CFI_DRIVER
 	bool "armflash"
