@@ -105,6 +105,7 @@ obj-$(CONFIG_OF_LIBFDT) += fdt_support.o
 obj-$(CONFIG_CMD_FITUPD) += cmd_fitupd.o
 obj-$(CONFIG_CMD_FLASH) += cmd_flash.o
 obj-$(CONFIG_CMD_FLASHWRITE) += cmd_flashwrite.o
+obj-$(CONFIG_CMD_FLASHREAD) += cmd_flashread.o
 ifdef CONFIG_FPGA
 obj-$(CONFIG_CMD_FPGA) += cmd_fpga.o
 endif
