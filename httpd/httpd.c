@@ -12,6 +12,11 @@
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
 #include <command.h>
+#ifdef CONFIG_CMD_NAND
+#undef LED_OFF
+#include <nand.h>
+#endif
+extern unsigned int get_spi_flash_size(void);
 #ifdef CONFIG_QCA_MMC
 #include <mmc.h>
 #include <sdhci.h>
@@ -354,11 +359,11 @@ static void httpd_handle_partitions(void) {
 	char name[SMEM_PTN_NAME_MAX], hdr[128];
 	uint32_t start, size;
 	uint32_t flash_type, flash_index, flash_cs, bsize, flash_density;
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 #ifdef CONFIG_QCA_MMC
 	int gpt_count;
 	block_dev_desc_t *blk_dev = NULL;
 	disk_partition_t disk_info;
-	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 #endif
 
 	smem_get_boot_flash(&flash_type, &flash_index, &flash_cs, &bsize, &flash_density);
@@ -417,7 +422,16 @@ static void httpd_handle_partitions(void) {
 #endif
 	}
 
-	pos += sprintf(part_json_buf + pos, "]}");
+	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu}",
+		(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? "true" : "false")
+		,(unsigned long)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
+#ifdef CONFIG_CMD_NAND
+		,(nand_info[0].size > 0 || (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0) ? "true" : "false")
+		,(unsigned long)(nand_info[0].size > 0 ? nand_info[0].size : (CONFIG_SYS_MAX_NAND_DEVICE > 1 ? nand_info[1].size : 0))
+#else
+		,"false",0UL
+#endif
+	);
 
 	hdr_len = sprintf(hdr,
 		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
@@ -494,6 +508,8 @@ static void httpd_handle_backup(void) {
 		uip_send(hs->dataptr, hs->upload);
 		return;
 	}
+
+	httpd_poll_wait(1);
 
 	sprintf(filename, "%s.bin", part_name);
 	hdr_len = sprintf(part_json_buf,
