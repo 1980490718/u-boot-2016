@@ -10,7 +10,7 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2>备份分区</h2>
-		<p>选择要备份的<b>分区名称</b>，点击<b>确认备份</b>按钮将分区数据保存到本地。</p>
+		<p>选择要备份的<b>分区名称</b>或<b>nor_full/nand_full</b>，点击<b>确认备份</b>按钮将数据保存到本地。</p>
 		<div class="backup-row">
 			<div class="backup-col">
 				<label for="part-select">分区名称</label>
@@ -47,6 +47,7 @@ function updateSize(){
 	var idx=sel.selectedIndex;
 	var p=(idx>=0&&idx<partsData.length)?partsData[idx]:null;
 	if(!p){sizeEl.textContent='';return;}
+	if(p.full){sizeEl.textContent='0x0-0x'+p.size.toString(16).toUpperCase()+' ('+formatSize(p.size)+')';return;}
 	var emmc=p.flash==='emmc';
 	var end=emmc?p.start+p.size-1:p.start+p.size;
 	var sz=emmc?p.size*512:p.size;
@@ -78,6 +79,16 @@ function loadPartitions(){
 		}
 		sel.disabled=false;
 		dlBtn.disabled=false;
+		[{c:!!data.has_spi,n:'nor_full',l:'nor_full',s:data.spi_size||0},
+		 {c:!!data.has_nand,n:'nand_full',l:'nand_full',s:data.nand_size||0}
+		].forEach(function(f){
+			if(!f.c)return;
+			var opt=document.createElement('option');
+			opt.value=partsData.length;
+			opt.textContent=f.l;
+			sel.appendChild(opt);
+			partsData.push({name:f.n,start:0,size:f.s,full:1});
+		});
 		updateSize();
 	};
 	xhr.send();

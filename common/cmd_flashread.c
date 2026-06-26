@@ -50,6 +50,7 @@ extern struct sdhci_host mmc_host;
 #endif
 
 extern uint32_t flash_type_new;
+extern unsigned int get_spi_flash_size(void);
 
 int flashread_partition(const char *part_name, uint32_t load_addr,
 			uint32_t user_size, uint32_t *out_offset, uint32_t *out_size);
@@ -125,6 +126,43 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 	part_size = 0;
 	layout = "default";
 	ret = -1;
+
+	if (!strcmp(part_name, "nor_full") || !strcmp(part_name, "nand_full")) {
+		if (!strcmp(part_name, "nor_full")) {
+			if (sfi->flash_type != SMEM_BOOT_SPI_FLASH ||
+			    (part_size = get_spi_flash_size()) == 0) {
+				printf("SPI flash not available\n");
+				return CMD_RET_FAILURE;
+			}
+			flash_type = SMEM_BOOT_SPI_FLASH;
+		} else {
+#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_IPQ40XX
+			int nand_dev = is_spi_nand_available();
+#else
+			int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
+			if (nand_dev < 0 || nand_info[nand_dev].size == 0) {
+				printf("NAND flash not available\n");
+				return CMD_RET_FAILURE;
+			}
+			part_size = (uint32_t)nand_info[nand_dev].size;
+			flash_type = SMEM_BOOT_NAND_FLASH;
+#else
+			printf("NAND flash not available\n");
+			return CMD_RET_FAILURE;
+#endif
+		}
+		ret = read_from_flash(flash_type, load_addr, 0, part_size, "default");
+		if (ret == CMD_RET_SUCCESS) {
+			if (out_offset) *out_offset = 0;
+			if (out_size) *out_size = part_size;
+			printf("Read %x hex from %s@0x0 to 0x%x\n",
+				part_size, part_name, load_addr);
+		}
+		return ret;
+	}
+
 	flash_type = (flash_type_new != -1) ? flash_type_new : sfi->flash_type;
 
 	if (((flash_type == SMEM_BOOT_NAND_FLASH) ||
@@ -379,12 +417,9 @@ U_BOOT_CMD(
 static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 			char * const argv[])
 {
-	uint32_t load_addr;
-	uint32_t offset, size;
+	uint32_t load_addr, offset, size;
 	char *part_name = NULL;
-	char runcmd[256];
-	char filename[80];
-	char *serverip;
+	char runcmd[256], filename[80], *serverip;
 	int ret;
 
 	if (argc < 2 || argc > 3)
@@ -421,8 +456,8 @@ static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 #ifdef CONFIG_CMD_TFTPPUT
 U_BOOT_CMD(
 	backup, 3, 0, do_backup,
-	"backup part_name [load_addr]\n",
-	"backup partition to TFTP server\n"
+	"backup part_name|nor_full|nand_full [load_addr]\n",
+	"backup partition or full flash to TFTP server\n"
 );
 #endif
 
