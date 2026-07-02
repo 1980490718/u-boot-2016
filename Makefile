@@ -922,6 +922,8 @@ u-boot.bin: u-boot FORCE
 	$(BOARD_SIZE_CHECK)
 
 ifneq ($(CONFIG_COMPRESSED_DTB_BASE),)
+.PHONY: dtb_combined
+dtb_combined: combine_dtb_Linker
 dtb_combined.bin: dtb_combined  FORCE
 	$(call if_changed,nobjcopy)
 endif
@@ -1248,7 +1250,7 @@ quiet_cmd_dtb_combined__ ?= LD      $@
       --start-group arch/$(ARCH)/dts/built-in.o --end-group                 \
       $(PLATFORM_LIBS) -Map dtb_combined.map
 
-combine_dtb_Linker: combined_dtb.lds
+combine_dtb_Linker: $(u-boot-init) combined_dtb.lds
 	$(call if_changed,dtb_combined__)
 
 compress_dtb: combine_dtb_Linker dtb_combined.bin $(compressed_dtb-dirs)
