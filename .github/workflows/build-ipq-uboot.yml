@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Show current timezone and time
         run: |
@@ -48,7 +48,7 @@ jobs:
           echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -80,7 +80,7 @@ jobs:
       - name: Upload compiled artifacts (bin directory)
         if: |
           ${{ env.SHOULD_RUN_STEP }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: u-boot-${{ matrix.ipq_type }}
           path: bin/
@@ -103,7 +103,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install GitHub CLI and jq
         run: |
@@ -114,7 +114,7 @@ jobs:
           sudo apt-get install -y gh jq
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           path: artifacts
           pattern: u-boot-*
@@ -168,7 +168,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create new GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.1
         with:
           tag_name: v${{ env.TODAY }}
           name: v${{ env.TODAY }}
