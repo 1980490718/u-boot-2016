@@ -44,6 +44,7 @@ config CPU_V7
         bool
         select HAS_VBAR
         select HAS_THUMB2
+        select SYS_THUMB_BUILD
 
 config CPU_V7M
 	bool
@@ -917,6 +918,7 @@ source "board/woodburn/Kconfig"
 source "board/work-microwave/work_92105/Kconfig"
 
 source "arch/arm/cpu/armv7/qca/common/Kconfig"
-source "arch/arm/Kconfig.debug"
 
 endmenu
+
+source "arch/arm/Kconfig.debug"
