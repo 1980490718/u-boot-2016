@@ -53,7 +53,9 @@ cd u-boot-2016
 ### 编译命令
 
 ```bash
+./build.sh all            # 编译全部平台
 ./build.sh [platform]     # 编译平台所有板子
+./build.sh [platform]_all # 编译平台所有板子（显式）
 ./build.sh [board]        # 构建单个板子
 ./build.sh clean          # 深度清理
 ./build.sh clean_all      # 仅清理输出文件
@@ -113,12 +115,20 @@ cd u-boot-2016
 | IPQ807x | ipq807x                     | 公版基础                          |          ---           |    ✓     | `./build.sh ipq807x`                     |
 | IPQ9574 | ipq9574                     | 公版基础                          |          ---           |    ?     | `./build.sh ipq9574`                     |
 
-> **编译说明**：所有配置的编译命令格式均为 `./build.sh <配置_defconfig>`，其中 `<配置_defconfig>` 为表格第二列中对应的配置名称。
+> **编译说明**：
+>
+> - 编译单个板子：`./build.sh <配置_defconfig>`，其中 `<配置_defconfig>` 为表格第二列中对应的配置名称。
+> - 编译平台全部板子：`./build.sh <平台名>` 或 `./build.sh <平台名>_all`，其中 `<平台名>` 为表格第一列中对应的平台名称（如 ipq40xx、ipq6018 等）。
+> - 编译全部平台：`./build.sh all`
+>
+> **编译命令格式**：`./build.sh <配置_defconfig>` 或 `./build.sh <平台名>_all` 或 `./build.sh all`
 
 ### 示例
 
 ```bash
+./build.sh all                  # 构建全部平台
 ./build.sh ipq807x              # 构建IPQ807x全系
+./build.sh ipq807x_all          # 构建IPQ807x全系（显式）
 ./build.sh ipq807x_tiny         # 构建单个板子
 ./build.sh ipq6018_xiaomi_ax1800 # 小米AX1800
 ```

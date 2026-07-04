@@ -146,10 +146,12 @@ fi
 
 # Check if IPQ type parameter is provided
 if [ $# -eq 0 ]; then
-	echo "Usage: $0 <ipq_type|board_name|defconfig_file>"
+	echo "Usage: $0 <ipq_type|board_name|defconfig_file|ipq_type_all|all>"
 	echo "       $0 clean      # Clean build files and output files"
 	echo "       $0 clean_all  # Clean only output files"
+	echo "Example: $0 all"                   # Build all platforms
 	echo "Example: $0 ipq6018"               # Build all ipq6018 related boards
+	echo "Example: $0 ipq6018_all"           # Build all ipq6018 related boards (explicit)
 	echo "Example: $0 ipq6018_tiny"          # Build specific board
 	echo "Example: $0 ipq40xx_defconfig"     # Build specific defconfig file
 	echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x, ipq9574"
@@ -163,15 +165,27 @@ if [ $# -eq 0 ]; then
 exit 1
 fi
 
-# Handle defconfig files first
+# Handle parameter suffix types
 DEFCONFIG_NAME=""
 HAS_DEFCONFIG_SUFFIX=false
+HAS_ALL_SUFFIX=false
+BUILD_ALL_PLATFORMS=false
+
 if [[ "$1" == *_defconfig ]]; then
-	# If parameter ends with _defconfig, use it directly
 	DEFCONFIG_NAME="$1"
-	BOARD_NAME=${1%_defconfig} # Remove _defconfig suffix
+	BOARD_NAME=${1%_defconfig}
 	IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
 	HAS_DEFCONFIG_SUFFIX=true
+elif [ "$1" = "all" ]; then
+	BUILD_ALL_PLATFORMS=true
+	HAS_ALL_SUFFIX=true
+elif [[ "$1" == *_all ]]; then
+	BOARD_NAME=${1%_all}
+	IPQ_TYPE=$BOARD_NAME
+	if [ -z "$IPQ_TYPE" ]; then
+		BUILD_ALL_PLATFORMS=true
+	fi
+	HAS_ALL_SUFFIX=true
 else
 	BOARD_NAME=$1
 	IPQ_TYPE=$1
@@ -180,7 +194,6 @@ fi
 # Find all related defconfig files for the given board or IPQ type
 DEFCONFIGS=()
 
-# If defconfig file is provided, use it first
 if [ "$HAS_DEFCONFIG_SUFFIX" = "true" ]; then
 	if [ -f "configs/$DEFCONFIG_NAME" ]; then
 		DEFCONFIGS=($DEFCONFIG_NAME)
@@ -188,11 +201,28 @@ if [ "$HAS_DEFCONFIG_SUFFIX" = "true" ]; then
 		echo "Error: Defconfig file not found: configs/$DEFCONFIG_NAME"
 exit 1
 	fi
+elif [ "$HAS_ALL_SUFFIX" = "true" ]; then
+	if [ "$BUILD_ALL_PLATFORMS" = "true" ]; then
+		for config in configs/ipq*_defconfig; do
+			if [ -f "$config" ]; then
+				DEFCONFIGS+=($(basename $config))
+			fi
+		done
+	else
+		for config in configs/${IPQ_TYPE}*_defconfig; do
+			if [ -f "$config" ]; then
+				DEFCONFIGS+=($(basename $config))
+			fi
+		done
+	fi
+	if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
+		echo "Error: No defconfig files found for IPQ type: $IPQ_TYPE"
+		echo "Supported IPQ types: ipq40xx, ipq5018, ipq5332, ipq6018, ipq806x, ipq807x, ipq9574"
+		exit 1
+	fi
 else
-	# List of supported full IPQ types
 	SUPPORTED_IPQ_TYPES=(ipq40xx ipq5018 ipq5332 ipq6018 ipq806x ipq807x ipq9574)
 
-	# Check if input is a full IPQ type
 	IS_FULL_IPQ_TYPE=false
 	for ipq_type in "${SUPPORTED_IPQ_TYPES[@]}"; do
 		if [ "$BOARD_NAME" = "$ipq_type" ]; then
@@ -201,44 +231,22 @@ else
 		fi
 	done
 
-	# If input is a full IPQ type, compile all related configs
 	if [ "$IS_FULL_IPQ_TYPE" = "true" ]; then
-		# Compile all related configs for this IPQ type
-		for config in configs/${IPQ_TYPE}_*_defconfig; do
+		for config in configs/${IPQ_TYPE}*_defconfig; do
 			if [ -f "$config" ]; then
 				DEFCONFIGS+=($(basename $config))
 			fi
 		done
-		for config in configs/${IPQ_TYPE}*_defconfig; do
-			if [ -f "$config" ]; then
-				# Avoid adding board-specific defconfig if it's already added
-				if [[ ! " ${DEFCONFIGS[*]} " =~ " $(basename $config) " ]]; then
-					DEFCONFIGS+=($(basename $config))
-				fi
-			fi
-		done
 	else
-		# Check if it's a specific board
 		if [ -f "configs/${BOARD_NAME}_defconfig" ]; then
-			# This is a specific board
 			DEFCONFIGS=(${BOARD_NAME}_defconfig)
-			# Extract IPQ type from board name (first part before underscore)
 			IPQ_TYPE=$(echo "$BOARD_NAME" | cut -d'_' -f1)
 		else
-			# Try to find all defconfig files for the given IPQ type
-			for config in configs/${IPQ_TYPE}_*_defconfig; do
+			for config in configs/${IPQ_TYPE}*_defconfig; do
 				if [ -f "$config" ]; then
 					DEFCONFIGS+=($(basename $config))
 				fi
 			done
-			# If no specific board and no IPQ type matches, check if it's a known IPQ type
-			if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
-				for config in configs/${IPQ_TYPE}*_defconfig; do
-					if [ -f "$config" ]; then
-						DEFCONFIGS+=($(basename $config))
-					fi
-				done
-			fi
 		fi
 	fi
 fi
@@ -250,20 +258,27 @@ if [ ${#DEFCONFIGS[@]} -eq 0 ]; then
 exit 1
 fi
 
-echo "Found ${#DEFCONFIGS[@]} defconfig files for $BOARD_NAME (IPQ type: $IPQ_TYPE):"
+if [ "$BUILD_ALL_PLATFORMS" = "true" ]; then
+	echo "Found ${#DEFCONFIGS[@]} defconfig files for all platforms:"
+else
+	echo "Found ${#DEFCONFIGS[@]} defconfig files for $BOARD_NAME (IPQ type: $IPQ_TYPE):"
+fi
 printf '  - %s\n' "${DEFCONFIGS[@]}"
 echo ""
 
 # Ensure bin directory exists
 ensure_bin_directory
 
-# Clean existing output files for this board or IPQ type before starting
-echo "Cleaning existing output files for $BOARD_NAME..."
-rm -f bin/openwrt-${BOARD_NAME}*
-
-# If it's a full IPQ type build, also clean all files for that IPQ type
-if [ "$BOARD_NAME" = "$IPQ_TYPE" ] && [ "$HAS_DEFCONFIG_SUFFIX" = "false" ]; then
-	rm -f bin/openwrt-${IPQ_TYPE}*
+# Clean existing output files before starting
+if [ "$BUILD_ALL_PLATFORMS" = "true" ]; then
+	echo "Cleaning existing output files for all platforms..."
+	rm -f bin/openwrt-ipq*
+else
+	echo "Cleaning existing output files for $BOARD_NAME..."
+	rm -f bin/openwrt-${BOARD_NAME}*
+	if [ "$BOARD_NAME" = "$IPQ_TYPE" ] && [ "$HAS_DEFCONFIG_SUFFIX" = "false" ]; then
+		rm -f bin/openwrt-${IPQ_TYPE}*
+	fi
 fi
 
 # Track build results
@@ -273,6 +288,9 @@ BUILD_FAILED=()
 # Build each defconfig
 for DEFCONFIG in "${DEFCONFIGS[@]}"; do
 	CONFIG_NAME="${DEFCONFIG%_defconfig}"
+	if [ "$BUILD_ALL_PLATFORMS" = "true" ]; then
+		IPQ_TYPE=$(echo "$CONFIG_NAME" | cut -d'_' -f1)
+	fi
 	echo "================================================"
 	echo "Building: $DEFCONFIG"
 	echo "================================================"
