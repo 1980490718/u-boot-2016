@@ -325,10 +325,31 @@ typedef unsigned short uip_stats_t;
  * application is slow to process incoming data, or high (32768 bytes)
  * if the application processes data quickly.
  *
+ * EDMA drivers (IPQ40xx/IPQ807x/IPQ6018) refill RXFILL ring only
+ * after processing ALL packets in a batch. During processing, new
+ * packets arriving after ACKs have no RXFILL buffers available,
+ * causing packet loss and TCP retransmissions on fast links.
+ * Use 8192 for these platforms, 32768 for 128-buffer ones.
+ *
+ * IPQ806x uses dwmac per-packet-refill but has only 8 RX buffers,
+ * 8192 is safe for its limited buffer capacity.
+ *
+ * dwmac drivers (IPQ5018) refill each RX descriptor immediately
+ * after processing, so new packets always have buffers available.
+ * These platforms can use larger windows safely.
+ *
  * \hideinitializer
  */
-//#define UIP_RECEIVE_WINDOW   32768
+#if CONFIG_SYS_RX_ETH_BUFFER >= 64
+#define UIP_RECEIVE_WINDOW   32768
+#elif defined(CONFIG_IPQ40XX_EDMA) || defined(CONFIG_IPQ807X_EDMA) || \
+      defined(CONFIG_IPQ6018_EDMA) || defined(CONFIG_IPQ806X)
+#define UIP_RECEIVE_WINDOW   8192
+#elif CONFIG_SYS_RX_ETH_BUFFER >= 12
+#define UIP_RECEIVE_WINDOW   16384
+#else
 #define UIP_RECEIVE_WINDOW   3000
+#endif
 
 /**
  * Determines if support for TCP urgent data notification should be
