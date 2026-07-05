@@ -208,11 +208,15 @@ static inline void store_block(int block, uchar *src, unsigned len)
 		 */
 #ifdef CONFIG_IPQ806X
 		if ((load_addr + newsize) >= IPQ_TFTP_MAX_ADDR) {
+#elif defined(CONFIG_IPQ40XX)
+		if (((load_addr + newsize) > CONFIG_SYS_SDRAM_END) ||
+		    (load_addr < CONFIG_TZ_END_ADDR &&
+		     (load_addr + newsize) > CONFIG_IPQ_FDT_HIGH)) {
 #else
 		if (((load_addr + newsize) >= CONFIG_SYS_SDRAM_END) ||
 		    (((load_addr + newsize) >= CONFIG_IPQ_FDT_HIGH) &&
 		     ((load_addr + newsize) < CONFIG_TZ_END_ADDR))) {
-#endif /* CONFIG_IPQ806X */
+#endif
 			puts("\nError file size too large\n");
 			net_set_state(NETLOOP_FAIL);
 			return;
