@@ -2,15 +2,16 @@
 	var URL = {
 		STATUS: '/webterm/status',
 		DATA: '/webterm/data',
-		CMD: '/webterm/cmd'
+		CMD: '/webterm/cmd',
+		ABORT: '/webterm/abort'
 	};
 	var POLL_INTERVAL = 500;
 	var POLL_FAST = 100;
 	var FETCH_OPTS = { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } };
 	var CMD_HEADERS = { 'Content-Type': 'text/plain' };
 
-	var [terminalOutput, terminalInput, sendBtn, clearBtn, connectionStatus] =
-		['terminalOutput', 'terminalInput', 'sendBtn', 'clearBtn', 'connectionStatus'].map(document.getElementById, document);
+	var [terminalOutput, terminalInput, sendBtn, clearBtn, connectionStatus, abortBtn] =
+		['terminalOutput', 'terminalInput', 'sendBtn', 'clearBtn', 'connectionStatus', 'abortBtn'].map(document.getElementById, document);
 
 	var pollTimer = null;
 	var lastSeq = -1;
@@ -90,10 +91,16 @@
 		clearBtn.classList.toggle('active', terminalOutput.textContent.trim().length > 0);
 	}
 
+	function abortCommand() {
+		fetch(URL.ABORT, { method: 'POST', headers: CMD_HEADERS });
+		restartPollFast();
+	}
+
 	terminalInput.addEventListener('input', updateButtonStyles);
 	terminalInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') sendCommand(); });
 	sendBtn.addEventListener('click', sendCommand);
 	clearBtn.addEventListener('click', clearTerminal);
+	abortBtn.addEventListener('click', abortCommand);
 
 	document.getElementById('rebootDev').addEventListener('click', function () {
 		if (confirm('确认重启？')) { postCommand('reset'); restartPollFast(); }
