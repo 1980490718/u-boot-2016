@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>编程模式</title>
+	<script>var t=localStorage.getItem('theme')||'';if(t)document.documentElement.setAttribute('data-theme',t)</script>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body class="iframe-content">
+	<div class="card">
+		<h2>编程模式</h2>
+		<p>即将进入<b>编程模式</b>对闪存进行全量编程刷写。<br>请选择<b>目标闪存</b>和<b>IMG文件</b>，然后点击<b>确认刷写</b>按钮。</p>
+		<form enctype="multipart/form-data" name="img" id="img-form">
+			<div class="backup-row">
+				<div class="backup-col">
+					<label for="flash-select">目标闪存</label>
+					<select id="flash-select" disabled></select>
+				</div>
+				<div class="backup-col">
+					<label>闪存容量</label>
+					<div id="size-display" class="size-display"></div>
+				</div>
+			</div>
+			<div class="form-group">
+				<input type="hidden" name="img_flash" id="img-flash" value="img_nor">
+				<label for="img-file">请选择<b>IMG文件</b></label>
+				<input type="file" name="img" id="img-file" accept=".img,.IMG,.bin,.BIN" required>
+			</div>
+			<div class="button-container"><button type="submit" id="submit-btn" disabled>确认刷写</button></div>
+		</form>
+		<p id="sha256-display"></p>
+		<div class="tips">
+			<ul>
+				<li>请确认所选的IMG文件是正确的；</li>
+				<li>编程模式将覆盖闪存上的所有数据，此操作不可逆；</li>
+				<li>刷写过程中不能断开设备的电源，完成后将自动重启。</li>
+			</ul>
+		</div>
+	</div>
+	<script src="submit.js"></script>
+	<script>
+	(function() {
+		var sel = document.getElementById('flash-select');
+		var sizeEl = document.getElementById('size-display');
+		var submitBtn = document.getElementById('submit-btn');
+		var devices = [];
+
+		function formatSize(v) {
+			return v < 1024 ? v + ' B' : v < 1048576 ? (v / 1024).toFixed(1) + ' KiB' : v < 1073741824 ? (v / 1048576).toFixed(1) + ' MiB' : (v / 1073741824).toFixed(1) + ' GiB';
+		}
+
+		function updateSelection() {
+			var dev = devices[sel.selectedIndex];
+			if (!dev) return;
+			sizeEl.textContent = '0x0-0x' + dev.size.toString(16).toUpperCase() + ' (' + formatSize(dev.size) + ')';
+			document.getElementById('img-flash').value = dev.name;
+		}
+
+		sel.onchange = updateSelection;
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', '/partitions', true);
+		xhr.timeout = 10000;
+		xhr.onload = function() {
+			if (xhr.status !== 200) return;
+			var data;
+			try { data = JSON.parse(xhr.responseText); } catch(e) { return; }
+			devices = [];
+			sel.innerHTML = '';
+			data.has_spi && data.spi_size > 0 && devices.push({name: 'img_nor', label: 'SPI NOR', size: data.spi_size});
+			data.has_nand && data.nand_size > 0 && devices.push({name: 'img_nand', label: 'NAND', size: data.nand_size});
+			data.has_emmc && data.emmc_size > 0 && devices.push({name: 'img_emmc', label: 'eMMC', size: data.emmc_size});
+			devices.forEach(function(d) {
+				var opt = document.createElement('option');
+				opt.textContent = d.label;
+				sel.appendChild(opt);
+			});
+			if (devices.length) {
+				sel.disabled = submitBtn.disabled = false;
+				updateSelection();
+			}
+		};
+		xhr.send();
+	})();
+	</script>
+</body>
+</html>

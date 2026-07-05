@@ -22,6 +22,7 @@ static int do_firmware_upgrade(const ulong size);
 static int do_uboot_upgrade(const ulong size);
 static int do_art_upgrade(const ulong size);
 static int do_gpt_upgrade(const ulong size);
+static int do_img_upgrade(const ulong size);
 static int do_cdt_upgrade(const ulong size);
 static int do_mibib_upgrade(const ulong size);
 static int do_ptable_upgrade(const ulong size);
@@ -166,7 +167,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 		case WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE: return do_firmware_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_UBOOT: return do_uboot_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_ART: return do_art_upgrade(size);
-		case WEBFAILSAFE_UPGRADE_TYPE_IMG: return do_gpt_upgrade(size);
+		case WEBFAILSAFE_UPGRADE_TYPE_IMG: return do_img_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_CDT: return do_cdt_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_MIBIB: return do_mibib_upgrade(size);
 		case WEBFAILSAFE_UPGRADE_TYPE_PTABLE: return do_ptable_upgrade(size);
@@ -407,6 +408,35 @@ static int do_gpt_upgrade(const ulong size) {
 		default:
 			printf("\n* Flash type %d is not supported for GPT upgrade! Please return and select upgrade type \"mibib\"\n", flash_type);
 			return -1;
+	}
+	return execute_command(buf);
+}
+
+int webfailsafe_img_flash = 0;
+
+static int do_img_upgrade(const ulong size) {
+	char buf[256];
+	switch (webfailsafe_img_flash) {
+		case IMG_FLASH_NOR: {
+			ulong erase_size = (size + 0xFFF) & ~0xFFFUL;
+			print_upgrade_warning("NOR");
+			sprintf(buf, "sf probe && sf erase 0x0 0x%lx && sf write 0x%lx 0x0 0x%lx", erase_size, UPLOAD_ADDR, size);
+			break;
+		}
+		case IMG_FLASH_NAND:
+			print_upgrade_warning("NAND");
+			sprintf(buf, "nand erase.chip && nand write 0x%lx 0x0 0x%lx", UPLOAD_ADDR, size);
+			break;
+#if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
+		case IMG_FLASH_EMMC: {
+			ulong blocks = (size - 1) / 512 + 1;
+			print_upgrade_warning("eMMC");
+			sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx", blocks, UPLOAD_ADDR, blocks);
+			break;
+		}
+#endif
+		default:
+			return do_gpt_upgrade(size);
 	}
 	return execute_command(buf);
 }

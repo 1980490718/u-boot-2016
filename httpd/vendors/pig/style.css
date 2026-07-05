@@ -258,7 +258,8 @@ body {
 }
 
 body.iframe-content,
-.terminal-output {
+.terminal-output,
+.sidebar-nav {
 	overflow-y: auto
 }
 
@@ -273,7 +274,8 @@ body.iframe-content .card {
 }
 
 body.iframe-content .card:has(.terminal-container),
-.terminal-output-wrapper {
+.terminal-output-wrapper,
+.sidebar-nav {
 	min-height: 0
 }
 
@@ -283,7 +285,8 @@ body.iframe-content .terminal-container,
 .terminal-output,
 .terminal-input,
 .terminal-output-wrapper,
-.backup-col {
+.backup-col,
+.sidebar-nav {
 	flex: 1
 }
 
