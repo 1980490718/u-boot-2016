@@ -44,6 +44,10 @@
 #define WEBFAILSAFE_UPGRADE_TYPE_PTABLE			6
 #define WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS		7
 
+#define IMG_FLASH_NOR	1
+#define IMG_FLASH_NAND	2
+#define IMG_FLASH_EMMC	3
+
 /* firmware type */
 enum firmware_type_enum {
 	FW_TYPE_FIT		= 0,

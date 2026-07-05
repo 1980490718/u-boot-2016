@@ -58,6 +58,7 @@ extern const struct fsdata_file file_404_html;
 
 extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;
+extern int webfailsafe_img_flash;
 extern u32 net_boot_file_size;
 extern unsigned char *webfailsafe_data_pointer;
 
@@ -219,6 +220,11 @@ static int httpd_findandstore_firstchunk(void) {
 		if (strstr((char *)start, upload_types[i].name)) {
 			printf("Upgrade type: %s\n", upload_types[i].label);
 			webfailsafe_upgrade_type = upload_types[i].type;
+			if (upload_types[i].type == WEBFAILSAFE_UPGRADE_TYPE_IMG) {
+				webfailsafe_img_flash = strstr((char *)start, "img_nand") ? IMG_FLASH_NAND :
+					strstr((char *)start, "img_emmc") ? IMG_FLASH_EMMC :
+					strstr((char *)start, "img_nor") ? IMG_FLASH_NOR : 0;
+			}
 			break;
 		}
 	}
@@ -226,7 +232,7 @@ static int httpd_findandstore_firstchunk(void) {
 		print_error("input name not found!");
 		return 0;
 	}
-	end = (char *)strstr((char *)start, eol2);
+	end = (char *)strstr((char *)strstr((char *)start, upload_types[i].name), eol2);
 	if (!end) {
 		print_error("couldn't find start of data!");
 		return 0;
@@ -401,9 +407,9 @@ static void httpd_handle_partitions(void) {
 			}
 		}
 #ifdef CONFIG_QCA_MMC
-		if (sfi->flash_type == SMEM_BOOT_SPI_FLASH &&
+		if ((sfi->flash_type == SMEM_BOOT_SPI_FLASH || flash_type == SMEM_BOOT_NORPLUSEMMC) &&
 			(sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
-			 sfi->rootfs.offset == 0xBAD0FF5E)) {
+			 sfi->rootfs.offset == 0xBAD0FF5E || flash_type == SMEM_BOOT_NORPLUSEMMC)) {
 			blk_dev = mmc_get_dev(mmc_host.dev_num);
 			if (blk_dev != NULL) {
 				gpt_count = get_partition_count_efi(blk_dev);
@@ -422,12 +428,18 @@ static void httpd_handle_partitions(void) {
 #endif
 	}
 
-	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu}",
+	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"has_emmc\":%s,\"emmc_size\":%lu}",
 		(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? "true" : "false")
 		,(unsigned long)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
 #ifdef CONFIG_CMD_NAND
 		,(nand_info[0].size > 0 || (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0) ? "true" : "false")
 		,(unsigned long)(nand_info[0].size > 0 ? nand_info[0].size : (CONFIG_SYS_MAX_NAND_DEVICE > 1 ? nand_info[1].size : 0))
+#else
+		,"false",0UL
+#endif
+#ifdef CONFIG_QCA_MMC
+		,(blk_dev ? "true" : "false")
+		,(unsigned long)(blk_dev ? (unsigned long)blk_dev->lba * (unsigned long)blk_dev->blksz : 0UL)
 #else
 		,"false",0UL
 #endif
