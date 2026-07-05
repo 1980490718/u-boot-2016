@@ -37,6 +37,7 @@ static volatile int webterm_output_seq = 0;
 
 static char webterm_pending_cmd[WEBTERM_MAX_CMD_LEN] = {0};
 static volatile int webterm_has_pending_cmd = 0;
+volatile int webterm_abort_requested = 0;
 
 static char webterm_response_buf[WEBTERM_RESPONSE_SIZE];
 static char webterm_output_buf[WEBTERM_BUFFER_SIZE];
@@ -201,6 +202,7 @@ void webterm_reset(void) {
 
 void webterm_execute_command(const char *cmd) {
 	char cmd_echo[512];
+	webterm_abort_requested = 0;
 	snprintf(cmd_echo, sizeof(cmd_echo), "> %s\n", cmd);
 	webterm_capture_output(cmd_echo);
 
@@ -218,6 +220,7 @@ int webterm_run_pending_command(void) {
 	if (!webterm_has_pending_cmd)
 		return 0;
 	webterm_has_pending_cmd = 0;
+	webterm_abort_requested = 0;
 	strcpy(cmd_copy, webterm_pending_cmd);
 	run_command(cmd_copy, 0);
 	webterm_flush_line_buffer();
@@ -293,6 +296,11 @@ void webterm_http_handler(void) {
 		}
 		webterm_respond(is_get ? 405 : 200, "text/plain",
 			is_get ? "Method Not Allowed. Use POST for commands.\n" : "OK\n");
+	} else if (strncmp(path, "abort", 5) == 0) {
+		if (!is_get)
+			webterm_abort_requested = 1;
+		webterm_respond(is_get ? 405 : 200, "text/plain",
+			is_get ? "Method Not Allowed. Use POST for abort.\n" : "OK\n");
 	} else if (!is_get) {
 		return;
 	} else if (strncmp(path, "status", 6) == 0) {

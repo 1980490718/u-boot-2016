@@ -17,6 +17,9 @@
 #include <exports.h>
 #include <environment.h>
 #include <webterm.h>
+#ifdef CONFIG_HTTPD
+#include "../httpd/httpd.h"
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -596,10 +599,35 @@ void console_record_reset_enable(void)
 /* test if ctrl-c was pressed */
 static int ctrlc_disabled = 0;	/* see disable_ctrl() */
 static int ctrlc_was_pressed = 0;
+
+#ifdef CONFIG_HTTPD
+extern volatile int webterm_abort_requested;
+extern int webfailsafe_is_running;
+extern void HttpdHandler(void);
+#endif
+
 int ctrlc(void)
 {
 #ifndef CONFIG_SANDBOX
 	if (!ctrlc_disabled && gd->have_console) {
+#ifdef CONFIG_HTTPD
+		if (webterm_abort_requested) {
+			webterm_abort_requested = 0;
+			ctrlc_was_pressed = 1;
+			return 1;
+		}
+
+		if (webfailsafe_is_running) {
+			if (eth_rx() > 0)
+				HttpdHandler();
+			if (webterm_abort_requested) {
+				webterm_abort_requested = 0;
+				ctrlc_was_pressed = 1;
+				return 1;
+			}
+		}
+#endif
+
 		if (tstc()) {
 			switch (getc()) {
 			case 0x03:		/* ^C - Control C */
