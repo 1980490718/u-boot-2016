@@ -13,16 +13,11 @@
 
 #define STATE_FILE_REQUEST			1
 
-#define ISO_G		0x47
-#define ISO_E		0x45
-#define ISO_T		0x54
-#define ISO_P		0x50
-#define ISO_O		0x4f
-#define ISO_S		0x53
-
 /* Web terminal buffer size */
 #define WEBTERM_BUFFER_SIZE 16384
 #define WEBTERM_LINE_SIZE 256
+#define WEBTERM_RESPONSE_SIZE 32768
+#define WEBTERM_MAX_CMD_LEN 4096
 
 /* Circular buffer for console output */
 struct webterm_buffer {
@@ -38,14 +33,13 @@ static struct webterm_buffer webterm_out = {0};
 static char webterm_line_buffer[WEBTERM_LINE_SIZE];
 static int webterm_line_pos = 0;
 
-/* Track last read position to avoid duplicate output */
-static int last_read_position = 0;
-
-/* Output sequence counter - incremented on every write */
 static volatile int webterm_output_seq = 0;
 
-static char webterm_pending_cmd[4096] = {0};
+static char webterm_pending_cmd[WEBTERM_MAX_CMD_LEN] = {0};
 static volatile int webterm_has_pending_cmd = 0;
+
+static char webterm_response_buf[WEBTERM_RESPONSE_SIZE];
+static char webterm_output_buf[WEBTERM_BUFFER_SIZE];
 
 /* Forward declaration */
 void webterm_capture_output(const char *str);
@@ -70,52 +64,57 @@ int webterm_init(void) {
 	webterm_out.count = 0;
 	webterm_out.overflow = 0;
 
-	memset(webterm_line_buffer, 0, WEBTERM_LINE_SIZE);
 	webterm_line_pos = 0;
 
-	/* Initialization successful */
 	return 0;
 }
 
-/* Add character to web terminal buffer */
 static void webterm_batch_copy(const char *src, int len);
 
-/* Modified webterm_add_char with batch copy */
+static void webterm_flush_line(void) {
+	char formatted_line[WEBTERM_LINE_SIZE + 2];
+	int len;
+
+	webterm_line_buffer[webterm_line_pos] = '\0';
+	len = snprintf(formatted_line, sizeof(formatted_line),
+			   "%s\n", webterm_line_buffer);
+	webterm_batch_copy(formatted_line, len);
+	webterm_line_pos = 0;
+}
+
+static void webterm_flush_line_buffer(void) {
+	if (webterm_line_pos > 0)
+		webterm_flush_line();
+}
+
+static int webterm_prev_char_was_cr = 0;
+
 static void webterm_add_char(char c) {
 	if (!webterm_out.buffer)
 		return;
 
 	if (c == '\n' || c == '\r') {
-		if (webterm_line_pos > 0) {
-			webterm_line_buffer[webterm_line_pos] = '\0';
-			char formatted_line[WEBTERM_LINE_SIZE + 2];
-			int len = snprintf(formatted_line, sizeof(formatted_line),
-							   "%s\n", webterm_line_buffer);
-			webterm_batch_copy(formatted_line, len);
+		if (c == '\n' && webterm_prev_char_was_cr) {
+			webterm_prev_char_was_cr = 0;
+			return;
 		}
-		webterm_line_pos = 0;
-		memset(webterm_line_buffer, 0, WEBTERM_LINE_SIZE);
+		webterm_prev_char_was_cr = (c == '\r');
+		if (webterm_line_pos > 0)
+			webterm_flush_line();
 		return;
 	}
 
-	if (webterm_line_pos >= WEBTERM_LINE_SIZE - 1) {
-		webterm_line_buffer[webterm_line_pos] = '\0';
-		char formatted_line[WEBTERM_LINE_SIZE + 2];
-		int len = snprintf(formatted_line, sizeof(formatted_line),
-						   "%s\n", webterm_line_buffer);
-		webterm_batch_copy(formatted_line, len);
-		webterm_line_pos = 0;
-		memset(webterm_line_buffer, 0, WEBTERM_LINE_SIZE);
-		webterm_line_buffer[webterm_line_pos++] = c;
-		return;
-	}
+	webterm_prev_char_was_cr = 0;
+
+	if (webterm_line_pos >= WEBTERM_LINE_SIZE - 1)
+		webterm_flush_line();
 
 	webterm_line_buffer[webterm_line_pos++] = c;
 }
 
 /* Simple batch copy - 2D optimization (split + memcpy) */
 static void webterm_batch_copy(const char *src, int len) {
-	int first = (len <= webterm_out.size - webterm_out.head) ? len : webterm_out.size - webterm_out.head;
+	int first = min(len, webterm_out.size - webterm_out.head);
 
 	if (first > 0) {
 		memcpy(&webterm_out.buffer[webterm_out.head], src, first);
@@ -135,7 +134,6 @@ static void webterm_batch_copy(const char *src, int len) {
 		webterm_out.tail = (webterm_out.tail + overrun) % webterm_out.size;
 		webterm_out.count = webterm_out.size;
 		webterm_out.overflow = 1;
-		last_read_position = 0;
 	}
 
 	webterm_output_seq++;
@@ -154,67 +152,51 @@ void webterm_capture_output(const char *str) {
 
 /* Integration function - capture single character output */
 void webterm_putc(const char c) {
-	// Capture the output for web terminal
-	if (webterm_out.buffer) {
-		webterm_add_char(c);
-	}
+	webterm_add_char(c);
 }
 
-/* Get console output for web interface - returns only new content since last read */
 int webterm_get_output(char *buf, int size) {
+	int bytes_to_read, first_chunk, start_pos;
+
 	if (!buf || !webterm_out.buffer || size <= 0)
 		return 0;
 
-	// Calculate how many new bytes are available since last read
-	int total_available = webterm_out.count;
-	int new_bytes_available = total_available - last_read_position;
-
-	if (new_bytes_available <= 0) {
-		// No new data since last read
+	bytes_to_read = webterm_out.count;
+	if (bytes_to_read <= 0) {
 		buf[0] = '\0';
 		return 0;
 	}
 
-	// Limit to requested size
-	int bytes_to_read = min(size - 1, new_bytes_available);
-	int read = 0;
-	int i;
+	bytes_to_read = min(size - 1, bytes_to_read);
+	start_pos = webterm_out.tail;
 
-	int start_pos = (webterm_out.tail + last_read_position) % webterm_out.size;
+	first_chunk = webterm_out.size - start_pos;
+	if (first_chunk > bytes_to_read)
+		first_chunk = bytes_to_read;
 
-	for (i = 0; i < bytes_to_read; i++) {
-		buf[i] = webterm_out.buffer[start_pos];
-		start_pos = (start_pos + 1) % webterm_out.size;
-		read++;
-	}
+	memcpy(buf, &webterm_out.buffer[start_pos], first_chunk);
 
-	// Update last read position
-	last_read_position += read;
+	if (bytes_to_read > first_chunk)
+		memcpy(buf + first_chunk, webterm_out.buffer, bytes_to_read - first_chunk);
 
-	// Keep last_read_position within reasonable bounds
-	if (last_read_position > webterm_out.count) {
-		last_read_position = webterm_out.count;
-	}
+	buf[bytes_to_read] = '\0';
 
-	buf[read] = '\0';
-	return read;
+	webterm_out.tail = (start_pos + bytes_to_read) % webterm_out.size;
+	webterm_out.count -= bytes_to_read;
+
+	return bytes_to_read;
 }
 
-/* Reset web terminal buffer */
 void webterm_reset(void) {
 	if (webterm_out.buffer) {
 		webterm_out.head = 0;
 		webterm_out.tail = 0;
 		webterm_out.count = 0;
 		webterm_out.overflow = 0;
-		memset(webterm_out.buffer, 0, webterm_out.size);
 	}
 
 	webterm_line_pos = 0;
-	memset(webterm_line_buffer, 0, WEBTERM_LINE_SIZE);
-
-	// Reset tracking of last read position
-	last_read_position = 0;
+	webterm_prev_char_was_cr = 0;
 }
 
 void webterm_execute_command(const char *cmd) {
@@ -223,129 +205,104 @@ void webterm_execute_command(const char *cmd) {
 	webterm_capture_output(cmd_echo);
 
 	if (webfailsafe_is_running) {
-		strncpy(webterm_pending_cmd, cmd, sizeof(webterm_pending_cmd) - 1);
-		webterm_pending_cmd[sizeof(webterm_pending_cmd) - 1] = '\0';
+		snprintf(webterm_pending_cmd, sizeof(webterm_pending_cmd), "%s", cmd);
 		webterm_has_pending_cmd = 1;
 	} else {
 		run_command(cmd, 0);
+		webterm_flush_line_buffer();
 	}
 }
 
 int webterm_run_pending_command(void) {
-	char cmd_copy[4096];
+	char cmd_copy[WEBTERM_MAX_CMD_LEN];
 	if (!webterm_has_pending_cmd)
 		return 0;
 	webterm_has_pending_cmd = 0;
 	strcpy(cmd_copy, webterm_pending_cmd);
 	run_command(cmd_copy, 0);
+	webterm_flush_line_buffer();
 	return 1;
 }
 
-/* Handle web terminal HTTP requests */
+static void webterm_respond(int code, const char *ctype, const char *fmt, ...) {
+	va_list ap;
+	const char *reason = code == 200 ? "OK" : "Method Not Allowed";
+	int hlen = snprintf(webterm_response_buf, sizeof(webterm_response_buf),
+		"HTTP/1.1 %d %s\r\nContent-Type: %s\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n",
+		code, reason, ctype);
+	va_start(ap, fmt);
+	int blen = vsnprintf(webterm_response_buf + hlen, sizeof(webterm_response_buf) - hlen, fmt, ap);
+	va_end(ap);
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)webterm_response_buf;
+	hs->upload = hlen + blen;
+	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+}
+
+static int webterm_parse_post_body(char *out, int out_size) {
+	char *body = strstr((char *)uip_appdata, "\r\n\r\n");
+	int header_len, body_len;
+	char *nl;
+
+	if (!body)
+		return -1;
+
+	body += 4;
+	header_len = body - (char *)uip_appdata;
+
+	if (header_len > uip_len)
+		return -1;
+
+	body_len = uip_len - header_len;
+	if (body_len <= 0 || body_len > WEBTERM_MAX_CMD_LEN)
+		return -1;
+
+	if (body_len >= out_size)
+		body_len = out_size - 1;
+
+	memcpy(out, body, body_len);
+	out[body_len] = '\0';
+
+	nl = strchr(out, '\n');
+	if (nl) *nl = '\0';
+	nl = strchr(out, '\r');
+	if (nl) *nl = '\0';
+
+	return body_len;
+}
+
 void webterm_http_handler(void) {
-	static char response_buffer[32768]; /* Static buffer to persist across calls */
+	int is_get;
+	const char *path;
 
 	if (!hs)
 		return;
 
-	// Check if this is a web terminal GET request
-	if (uip_appdata[0] == ISO_G && uip_appdata[1] == ISO_E && uip_appdata[2] == ISO_T) {
-		if (strncmp((char *)&uip_appdata[4], "/webterm/status", 15) == 0) {
-			int len = snprintf(response_buffer, sizeof(response_buffer),
-				"HTTP/1.1 200 OK\r\n"
-				"Content-Type: text/plain\r\n"
-				"Cache-Control: no-cache\r\n"
-				"Connection: close\r\n\r\n%d",
-				webterm_output_seq);
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)response_buffer;
-			hs->upload = len;
-			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-			return;
+	is_get = (strncmp((char *)uip_appdata, "GET ", 4) == 0);
+	path = is_get ? (char *)uip_appdata + 4
+		   : (strncmp((char *)uip_appdata, "POST ", 5) == 0) ? (char *)uip_appdata + 5 : NULL;
+	if (!path || strncmp(path, "/webterm/", 9) != 0)
+		return;
+	path += 9;
+
+	if (strncmp(path, "cmd", 3) == 0) {
+		if (!is_get) {
+			char cmd_buf[WEBTERM_MAX_CMD_LEN];
+			if (webterm_parse_post_body(cmd_buf, sizeof(cmd_buf)) > 0)
+				webterm_execute_command(cmd_buf);
 		}
-		if (strncmp((char *)&uip_appdata[4], "/webterm/data", 13) == 0) {
-			char output[16384];
-			int out_len = webterm_get_output(output, sizeof(output));
-
-			int len = snprintf(response_buffer, sizeof(response_buffer),
-				"HTTP/1.1 200 OK\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Cache-Control: no-cache\r\n"
-				"Connection: close\r\n\r\n%s",
-				out_len > 0 ? output : "");
-
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)response_buffer;
-			hs->upload = len;
-			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-			return;
-		}
-		// Check for /webterm/cmd endpoint - GET not supported
-		else if (strncmp((char *)&uip_appdata[4], "/webterm/cmd", 12) == 0) {
-			// GET request to /webterm/cmd - return method not allowed
-			int len = snprintf(response_buffer, sizeof(response_buffer),
-				"HTTP/1.1 405 Method Not Allowed\r\n"
-				"Content-Type: text/plain\r\n"
-				"Connection: close\r\n\r\n"
-				"Method Not Allowed. Use POST for commands.\n");
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)response_buffer;
-			hs->upload = len;
-			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-			return;
-		}
-	}
-	// Check if this is a web terminal POST request
-	else if (uip_appdata[0] == ISO_P && uip_appdata[1] == ISO_O && uip_appdata[2] == ISO_S && uip_appdata[3] == ISO_T) {
-		// Handle POST /webterm/cmd request
-		if (strncmp((char *)&uip_appdata[5], "/webterm/cmd", 12) == 0) {
-			// Find the body of the POST request (after headers)
-			char *body = strstr((char *)uip_appdata, "\r\n\r\n");
-			if (body) {
-				body += 4;
-				int header_len = body - (char *)uip_appdata;
-
-				/* Check for valid header length (must not exceed packet length) */
-				if (header_len < 0 || header_len > uip_len) {
-					/* Invalid request, malformed HTTP data */
-					goto send_cmd_response;
-				}
-
-				int body_len = uip_len - header_len;
-
-				/* Check for valid body length (must be positive and not too large) */
-				if (body_len <= 0 || body_len > 4096) {
-					/* Empty command or command too long - ignore */
-					goto send_cmd_response;
-				}
-
-				char *body_copy = malloc(body_len + 1);
-				if (body_copy) {
-					memcpy(body_copy, body, body_len);
-					body_copy[body_len] = '\0';
-
-					char *nl = strchr(body_copy, '\n');
-					if (nl) *nl = '\0';
-					nl = strchr(body_copy, '\r');
-					if (nl) *nl = '\0';
-
-					webterm_execute_command(body_copy);
-
-					free(body_copy);
-				}
-			}
-
-			send_cmd_response:
-			{}
-			// Send a simple response
-			int len = snprintf(response_buffer, sizeof(response_buffer),
-				"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nOK\n");
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)response_buffer;
-			hs->upload = len;
-			uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
-			return;
-		}
+		webterm_respond(is_get ? 405 : 200, "text/plain",
+			is_get ? "Method Not Allowed. Use POST for commands.\n" : "OK\n");
+	} else if (!is_get) {
+		return;
+	} else if (strncmp(path, "status", 6) == 0) {
+		webterm_flush_line_buffer();
+		webterm_respond(200, "text/plain", "%d", webterm_output_seq);
+	} else if (strncmp(path, "data", 4) == 0) {
+		webterm_flush_line_buffer();
+		int out_len = webterm_get_output(webterm_output_buf, sizeof(webterm_output_buf));
+		webterm_respond(200, "text/plain; charset=utf-8", "%s",
+			out_len > 0 ? webterm_output_buf : "");
 	}
 }
 

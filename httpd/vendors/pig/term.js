@@ -29,21 +29,22 @@
 	}
 
 	async function fetchStatus() {
-		var ok = false;
+		var ok = false, hasNewData = false;
 		try {
 			var response = await fetch(URL.STATUS, FETCH_OPTS);
 			if (response.ok) {
 				var seq = parseInt(await response.text(), 10);
 				if (seq !== lastSeq) {
-					lastSeq = seq;
 					await fetchOutput();
+					lastSeq = seq;
+					hasNewData = true;
 				}
 				ok = true;
 			}
 		} catch (error) {}
 		connectionStatus.textContent = ok ? '✓' : '✗';
 		connectionStatus.style.color = ok ? 'green' : 'red';
-		restartPoll(POLL_INTERVAL);
+		restartPoll(hasNewData ? POLL_FAST : POLL_INTERVAL);
 	}
 
 	async function fetchOutput() {
