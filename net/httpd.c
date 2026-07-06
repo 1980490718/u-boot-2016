@@ -14,6 +14,9 @@
 #include "../httpd/uip_arp.h"
 #include <ipq_api.h>
 #include <asm/arch-qca-common/smem.h>
+#ifdef CONFIG_IPQ40XX
+#include <../board/qca/arm/common/fdt_info.h>
+#endif
 #ifdef CONFIG_DHCPD
 #include "dhcpd.h"
 #endif
@@ -423,10 +426,17 @@ static int do_img_upgrade(const ulong size) {
 			sprintf(buf, "sf probe && sf erase 0x0 0x%lx && sf write 0x%lx 0x0 0x%lx", erase_size, UPLOAD_ADDR, size);
 			break;
 		}
-		case IMG_FLASH_NAND:
+		case IMG_FLASH_NAND: {
+			int nand_dev;
+#ifdef CONFIG_IPQ40XX
+			nand_dev = is_spi_nand_available();
+#else
+			nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
 			print_upgrade_warning("NAND");
-			sprintf(buf, "nand erase.chip && nand write 0x%lx 0x0 0x%lx", UPLOAD_ADDR, size);
+			sprintf(buf, "nand device %d && nand erase.chip && nand write 0x%lx 0x0 0x%lx", nand_dev, UPLOAD_ADDR, size);
 			break;
+		}
 #if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
 		case IMG_FLASH_EMMC: {
 			ulong blocks = (size - 1) / 512 + 1;
