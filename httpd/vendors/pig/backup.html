@@ -48,7 +48,7 @@ function updateSize(){
 	var idx=sel.selectedIndex;
 	var p=(idx>=0&&idx<partsData.length)?partsData[idx]:null;
 	if(!p){sizeEl.textContent='';return;}
-	if(p.full){sizeEl.textContent='0x0-0x'+p.size.toString(16).toUpperCase()+' ('+formatSize(p.size)+(p.oob?' ECC + '+formatSize(p.oob)+' OOB':'')+')';return;}
+	if(p.full){var eccLabel=p.name.indexOf('nand')===0?(p.oob?' Data [ECC off] + '+formatSize(p.oob)+' OOB':' Data [ECC on]'):'';sizeEl.textContent='0x0-0x'+p.size.toString(16).toUpperCase()+' ('+formatSize(p.size)+eccLabel+')';return;}
 	var emmc=p.flash==='emmc';
 	var end=emmc?p.start+p.size-1:p.start+p.size;
 	var sz=emmc?p.size*512:p.size;
