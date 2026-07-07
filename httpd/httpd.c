@@ -68,6 +68,8 @@ int webfailsafe_post_done = 0;
 int file_too_big = 0;
 static int webfailsafe_upload_failed = 0;
 static int data_start_found = 0;
+static unsigned long backup_data_size;
+static int backup_sending_header;
 int upgrade_status = 0;
 
 static unsigned char post_packet_counter = 255;
@@ -142,15 +144,20 @@ static void httpd_state_reset(void) {
 	hs->dataptr = 0;
 	hs->upload = 0;
 	hs->upload_total = 0;
-	data_start_found = 0;
-	post_packet_counter = 255;
-	post_led_counter = 0;
-	upload_start_time = 0;
-	file_too_big = 0;
-	led_on("blink_led");
-	if (boundary_value) {
-		free(boundary_value);
-		boundary_value = NULL;
+	if (hs->owns_global) {
+		hs->owns_global = 0;
+		data_start_found = 0;
+		post_packet_counter = 255;
+		post_led_counter = 0;
+		upload_start_time = 0;
+		file_too_big = 0;
+		backup_data_size = 0;
+		backup_sending_header = 0;
+		led_on("blink_led");
+		if (boundary_value) {
+			free(boundary_value);
+			boundary_value = NULL;
+		}
 	}
 }
 
@@ -358,8 +365,6 @@ static void httpd_handle_upgrade_status(void) {
 #define PART_JSON_BUF_SIZE 2048
 static char part_json_buf[PART_JSON_BUF_SIZE];
 static ulong backup_data_addr;
-static unsigned long backup_data_size;
-static int backup_sending_header;
 
 static void httpd_handle_partitions(void) {
 	int i, pos = 0, hdr_len, count = 0;
@@ -555,6 +560,7 @@ static void httpd_handle_backup(void) {
 		filename, size);
 
 	hs->state = STATE_FILE_REQUEST;
+	hs->owns_global = 1;
 	hs->dataptr = (u8_t *)part_json_buf;
 	hs->upload = hdr_len;
 	uip_send(hs->dataptr, hdr_len);
@@ -648,6 +654,7 @@ static void httpd_handle_initial_request(void) {
 			return;
 		}
 		hs->state = STATE_UPLOAD_REQUEST;
+		hs->owns_global = 1;
 		led_off("blink_led");
 		if (httpd_parse_boundary() < 0 || httpd_init_upload_ram() < 0) {
 			httpd_state_reset();
@@ -748,6 +755,7 @@ void httpd_appcall(void) {
 		return;
 	}
 	if (uip_connected()) {
+		hs->owns_global = 0;
 		httpd_state_reset();
 		return;
 	}

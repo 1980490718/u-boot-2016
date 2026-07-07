@@ -64,6 +64,7 @@ struct httpd_state {
 	u8_t *dataptr;
 	unsigned int upload;
 	unsigned int upload_total;
+	u8_t owns_global;
 };
 
 /* UIP_APPSTATE_SIZE: The size of the application-specific state
