@@ -12,6 +12,9 @@
 #include "../httpd/uipopt.h"
 #include "../httpd/uip.h"
 #include "../httpd/uip_arp.h"
+#ifdef CONFIG_CMD_NAND
+#include <nand.h>
+#endif
 #include <ipq_api.h>
 #include <asm/arch-qca-common/smem.h>
 #ifdef CONFIG_IPQ40XX
@@ -426,15 +429,25 @@ static int do_img_upgrade(const ulong size) {
 			sprintf(buf, "sf probe && sf erase 0x0 0x%lx && sf write 0x%lx 0x0 0x%lx", erase_size, UPLOAD_ADDR, size);
 			break;
 		}
-		case IMG_FLASH_NAND: {
+		case IMG_FLASH_NAND:
+		case IMG_FLASH_NAND_RAW: {
 			int nand_dev;
+			int raw = (webfailsafe_img_flash == IMG_FLASH_NAND_RAW);
 #ifdef CONFIG_IPQ40XX
 			nand_dev = is_spi_nand_available();
 #else
 			nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
 #endif
-			print_upgrade_warning("NAND");
-			sprintf(buf, "nand device %d && nand erase.chip && nand write 0x%lx 0x0 0x%lx", nand_dev, UPLOAD_ADDR, size);
+			print_upgrade_warning(raw ? "NAND (raw)" : "NAND");
+#ifdef CONFIG_CMD_NAND
+			if (raw) {
+				ulong pagecount = nand_info[nand_dev].size / nand_info[nand_dev].writesize;
+				sprintf(buf, "nand device %d && nand erase.chip && nand write.raw 0x%lx 0x0 %lx", nand_dev, UPLOAD_ADDR, pagecount);
+			} else
+#endif
+			{
+				sprintf(buf, "nand device %d && nand erase.chip && nand write 0x%lx 0x0 0x%lx", nand_dev, UPLOAD_ADDR, size);
+			}
 			break;
 		}
 #if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)

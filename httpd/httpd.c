@@ -29,7 +29,7 @@ extern struct sdhci_host mmc_host;
 #endif
 
 extern int flashread_partition(const char *part_name, ulong addr,
-					 ulong user_size, ulong *out_offset,
+					 ulong user_size, int raw, ulong *out_offset,
 					 ulong *out_size);
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -221,9 +221,10 @@ static int httpd_findandstore_firstchunk(void) {
 			printf("Upgrade type: %s\n", upload_types[i].label);
 			webfailsafe_upgrade_type = upload_types[i].type;
 			if (upload_types[i].type == WEBFAILSAFE_UPGRADE_TYPE_IMG) {
-				webfailsafe_img_flash = strstr((char *)start, "img_nand") ? IMG_FLASH_NAND :
-					strstr((char *)start, "img_emmc") ? IMG_FLASH_EMMC :
-					strstr((char *)start, "img_nor") ? IMG_FLASH_NOR : 0;
+				webfailsafe_img_flash = strstr((char *)start, "img_nand_raw") ? IMG_FLASH_NAND_RAW :
+				strstr((char *)start, "img_nand") ? IMG_FLASH_NAND :
+				strstr((char *)start, "img_emmc") ? IMG_FLASH_EMMC :
+				strstr((char *)start, "img_nor") ? IMG_FLASH_NOR : 0;
 			}
 			break;
 		}
@@ -428,20 +429,32 @@ static void httpd_handle_partitions(void) {
 #endif
 	}
 
-	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"has_emmc\":%s,\"emmc_size\":%lu}",
+	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"nand_raw_size\":%lu,\"ram_available\":%lu,\"has_emmc\":%s,\"emmc_size\":%lu,\"nand_type\":\"%s\"}",
 		(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? "true" : "false")
 		,(unsigned long)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
 #ifdef CONFIG_CMD_NAND
 		,(nand_info[0].size > 0 || (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0) ? "true" : "false")
 		,(unsigned long)(nand_info[0].size > 0 ? nand_info[0].size : (CONFIG_SYS_MAX_NAND_DEVICE > 1 ? nand_info[1].size : 0))
+		,(unsigned long)(nand_info[0].size > 0 && nand_info[0].writesize > 0 ?
+			(nand_info[0].size / nand_info[0].writesize * (nand_info[0].writesize + nand_info[0].oobsize)) :
+			(CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0 && nand_info[1].writesize > 0 ?
+				(nand_info[1].size / nand_info[1].writesize * (nand_info[1].writesize + nand_info[1].oobsize)) : 0UL))
 #else
-		,"false",0UL
+		,"false",0UL,0UL
 #endif
+		,(unsigned long)(CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS)
 #ifdef CONFIG_QCA_MMC
 		,(blk_dev ? "true" : "false")
 		,(unsigned long)(blk_dev ? (unsigned long)blk_dev->lba * (unsigned long)blk_dev->blksz : 0UL)
 #else
 		,"false",0UL
+#endif
+#ifdef CONFIG_CMD_NAND
+		,(nand_info[0].size > 0 ? "parallel" :
+			(CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0 ? "spi" : "parallel")
+		)
+#else
+		,"none"
 #endif
 	);
 
@@ -494,6 +507,7 @@ static void httpd_handle_backup(void) {
 	char part_name[64], filename[96];
 	ulong offset, size;
 	int hdr_len;
+	int raw = 0;
 
 	if (!query || strncmp(query + 1, "part=", 5) != 0) {
 		static const char *err = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\nMissing partition";
@@ -509,10 +523,18 @@ static void httpd_handle_backup(void) {
 	str_trim_crlf(part_name);
 	url_decode(part_name);
 
-	printf("Backup request: %s\n", part_name);
+	{
+		char *amp = strchr(part_name, '&');
+		if (amp) *amp = '\0';
+	}
+
+	if (strstr(query, "raw=1"))
+		raw = 1;
+
+	printf("Backup request: %s%s\n", part_name, raw ? " (raw)" : "");
 
 	if (flashread_partition(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-					  0, &offset, &size) != CMD_RET_SUCCESS) {
+					  0, raw, &offset, &size) != CMD_RET_SUCCESS) {
 		static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
 		hs->state = STATE_FILE_REQUEST;
 		hs->dataptr = (u8_t *)err;
@@ -523,7 +545,7 @@ static void httpd_handle_backup(void) {
 
 	httpd_poll_wait(1);
 
-	sprintf(filename, "%s.bin", part_name);
+	sprintf(filename, "%s%s.bin", part_name, raw ? "_oob" : "");
 	hdr_len = sprintf(part_json_buf,
 		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
 		"Content-Type: application/octet-stream\r\n"

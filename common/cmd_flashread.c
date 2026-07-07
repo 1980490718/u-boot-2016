@@ -53,10 +53,10 @@ extern uint32_t flash_type_new;
 extern unsigned int get_spi_flash_size(void);
 
 int flashread_partition(const char *part_name, uint32_t load_addr,
-			uint32_t user_size, uint32_t *out_offset, uint32_t *out_size);
+			uint32_t user_size, int raw, uint32_t *out_offset, uint32_t *out_size);
 
 static int read_from_flash(int flash_type, uint32_t address, uint32_t offset,
-			   uint32_t part_size, char *layout)
+			   uint32_t part_size, char *layout, int raw)
 {
 	char runcmd[256];
 	int runcmd_len = 0;
@@ -78,9 +78,17 @@ static int read_from_flash(int flash_type, uint32_t address, uint32_t offset,
 					"ipq_nand %s && ", layout);
 		}
 
-		snprintf(runcmd + runcmd_len, sizeof(runcmd) - runcmd_len,
-			"nand read 0x%x 0x%x 0x%x",
-			address, offset, part_size);
+#ifdef CONFIG_CMD_NAND
+		if (raw) {
+			ulong pagecount = nand_info[nand_dev].size / nand_info[nand_dev].writesize;
+			snprintf(runcmd + runcmd_len, sizeof(runcmd) - runcmd_len,
+				"nand read.raw 0x%x 0x%x %lx", address, offset, pagecount);
+		} else
+#endif
+		{
+			snprintf(runcmd + runcmd_len, sizeof(runcmd) - runcmd_len,
+				"nand read 0x%x 0x%x 0x%x", address, offset, part_size);
+		}
 
 	} else if (flash_type == SMEM_BOOT_MMC_FLASH) {
 
@@ -105,7 +113,7 @@ static int read_from_flash(int flash_type, uint32_t address, uint32_t offset,
 }
 
 int flashread_partition(const char *part_name, uint32_t load_addr,
-			uint32_t user_size, uint32_t *out_offset, uint32_t *out_size)
+			uint32_t user_size, int raw, uint32_t *out_offset, uint32_t *out_size)
 {
 	uint32_t offset, part_size;
 	int flash_type, ret;
@@ -153,12 +161,30 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 			return CMD_RET_FAILURE;
 #endif
 		}
-		ret = read_from_flash(flash_type, load_addr, 0, part_size, "default");
+		ret = read_from_flash(flash_type, load_addr, 0, part_size, "default", raw);
 		if (ret == CMD_RET_SUCCESS) {
 			if (out_offset) *out_offset = 0;
-			if (out_size) *out_size = part_size;
-			printf("Read %x hex from %s@0x0 to 0x%x\n",
-				part_size, part_name, load_addr);
+			if (out_size) {
+				if (raw && !strcmp(part_name, "nand_full")) {
+#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_IPQ40XX
+					int nd = is_spi_nand_available();
+#else
+					int nd = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
+					*out_size = (uint32_t)nand_info[nd].size /
+					    nand_info[nd].writesize *
+					    (nand_info[nd].writesize + nand_info[nd].oobsize);
+#else
+					*out_size = part_size;
+#endif
+				} else {
+					*out_size = part_size;
+				}
+			}
+			printf("Read %x hex from %s@0x0 to 0x%x%s\n",
+				*out_size, part_name, load_addr,
+				raw ? " (raw)" : "");
 		}
 		return ret;
 	}
@@ -340,7 +366,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 		}
 	}
 
-	ret = read_from_flash(flash_type, load_addr, offset, part_size, layout);
+	ret = read_from_flash(flash_type, load_addr, offset, part_size, layout, 0);
 
 	if (ret == CMD_RET_SUCCESS) {
 		uint32_t byte_size = part_size;
@@ -365,11 +391,9 @@ exit:
 static int do_flashread(cmd_tbl_t *cmdtp, int flag, int argc,
 			char * const argv[])
 {
-	uint32_t load_addr = 0;
+	uint32_t load_addr = 0, user_size = 0;
 	char *part_name = NULL;
 	int ret;
-	uint32_t user_size = 0;
-
 	if (argc < 3 || argc > 4)
 		return CMD_RET_USAGE;
 
@@ -379,7 +403,7 @@ static int do_flashread(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc == 4)
 		user_size = simple_strtoul(argv[3], NULL, 16);
 
-	ret = flashread_partition(part_name, load_addr, user_size, NULL, NULL);
+	ret = flashread_partition(part_name, load_addr, user_size, 0, NULL, NULL);
 
 	return ret;
 }
@@ -405,7 +429,7 @@ static int do_flread(cmd_tbl_t *cmdtp, int flag, int argc,
 		load_addr = (uint32_t)CONFIG_LOADADDR;
 #endif
 
-	return flashread_partition(part_name, load_addr, 0, NULL, NULL);
+	return flashread_partition(part_name, load_addr, 0, 0, NULL, NULL);
 }
 
 U_BOOT_CMD(
@@ -437,7 +461,7 @@ static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 		load_addr = (uint32_t)CONFIG_LOADADDR;
 #endif
 
-	ret = flashread_partition(part_name, load_addr, 0, &offset, &size);
+	ret = flashread_partition(part_name, load_addr, 0, 0, &offset, &size);
 	if (ret)
 		return ret;
 
