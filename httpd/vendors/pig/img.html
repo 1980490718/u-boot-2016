@@ -55,7 +55,8 @@
 		function updateSelection() {
 			var dev = devices[sel.selectedIndex];
 			if (!dev) return;
-			sizeEl.textContent = '0x0-0x' + dev.size.toString(16).toUpperCase() + ' (' + formatSize(dev.size) + (dev.oob ? ' ECC + ' + formatSize(dev.oob) + ' OOB' : '') + ')';
+			var eccLabel = dev.name.indexOf('nand') >= 0 ? (dev.oob ? ' Data [ECC off] + ' + formatSize(dev.oob) + ' OOB' : ' Data [ECC on]') : '';
+			sizeEl.textContent = '0x0-0x' + dev.size.toString(16).toUpperCase() + ' (' + formatSize(dev.size) + eccLabel + ')';
 			document.getElementById('img-flash').value = dev.raw ? 'img_nand_raw' : dev.name;
 		}
 
