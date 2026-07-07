@@ -75,9 +75,9 @@ function pollUpgradeStatus() {
 				case 'rebooting':
 					if (phase !== 'rebooting') {
 						phase = 'rebooting';
-						showStatus('更新完成', '正在重启', false);
+						showStatus('更新完成', '正在重启，等待设备上线...', false);
+						pingDevice();
 					}
-					setTimeout(check, 3000);
 					break;
 				case 'flashing':
 					if (phase !== 'flashing') {
@@ -94,6 +94,18 @@ function pollUpgradeStatus() {
 		});
 	}
 	setTimeout(check, 1000);
+}
+
+function pingDevice() {
+	var p = window.location.origin.match(/^(https?:\/\/)/)[1];
+	var c = [window.location.origin, p+'192.168.1.1', p+'192.168.0.1', p+'192.168.10.1', p+'192.168.20.1', p+'192.168.30.1', p+'6.6.6.6', p+'6.7.8.9'];
+	var i = 0;
+	function t() {
+		if (i >= c.length) { showStatus('重启完成', '请手动访问设备地址', false); return; }
+		showStatus('正在重启', '正在尝试连接 ' + c[i].replace(p, '') + '...', false);
+		fetch(c[i++], {mode: 'no-cors', cache: 'no-cache'}).then(function() { window.top.location.href = c[i-1]; }).catch(function() { setTimeout(t, 3000); });
+	}
+	setTimeout(t, 30000);
 }
 
 document.querySelector('form').addEventListener('submit', handleSubmit);
