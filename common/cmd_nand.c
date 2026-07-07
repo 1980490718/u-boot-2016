@@ -308,6 +308,7 @@ static int raw_access(nand_info_t *nand, ulong addr, loff_t off, ulong count,
 			int read)
 {
 	int ret = 0;
+	loff_t last_bad_block = -1;
 
 	while (count--) {
 		/* Raw access */
@@ -318,6 +319,22 @@ static int raw_access(nand_info_t *nand, ulong addr, loff_t off, ulong count,
 			.ooblen = nand->oobsize,
 			.mode = MTD_OPS_RAW
 		};
+
+		loff_t block_off = off & ~(nand->erasesize - 1);
+
+		if (nand_block_isbad(nand, block_off)) {
+			if (block_off != last_bad_block) {
+				printf("Skip bad block at 0x%08llx\n",
+					(unsigned long long)block_off);
+				last_bad_block = block_off;
+			}
+			if (read)
+				memset((void *)addr, 0xff,
+					nand->writesize + nand->oobsize);
+			addr += nand->writesize + nand->oobsize;
+			off += nand->writesize;
+			continue;
+		}
 
 		if (read) {
 			ret = mtd_read_oob(nand, off, &ops);
