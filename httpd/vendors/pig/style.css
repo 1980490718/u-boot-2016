@@ -226,7 +226,10 @@ button,
 }
 
 .tips ul,
-.error p {
+.error p,
+.backup-col label,
+.backup-col select,
+.size-display {
 	font-size: .8rem
 }
 
@@ -368,10 +371,7 @@ p {
 	stroke: currentColor;
 	stroke-width: 1.5;
 	stroke-linecap: round;
-	stroke-linejoin: round
-}
-
-.icon {
+	stroke-linejoin: round;
 	vertical-align: -0.125em
 }
 
@@ -569,12 +569,6 @@ label {
 
 .backup-col label {
 	margin-bottom: .3rem
-}
-
-.backup-col label,
-.backup-col select,
-.size-display {
-	font-size: 14px
 }
 
 .backup-col select, .size-display {
