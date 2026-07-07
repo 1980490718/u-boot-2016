@@ -24,9 +24,9 @@
 			</div>
 			<div class="form-group">
 				<input type="hidden" name="img_flash" id="img-flash" value="img_nor">
-				<label for="img-file">请选择<b>IMG文件</b></label>
-				<input type="file" name="img" id="img-file" accept=".img,.IMG,.bin,.BIN" required>
-			</div>
+			<label for="img-file">请选择<b>IMG文件</b></label>
+			<input type="file" name="img" id="img-file" accept=".img,.IMG,.bin,.BIN" required>
+		</div>
 			<div class="button-container"><button type="submit" id="submit-btn" disabled>确认刷写</button></div>
 		</form>
 		<p id="sha256-display"></p>
@@ -50,11 +50,13 @@
 			return v < 1024 ? v + ' B' : v < 1048576 ? (v / 1024).toFixed(1) + ' KiB' : v < 1073741824 ? (v / 1048576).toFixed(1) + ' MiB' : (v / 1073741824).toFixed(1) + ' GiB';
 		}
 
+		var nandType = 'none';
+
 		function updateSelection() {
 			var dev = devices[sel.selectedIndex];
 			if (!dev) return;
-			sizeEl.textContent = '0x0-0x' + dev.size.toString(16).toUpperCase() + ' (' + formatSize(dev.size) + ')';
-			document.getElementById('img-flash').value = dev.name;
+			sizeEl.textContent = '0x0-0x' + dev.size.toString(16).toUpperCase() + ' (' + formatSize(dev.size) + (dev.oob ? ' ECC + ' + formatSize(dev.oob) + ' OOB' : '') + ')';
+			document.getElementById('img-flash').value = dev.raw ? 'img_nand_raw' : dev.name;
 		}
 
 		sel.onchange = updateSelection;
@@ -68,9 +70,12 @@
 			try { data = JSON.parse(xhr.responseText); } catch(e) { return; }
 			devices = [];
 			sel.innerHTML = '';
-			data.has_spi && data.spi_size > 0 && devices.push({name: 'img_nor', label: 'SPI NOR', size: data.spi_size});
-			data.has_nand && data.nand_size > 0 && devices.push({name: 'img_nand', label: 'NAND', size: data.nand_size});
-			data.has_emmc && data.emmc_size > 0 && devices.push({name: 'img_emmc', label: 'eMMC', size: data.emmc_size});
+			nandType = data.nand_type || 'none';
+			var rawOk = data.nand_raw_size && data.ram_available && data.nand_raw_size <= data.ram_available;
+			data.has_spi && data.spi_size > 0 && devices.push({name: 'img_nor', label: 'SPI NOR', size: data.spi_size, raw: 0});
+			data.has_nand && data.nand_size > 0 && devices.push({name: 'img_nand', label: 'NAND', size: data.nand_size, raw: 0});
+			data.has_nand && rawOk && devices.push({name: 'img_nand_raw', label: 'NAND_OOB', size: data.nand_size, raw: 1, oob: data.nand_raw_size - data.nand_size});
+			data.has_emmc && data.emmc_size > 0 && devices.push({name: 'img_emmc', label: 'eMMC', size: data.emmc_size, raw: 0});
 			devices.forEach(function(d) {
 				var opt = document.createElement('option');
 				opt.textContent = d.label;
@@ -82,6 +87,13 @@
 			}
 		};
 		xhr.send();
+
+		submitBtn.addEventListener('click', function(e) {
+			var selVal = document.getElementById('img-flash').value;
+			if (selVal === 'img_nand') {
+				if (!confirm('无OOB的数据编程可能导致ECC错误，建议选择NAND_OOB模式并选择带OOB数据的文件。是否继续？')) { e.preventDefault(); e.stopPropagation(); }
+			}
+		});
 	})();
 	</script>
 </body>
