@@ -573,6 +573,13 @@ static void httpd_handle_backup(void) {
 static void httpd_handle_file_request(void) {
 	struct fs_file fsfile;
 	unsigned int i;
+	if (memcmp((const void *)&uip_appdata[4], "/cgi-bin/", 9) == 0) {
+		hs->state = STATE_FILE_REQUEST;
+		hs->dataptr = (u8_t *)"HTTP/1.0 302 Found\r\nLocation: /index.html\r\n\r\n";
+		hs->upload = 44;
+		uip_send(hs->dataptr, hs->upload);
+		return;
+	}
 	for (i = 4; i < 30; i++) {
 		if (is_http_whitespace(uip_appdata[i])) {
 			uip_appdata[i] = 0;
@@ -590,12 +597,6 @@ static void httpd_handle_file_request(void) {
 	printf("%s\n", &uip_appdata[4]);
 	if (uip_appdata[4] == ISO_slash && uip_appdata[5] == 0) {
 		fs_open(file_index_html.name, &fsfile);
-	} else if (memcmp((const void *)&uip_appdata[4], "/cgi-bin/", 9) == 0) {
-		hs->state = STATE_FILE_REQUEST;
-		hs->dataptr = (u8_t *)"HTTP/1.0 302 Found\r\nLocation: /\r\n\r\n";
-		hs->upload = 34;
-		uip_send(hs->dataptr, hs->upload);
-		return;
 	} else {
 		if (!fs_open((const char *)&uip_appdata[4], &fsfile)) {
 			print_error("file not found!");
