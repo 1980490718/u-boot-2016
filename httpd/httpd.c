@@ -687,6 +687,7 @@ static void httpd_handle_initial_request(void) {
 }
 
 static void httpd_handle_file_acked(void) {
+	hs->last_activity = get_timer(0);
 	if (backup_sending_header && hs->upload <= uip_mss()) {
 		backup_sending_header = 0;
 		hs->state = STATE_FILE_REQUEST;
@@ -755,7 +756,7 @@ void httpd_appcall(void) {
 		return;
 	}
 	if (uip_poll()) {
-		if (get_timer(hs->last_activity) >= 30000) {
+		if (get_timer(hs->last_activity) >= 300000) {
 			httpd_state_reset();
 			uip_abort();
 		}
@@ -788,6 +789,7 @@ void httpd_poll(void) {
 	static int httpd_progress_start_done = 0;
 	static int eth_init_attempted = 0;
 	static ulong arptimer = 0;
+	static ulong periodic_timer = 0;
 	ulong now = get_timer(0);
 	int i;
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
@@ -860,17 +862,19 @@ void httpd_poll(void) {
 #endif
 
 	if (eth_rx() > 0) {
-		HttpdHandler();
 #ifdef CONFIG_DHCPD
 		dhcpd_poll_server();
 #endif
 	}
 
-	for (i = 0; i < UIP_CONNS; i++) {
-		uip_periodic(i);
-		if (uip_len > 0) {
-			uip_arp_out();
-			NetSendHttpd();
+	if (get_timer(periodic_timer) >= 500) {
+		periodic_timer = now;
+		for (i = 0; i < UIP_CONNS; i++) {
+			uip_periodic(i);
+			if (uip_len > 0) {
+				uip_arp_out();
+				NetSendHttpd();
+			}
 		}
 	}
 	if (get_timer(arptimer) >= 1000) {
