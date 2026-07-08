@@ -180,8 +180,8 @@ static void httpd_upload_complete(void) {
 	webfailsafe_post_done = 1;
 	upgrade_status = 0;
 	net_boot_file_size = (ulong)hs->upload_total;
-	static const char resp_ok[] = "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
-	static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nServer: uIP/0.9\r\nConnection: close\r\n\r\n";
+	static const char resp_ok[] = "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n";
+	static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\n";
 	httpd_state_reset();
 	hs->state = STATE_FILE_REQUEST;
 	if (!webfailsafe_upload_failed) {
@@ -355,7 +355,7 @@ static int httpd_check_upload_complete(void) {
 static void httpd_handle_upgrade_status(void) {
 	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting"};
 	char resp[128];
-	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
+	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
 	hs->state = STATE_FILE_REQUEST;
 	hs->dataptr = (u8_t *)resp;
 	hs->upload = len;
@@ -464,7 +464,7 @@ static void httpd_handle_partitions(void) {
 	);
 
 	hdr_len = sprintf(hdr,
-		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
+		"HTTP/1.0 200 OK\r\n"
 		"Content-Type: application/json\r\n"
 		"Content-Length: %d\r\n"
 		"Connection: close\r\n\r\n", pos);
@@ -552,7 +552,7 @@ static void httpd_handle_backup(void) {
 
 	sprintf(filename, "%s%s.bin", part_name, raw ? "_oob" : "");
 	hdr_len = sprintf(part_json_buf,
-		"HTTP/1.0 200 OK\r\nServer: uIP/0.9\r\n"
+		"HTTP/1.0 200 OK\r\n"
 		"Content-Type: application/octet-stream\r\n"
 		"Content-Disposition: attachment; filename=\"%s\"\r\n"
 		"Content-Length: %lu\r\n"
