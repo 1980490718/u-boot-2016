@@ -38,7 +38,7 @@ sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-
 makefsdatac脚本处理Web界面文件，需要用的Node.js工具，以及该工具的以下组件：
 
 ```bash
-npm install -g html-minifier-terser clean-css terser
+npm install -g html-minifier-terser clean-css terser svgo
 ```
 
 ## 快速开始
@@ -150,7 +150,7 @@ STAGING_DIR=../staging_dir/
 
 ### 报错处理
 
-- httpd/fs.c:54:20: fatal error: fsdata.c": No such fil or directory 请检查是否安装了NodeJS,以及Node的子模块：html-minifier-terser clean-css terser
+- "httpd/fs.c:54:20: fatal error: fsdata.c": No such fil or directory 请检查是否安装了NodeJS,以及Node的子模块：html-minifier-terser clean-css terser svgo
 
 ### 许可证
 
