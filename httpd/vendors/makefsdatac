@@ -512,14 +512,27 @@ function print_data_array() {
 			_is_compressed=1
 			ascii_to_bytes "Content-type: text/html; charset=utf-8\r\n" >> "$files_content_tmp"
 			;;
-		png|jpg|jpeg|gif|ico|svg)
-			# For images, we still compress but don't process with tools
+		png|jpg|jpeg|gif)
+			_orig_size=$(stat -c%s "$_file_path" 2>/dev/null || stat -f %z "$_file_path" 2>/dev/null)
 			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
-			_is_compressed=1
+			_comp_size=$(echo "$_file_content" | tr -d '0x,' | wc -c)
+			_comp_size=$((_comp_size / 2))
+			if [ $_comp_size -lt $_orig_size ]; then
+				_is_compressed=1
+			else
+				_is_compressed=0
+				_file_content=$(cat "$_file_path" | od -A n -t x1 | tr -d '\n\r ' | sed 's/../0x&,/g;s/,$//')
+			fi
 			case "$_file_ext" in
 				png)  ascii_to_bytes "Content-Type: image/png\r\n" >> "$files_content_tmp" ;;
 				jpg|jpeg) ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp" ;;
 				gif)  ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp" ;;
+			esac
+			;;
+		ico|svg)
+			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
+			_is_compressed=1
+			case "$_file_ext" in
 				ico)  ascii_to_bytes "Content-Type: image/x-icon\r\n" >> "$files_content_tmp" ;;
 				svg)  ascii_to_bytes "Cache-Control: max-age=3600\r\nContent-Type: image/svg+xml; charset=utf-8\r\n" >> "$files_content_tmp" ;;
 			esac
