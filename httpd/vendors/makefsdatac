@@ -489,9 +489,6 @@ function print_data_array() {
 	fi
 	echo -n "," >> "$files_content_tmp"
 
-	ascii_to_bytes "Server: uIP/0.9\r\n" >> "$files_content_tmp"
-	echo -n "," >> "$files_content_tmp"
-
 	# Content - Process with dedicated tools and then compress
 	case "$_file_ext" in
 		css)
@@ -499,7 +496,7 @@ function print_data_array() {
 			minify_standalone_css "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
 			_is_compressed=1
-			ascii_to_bytes "Content-type: text/css; charset=UTF-8\r\n" >> "$files_content_tmp"
+			ascii_to_bytes "Content-type: text/css; charset=utf-8\r\n" >> "$files_content_tmp"
 			;;
 		js)
 			_temp_minified=$(mktemp)
@@ -513,7 +510,7 @@ function print_data_array() {
 			minify_html_with_preserved_styling "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
 			_is_compressed=1
-			ascii_to_bytes "Content-type: text/html; charset=UTF-8\r\n" >> "$files_content_tmp"
+			ascii_to_bytes "Content-type: text/html; charset=utf-8\r\n" >> "$files_content_tmp"
 			;;
 		png|jpg|jpeg|gif|ico|svg)
 			# For images, we still compress but don't process with tools
@@ -524,7 +521,7 @@ function print_data_array() {
 				jpg|jpeg) ascii_to_bytes "Content-Type: image/jpeg\r\n" >> "$files_content_tmp" ;;
 				gif)  ascii_to_bytes "Content-Type: image/gif\r\n" >> "$files_content_tmp" ;;
 				ico)  ascii_to_bytes "Content-Type: image/x-icon\r\n" >> "$files_content_tmp" ;;
-				svg)  ascii_to_bytes "Content-Type: image/svg+xml\r\n" >> "$files_content_tmp" ;;
+				svg)  ascii_to_bytes "Cache-Control: max-age=3600\r\nContent-Type: image/svg+xml; charset=utf-8\r\n" >> "$files_content_tmp" ;;
 			esac
 			;;
 		*)
