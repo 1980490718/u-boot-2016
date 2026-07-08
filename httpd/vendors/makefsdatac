@@ -126,6 +126,7 @@ fi
 html_minifier_available=0
 css_minifier_available=0
 js_minifier_available=0
+svgo_available=0
 zopfli_available=0
 
 if [ $node_available -eq 1 ]; then
@@ -144,6 +145,9 @@ if [ $node_available -eq 1 ]; then
 
 	# Check for terser
 	check_node_module "terser" "js_minifier_available"
+
+	# Check for svgo
+	check_node_module "svgo" "svgo_available"
 fi
 
 # Check for zopfli (Google's gzip optimizer)
@@ -185,6 +189,7 @@ echo "Tool availability:"
 echo "  - HTML Minifier: $([ $html_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
 echo "  - CSS Minifier: $([ $css_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
 echo "  - JS Minifier: $([ $js_minifier_available -eq 1 ] && echo "Yes" || echo "No")"
+echo "  - SVG Minifier: $([ $svgo_available -eq 1 ] && echo "Yes" || echo "No")"
 echo "  - Compression backend: $compression_backend"
 if [ "$compression_backend" = "zopfli" ]; then
     echo "    (using zopfli with $zopfli_iterations iterations)"
@@ -204,6 +209,35 @@ prev_fsdata_struct="NULL"
 
 # Files counter
 files_counter=0
+
+function minify_svg() {
+	local _input_file="$1"
+	local _output_file="$2"
+	local _original_filename="$3"
+	if [ $svgo_available -eq 1 ]; then
+		local _orig_size=$(stat -c%s "$_input_file" 2>/dev/null || stat -f %z "$_input_file" 2>/dev/null)
+		echo "Minifying SVG: $(basename $_input_file)" >&2
+		node -e "
+		const {optimize} = require('svgo');
+		const fs = require('fs');
+		const result = optimize(fs.readFileSync('$_input_file','utf8'), {
+			plugins: [{name:'preset-default',params:{overrides:{cleanupIds:{preservePrefixes:['icon-']}}}}]
+		});
+		fs.writeFileSync('$_output_file', result.data);
+		" || cp "$_input_file" "$_output_file"
+		local _new_size=$(stat -c%s "$_output_file" 2>/dev/null || stat -f %z "$_output_file" 2>/dev/null)
+		local _ratio=$((100 - (_new_size * 100 / _orig_size)))
+		echo "SVG optimized: $_original_filename: $_orig_size -> $_new_size bytes ($_ratio% reduction)" >&2
+	else
+		cp "$_input_file" "$_output_file"
+	fi
+
+	if [ $debug_mode -eq 1 ] && [ -n "$_original_filename" ]; then
+		local debug_filename="$(basename "$_original_filename")"
+		cp "$_output_file" "$minified_dir/$debug_filename"
+		echo "Debug: Saved minified SVG to $minified_dir/$debug_filename" >&2
+	fi
+}
 
 # Change ASCII to bytes, comma separated (e.g. "0x01, 0x02, 0x03...")
 function ascii_to_bytes() {
@@ -530,7 +564,13 @@ function print_data_array() {
 			esac
 			;;
 		ico|svg)
-			_file_content=$(compress_and_convert "$_file_path" "$_file_name")
+			if [ "$_file_ext" = "svg" ]; then
+				_temp_minified=$(mktemp)
+				minify_svg "$_file_path" "$_temp_minified" "$_file_name"
+				_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
+			else
+				_file_content=$(compress_and_convert "$_file_path" "$_file_name")
+			fi
 			_is_compressed=1
 			case "$_file_ext" in
 				ico)  ascii_to_bytes "Content-Type: image/x-icon\r\n" >> "$files_content_tmp" ;;
