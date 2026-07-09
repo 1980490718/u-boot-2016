@@ -247,7 +247,7 @@ typedef struct {
 #define CONFIG_IPQ40XX_ESS	1
 #define CONFIG_IPQ40XX_EDMA     1
 #define CONFIG_NET_RETRY_COUNT          5
-#define CONFIG_SYS_RX_ETH_BUFFER        16
+#define CONFIG_SYS_RX_ETH_BUFFER        128
 #define CONFIG_IPQ_MDIO     	1
 #define CONFIG_QCA8075_PHY      1
 #if !defined(CONFIG_IPQ40XX_ALIYUN_AP4220) && \

@@ -235,7 +235,7 @@ extern loff_t board_env_size;
 #define CONFIG_IPQ5018_MDIO
 
 #define CONFIG_NET_RETRY_COUNT			5
-#define CONFIG_SYS_RX_ETH_BUFFER		16
+#define CONFIG_SYS_RX_ETH_BUFFER		128
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 #define CONFIG_MII
