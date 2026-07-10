@@ -153,27 +153,21 @@ jobs:
 
       - name: Check and delete all published content on Releases page
         run: |
-          echo "Check Releases page today (${{ env.TODAY }})..."
+          echo "Check Releases page today (${{ env.TODAY }}) for branch: ${{ env.BRANCH_NAME }}"
           echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-
-          # Calculate today's 00:00:00 and 23:59:59 timestamps (UTC)
-          TODAY_START="${{ env.TODAY }} 00:00:00"
-          TODAY_END="${{ env.TODAY }} 23:59:59"
-          echo "Today's time range: $TODAY_START - $TODAY_END"
 
           # View all releases for debugging
           echo "All Releases list:"
           gh release list --limit 10
 
-          # Get JSON formatted releases data
-          RELEASE_JSON=$(gh release list --limit 100 --json tagName,createdAt)
-          echo "JSON output (first 1000 characters):"
-          echo "$RELEASE_JSON" | head -c 1000
+          # Match by tag name directly (tag format: branch/vYYYY-MM-DD)
+          # This avoids timezone mismatch between Shanghai date and GitHub UTC createdAt
+          TAG_PREFIX="${{ env.BRANCH_NAME }}/v${{ env.TODAY }}"
+          echo "Looking for tag prefix: $TAG_PREFIX"
 
-          # Filter today's releases for current branch only
-          echo "Filter today's Releases for branch: ${{ env.BRANCH_NAME }}"
-          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" --arg branch "${{ env.BRANCH_NAME }}" '.[] | select(.createdAt | startswith($date)) | select(.tagName | startswith($branch + "/v")) | .tagName')
-          echo "Today's Tags for branch ${{ env.BRANCH_NAME }}: $TODAY_TAGS"
+          RELEASE_JSON=$(gh release list --limit 100 --json tagName)
+          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg prefix "$TAG_PREFIX" '.[] | select(.tagName | startswith($prefix)) | .tagName')
+          echo "Matching tags: $TODAY_TAGS"
 
           if [ -n "$TODAY_TAGS" ]; then
             echo "Found published Releases today, deleting all..."
