@@ -1500,6 +1500,12 @@ static int qpic_nand_read_id_serial(struct mtd_info *mtd)
 				/* Upadate device paramter as per device table */
 				qpic_serial_update_dev_params(mtd);
 
+				printf("%s page=%d+%d blk=%dpg total=%lldMiB\n",
+					serial_params->name, serial_params->page_size,
+					serial_params->spare_size,
+					serial_params->pgs_per_blk,
+					(long long)serial_params->density / 1024 / 1024);
+
 				return nand_ret;
 			}
 		}
@@ -1801,6 +1807,14 @@ qpic_nand_onfi_probe(struct mtd_info *mtd)
 	param_page = (struct onfi_param_page*)buffer;
 
 	/* TODO: Add CRC check to validate the param page. */
+
+	struct onfi_param_page *p = param_page;
+	int ml = 20; while (ml > 0 && p->device_model[ml-1] == ' ') ml--;
+	printf("%.*s page=%d+%d blk=%dpg %dLUNx%dblks total=%lldMiB\n",
+		ml, p->device_model, p->data_per_pg, p->spare_per_pg,
+		p->pgs_per_blk, p->num_LUN, p->blks_per_LUN,
+		(long long)p->data_per_pg * p->pgs_per_blk *
+			p->blks_per_LUN * p->num_LUN / 1024 / 1024);
 
 	/* Save the parameter values */
 	onfi_ret = qpic_nand_onfi_save_params(mtd, param_page);
@@ -2636,6 +2650,11 @@ static int qpic_nand_get_info(struct mtd_info *mtd, uint32_t flash_id)
 	dev->num_blocks /= (dev->block_size);
 	dev->num_pages_per_blk = dev->block_size / dev->page_size;
 	dev->num_pages_per_blk_mask = dev->num_pages_per_blk - 1;
+
+	printf("%s page=%d+%d blk=%dpg total=%lldMiB\n",
+		flash_dev->name, mtd->writesize, mtd->oobsize,
+		dev->num_pages_per_blk,
+		(long long)mtd->size / 1024 / 1024);
 
 	return 0;
 }
