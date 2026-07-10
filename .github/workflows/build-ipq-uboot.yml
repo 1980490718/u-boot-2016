@@ -2,7 +2,6 @@ name: Build U-Boot for IPQ Devices
 
 on:
   push:
-    branches: [main, master]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -97,7 +96,7 @@ jobs:
   release:
     name: Create Release
     needs: build
-    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch')
+    if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Shanghai
@@ -132,6 +131,7 @@ jobs:
           echo "TODAY_ISO=$(date +%Y-%m-%d)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "FULL_BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
 
       - name: Check and delete all published content on Releases page
         run: |
@@ -152,11 +152,10 @@ jobs:
           echo "JSON output (first 1000 characters):"
           echo "$RELEASE_JSON" | head -c 1000
 
-          # Filter today's releases between today's start and end timestamps
-          echo "Filter today's Releases:"
-          # Use startswith to match date
-          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" '.[] | select(.createdAt | startswith($date)) | .tagName')
-          echo "Today's Tags: $TODAY_TAGS"
+          # Filter today's releases for current branch only
+          echo "Filter today's Releases for branch: ${{ env.BRANCH_NAME }}"
+          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" --arg branch "${{ env.BRANCH_NAME }}" '.[] | select(.createdAt | startswith($date)) | select(.tagName | endswith("-" + $branch)) | .tagName')
+          echo "Today's Tags for branch ${{ env.BRANCH_NAME }}: $TODAY_TAGS"
 
           if [ -n "$TODAY_TAGS" ]; then
             echo "Found published Releases today, deleting all..."
@@ -172,9 +171,10 @@ jobs:
       - name: Create new GitHub Release
         uses: softprops/action-gh-release@v3.0.1
         with:
-          tag_name: v${{ env.TODAY }}
-          name: v${{ env.TODAY }}
+          tag_name: v${{ env.TODAY }}-${{ env.BRANCH_NAME }}
+          name: v${{ env.TODAY }}-${{ env.BRANCH_NAME }}
           body: |
+            Branch：${{ env.BRANCH_NAME }}
             Compiled U-Boot IPQ platforms:
             Build Time：${{ env.FULL_BUILD_TIME }} ${{ env.TZ }}
             Types：ipq40xx、ipq5018、ipq5332、ipq6018、ipq806x、ipq807x、ipq9574
