@@ -700,9 +700,7 @@ libs-$(CONFIG_HAS_POST) += post/
 libs-y += test/
 libs-y += test/dm/
 libs-$(CONFIG_UT_ENV) += test/env/
-#ifdef CONFIG_HTTPD
-libs-$(CONFIG_HTTPD) += httpd/
-#endif
+libs-$(CONFIG_LWIP_HTTPD) += failsafe/
 
 libs-y += $(if $(BOARDDIR),board/$(BOARDDIR)/)
 
@@ -1398,9 +1396,9 @@ $(version_h): include/config/uboot.release FORCE
 
 $(timestamp_h): $(srctree)/Makefile FORCE
 	$(call filechk,timestamp.h)
-#ifdef CONFIG_HTTPD
-	sed -i "s/Version:[^<]*</Version: U-Boot $(UBOOTRELEASE) (`LC_ALL=C date +'%b %d %C%y - %T %z'`)</g" $(CURDIR)/httpd/vendors/pig/*.html
-	cd $(srctree)/httpd; ./vendors/makefsdatac; cd -
+#ifdef CONFIG_LWIP_HTTPD
+	sed -i "s/Version:[^<]*</Version: U-Boot $(UBOOTRELEASE) (`LC_ALL=C date +'%b %d %C%y - %T %z'`)</g" $(CURDIR)/failsafe/html/pig/*.html
+	cd $(srctree)/failsafe; ./html/makefsdatac; cd -
 # endif
 
 # ---------------------------------------------------------------------------

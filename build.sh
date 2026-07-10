@@ -128,8 +128,8 @@ echo "Deep clean by .gitignore rules"
 			dtb_combined.map \
 			arch/arm/dts/dtbtable.S \
 			arch/arm/dts/compressed_dtb/dtbcombined.S \
-			httpd/fsdata.c \
-			httpd/vendors/debug_output \
+			failsafe/fsdata.c \
+			failsafe/html/debug_output \
 			tools/mbn_tools.pyc \
 			u-boot* \
 			tools/gen_eth_addr \
@@ -382,7 +382,7 @@ done
 
 # Restore HTML files to default version state
 echo "Restoring HTML files to default version state..."
-sed -i "s/Version:[^<]*</Version:</g" $PWD/httpd/vendors/pig/*.html
+sed -i "s/Version:[^<]*</Version:</g" $PWD/failsafe/html/pig/*.html
 
 # Print build summary
 echo "================================================"

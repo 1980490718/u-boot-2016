@@ -14,8 +14,8 @@
 #include <cli.h>
 #include <watchdog.h>
 
-#ifdef CONFIG_HTTPD
-#include "../httpd/httpd.h"
+#ifdef CONFIG_LWIP_HTTPD
+#include "../failsafe/failsafe_httpd.h"
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -272,7 +272,7 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 				if (get_ticks() >= etime)
 					return -2;	/* timed out */
 				WATCHDOG_RESET();
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 				httpd_poll();
 #endif
 			}
@@ -281,7 +281,7 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 		/* Also poll httpd in the main loop waiting for characters */
 		while (!tstc()) {
 			WATCHDOG_RESET();
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 			httpd_poll();
 #endif
 		}
@@ -548,14 +548,14 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 		while (!tstc()) {
 			show_activity(0);
 			WATCHDOG_RESET();
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 			httpd_poll();
 #endif
 		}
 #else
 		while (!tstc()) {
 			WATCHDOG_RESET();
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 			httpd_poll();
 #endif
 		}

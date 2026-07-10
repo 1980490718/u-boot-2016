@@ -6,12 +6,9 @@
 #include <common.h>
 #include <malloc.h>
 #include <command.h>
-#include "../httpd/uipopt.h"
-#include "../httpd/httpd.h"
-#include "../httpd/uip.h"
+#include "../failsafe/failsafe_httpd.h"
+#include "../failsafe/failsafe_httpd_types.h"
 #include <net.h>
-
-#define STATE_FILE_REQUEST			1
 
 /* Web terminal buffer size */
 #define WEBTERM_BUFFER_SIZE 16384
@@ -46,7 +43,6 @@ static char webterm_output_buf[WEBTERM_BUFFER_SIZE];
 void webterm_capture_output(const char *str);
 
 /* External reference to httpd state */
-extern struct httpd_state *hs;
 
 /* Initialize web terminal */
 int webterm_init(void) {
@@ -227,7 +223,7 @@ int webterm_run_pending_command(void) {
 	return 1;
 }
 
-static void webterm_respond(int code, const char *ctype, const char *fmt, ...) {
+static void webterm_respond(struct failsafe_httpd_state *hs, int code, const char *ctype, const char *fmt, ...) {
 	va_list ap;
 	const char *reason = code == 200 ? "OK" : "Method Not Allowed";
 	int hlen = snprintf(webterm_response_buf, sizeof(webterm_response_buf),
@@ -239,11 +235,11 @@ static void webterm_respond(int code, const char *ctype, const char *fmt, ...) {
 	hs->state = STATE_FILE_REQUEST;
 	hs->dataptr = (u8_t *)webterm_response_buf;
 	hs->upload = hlen + blen;
-	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+	httpd_send_data(hs);
 }
 
-static int webterm_parse_post_body(char *out, int out_size) {
-	char *body = strstr((char *)uip_appdata, "\r\n\r\n");
+static int webterm_parse_post_body(char *data, int data_len, char *out, int out_size) {
+	char *body = strstr(data, "\r\n\r\n");
 	int header_len, body_len;
 	char *nl;
 
@@ -251,12 +247,12 @@ static int webterm_parse_post_body(char *out, int out_size) {
 		return -1;
 
 	body += 4;
-	header_len = body - (char *)uip_appdata;
+	header_len = body - data;
 
-	if (header_len > uip_len)
+	if (header_len > data_len)
 		return -1;
 
-	body_len = uip_len - header_len;
+	body_len = data_len - header_len;
 	if (body_len <= 0 || body_len > WEBTERM_MAX_CMD_LEN)
 		return -1;
 
@@ -274,16 +270,16 @@ static int webterm_parse_post_body(char *out, int out_size) {
 	return body_len;
 }
 
-void webterm_http_handler(void) {
+void webterm_http_handler(struct failsafe_httpd_state *hs, char *data, int data_len) {
 	int is_get;
 	const char *path;
 
-	if (!hs)
+	if (!hs || !data)
 		return;
 
-	is_get = (strncmp((char *)uip_appdata, "GET ", 4) == 0);
-	path = is_get ? (char *)uip_appdata + 4
-		   : (strncmp((char *)uip_appdata, "POST ", 5) == 0) ? (char *)uip_appdata + 5 : NULL;
+	is_get = (strncmp(data, "GET ", 4) == 0);
+	path = is_get ? data + 4
+		   : (strncmp(data, "POST ", 5) == 0) ? data + 5 : NULL;
 	if (!path || strncmp(path, "/webterm/", 9) != 0)
 		return;
 	path += 9;
@@ -291,25 +287,25 @@ void webterm_http_handler(void) {
 	if (strncmp(path, "cmd", 3) == 0) {
 		if (!is_get) {
 			char cmd_buf[WEBTERM_MAX_CMD_LEN];
-			if (webterm_parse_post_body(cmd_buf, sizeof(cmd_buf)) > 0)
+			if (webterm_parse_post_body(data, data_len, cmd_buf, sizeof(cmd_buf)) > 0)
 				webterm_execute_command(cmd_buf);
 		}
-		webterm_respond(is_get ? 405 : 200, "text/plain",
+		webterm_respond(hs, is_get ? 405 : 200, "text/plain",
 			is_get ? "Method Not Allowed. Use POST for commands.\n" : "OK\n");
 	} else if (strncmp(path, "abort", 5) == 0) {
 		if (!is_get)
 			webterm_abort_requested = 1;
-		webterm_respond(is_get ? 405 : 200, "text/plain",
+		webterm_respond(hs, is_get ? 405 : 200, "text/plain",
 			is_get ? "Method Not Allowed. Use POST for abort.\n" : "OK\n");
 	} else if (!is_get) {
 		return;
 	} else if (strncmp(path, "status", 6) == 0) {
 		webterm_flush_line_buffer();
-		webterm_respond(200, "text/plain", "%d", webterm_output_seq);
+		webterm_respond(hs, 200, "text/plain", "%d", webterm_output_seq);
 	} else if (strncmp(path, "data", 4) == 0) {
 		webterm_flush_line_buffer();
 		int out_len = webterm_get_output(webterm_output_buf, sizeof(webterm_output_buf));
-		webterm_respond(200, "text/plain; charset=utf-8", "%s",
+		webterm_respond(hs, 200, "text/plain; charset=utf-8", "%s",
 			out_len > 0 ? webterm_output_buf : "");
 	}
 }

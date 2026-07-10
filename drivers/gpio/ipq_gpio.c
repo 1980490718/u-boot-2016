@@ -16,7 +16,7 @@
 #include <asm/types.h>
 #include <fdtdec.h>
 #include <asm/arch-qca-common/gpio.h>
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #include <ipq_api.h>
 #endif
 

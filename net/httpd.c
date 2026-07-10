@@ -9,9 +9,9 @@
 #include <net.h>
 #include <asm/byteorder.h>
 #include "httpd.h"
-#include "../httpd/uipopt.h"
-#include "../httpd/uip.h"
-#include "../httpd/uip_arp.h"
+#include "../failsafe/failsafe_httpd.h"
+#include "../failsafe/failsafe_httpd_types.h"
+#include "lwip/ip4_addr.h"
 #ifdef CONFIG_CMD_NAND
 #include <nand.h>
 #endif
@@ -36,81 +36,55 @@ static int do_initramfs_boot(const ulong size);
 static int execute_command(const char *cmd);
 static void print_upgrade_warning(const char *upgrade_type);
 
-static int arptimer = 0;
 struct in_addr net_httpd_ip;
 
 void HttpdStart(void) {
+	struct ip4_addr ipaddr, netmask, gw;
+	ulong tmp_ip_addr;
+
 	net_init();
+
+	IP4_ADDR(&gw, 0, 0, 0, 0);
+
 #ifdef CONFIG_DHCPD
 	dhcpd_ip_settings();
 	dhcpd_request_nonblocking();
 
-	struct uip_eth_addr eaddr;
-	unsigned short int ip[2];
-	ulong tmp_ip_addr = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
-	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
-		   (tmp_ip_addr & 0xff000000) >> 24,
-		   (tmp_ip_addr & 0x00ff0000) >> 16,
-		   (tmp_ip_addr & 0x0000ff00) >> 8,
-		   (tmp_ip_addr & 0x000000ff));
-	eaddr.addr[0] = net_ethaddr[0];
-	eaddr.addr[1] = net_ethaddr[1];
-	eaddr.addr[2] = net_ethaddr[2];
-	eaddr.addr[3] = net_ethaddr[3];
-	eaddr.addr[4] = net_ethaddr[4];
-	eaddr.addr[5] = net_ethaddr[5];
-	uip_setethaddr(eaddr);
-	uip_init();
-	httpd_init();
-	ip[0] = htons((tmp_ip_addr & 0xFFFF0000) >> 16);
-	ip[1] = htons(tmp_ip_addr & 0x0000FFFF);
-	uip_sethostaddr(ip);
-	ip[0] = htons((ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0xFFFF0000) >> 16);
-	ip[1] = htons(ntohl(dhcpd_svr_cfg.netmask.s_addr) & 0x0000FFFF);
+	tmp_ip_addr = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
+	IP4_ADDR(&ipaddr,
+		(tmp_ip_addr >> 24) & 0xff,
+		(tmp_ip_addr >> 16) & 0xff,
+		(tmp_ip_addr >> 8) & 0xff,
+		tmp_ip_addr & 0xff);
+
+	{
+		ulong nm = ntohl(dhcpd_svr_cfg.netmask.s_addr);
+		IP4_ADDR(&netmask,
+			(nm >> 24) & 0xff,
+			(nm >> 16) & 0xff,
+			(nm >> 8) & 0xff,
+			nm & 0xff);
+	}
 	net_netmask.s_addr = dhcpd_svr_cfg.netmask.s_addr;
-	uip_setnetmask(ip);
 #else
-	struct uip_eth_addr eaddr;
-	unsigned short int ip[2];
-	ulong tmp_ip_addr = ntohl(net_ip.s_addr);
+	tmp_ip_addr = ntohl(net_ip.s_addr);
+	IP4_ADDR(&ipaddr,
+		(tmp_ip_addr >> 24) & 0xff,
+		(tmp_ip_addr >> 16) & 0xff,
+		(tmp_ip_addr >> 8) & 0xff,
+		tmp_ip_addr & 0xff);
+
+	IP4_ADDR(&netmask, 255, 255, 255, 0);
+	net_netmask.s_addr = htonl(0xFFFFFF00);
+#endif
 
 	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
-		   (tmp_ip_addr & 0xff000000) >> 24,
-		   (tmp_ip_addr & 0x00ff0000) >> 16,
-		   (tmp_ip_addr & 0x0000ff00) >> 8,
-		   (tmp_ip_addr & 0x000000ff));
+		(tmp_ip_addr >> 24) & 0xff,
+		(tmp_ip_addr >> 16) & 0xff,
+		(tmp_ip_addr >> 8) & 0xff,
+		tmp_ip_addr & 0xff);
 
-	eaddr.addr[0] = net_ethaddr[0];
-	eaddr.addr[1] = net_ethaddr[1];
-	eaddr.addr[2] = net_ethaddr[2];
-	eaddr.addr[3] = net_ethaddr[3];
-	eaddr.addr[4] = net_ethaddr[4];
-	eaddr.addr[5] = net_ethaddr[5];
-	uip_setethaddr(eaddr);
-
-	uip_init();
-	httpd_init();
-
-	ip[0] = htons((tmp_ip_addr & 0xFFFF0000) >> 16);
-	ip[1] = htons(tmp_ip_addr & 0x0000FFFF);
-
-	uip_sethostaddr(ip);
-
-	u16_t hostaddr0 = ntohs(uip_hostaddr[0]);
-	u16_t hostaddr1 = ntohs(uip_hostaddr[1]);
-	u8_t byte1 = (hostaddr0 >> 8) & 0xff;
-	u8_t byte2 = hostaddr0 & 0xff;
-	u8_t byte3 = (hostaddr1 >> 8) & 0xff;
-	u8_t byte4 = hostaddr1 & 0xff;
-
-	printf("Host IP set to: %d.%d.%d.%d\n", byte1, byte2, byte3, byte4);
-
-	ip[0] = htons((0xFFFFFF00 & 0xFFFF0000) >> 16);
-	ip[1] = htons(0xFFFFFF00 & 0x0000FFFF);
-
-	net_netmask.s_addr = 0xFFFFFF00;
-	uip_setnetmask(ip);
-#endif
+	failsafe_lwip_init(&ipaddr, &netmask, &gw);
 	webfailsafe_is_running = 1;
 }
 
@@ -141,11 +115,11 @@ static void print_upgrade_warning(const char *upgrade_type) {
 
 #ifdef CONFIG_MD5
 #include <u-boot/md5.h>
-void printChecksumMd5(int address, unsigned int size) {
+void printChecksumMd5(ulong address, ulong size) {
 	void *buf = (void *)(address);
 	u8 output[16];
 	md5_wd(buf, size, output, CHUNKSZ_MD5);
-	printf("The md5sum from 0x%08x to 0x%08x is: ", address, address + size);
+	printf("The md5sum from 0x%08lx to 0x%08lx is: ", address, address + size);
 	int i;
 	for (i = 0; i < 16; i++) printf("%02x", output[i] & 0xFF);
 }
@@ -591,46 +565,6 @@ int do_http_progress(const int state) {
 			break;
 	}
 	return 0;
-}
-
-void NetSendHttpd(void) {
-	volatile uchar *tmpbuf = net_tx_packet;
-	int i;
-	for (i = 0; i < 40 + UIP_LLH_LEN; i++) tmpbuf[i] = uip_buf[i];
-	for (; i < uip_len; i++) tmpbuf[i] = uip_appdata[i - 40 - UIP_LLH_LEN];
-	eth_send(net_tx_packet, uip_len);
-}
-
-void NetReceiveHttpd(volatile uchar *inpkt, int len) {
-	memcpy(uip_buf, (const void *)inpkt, len);
-	uip_len = len;
-	struct uip_eth_hdr *tmp = (struct uip_eth_hdr *)&uip_buf[0];
-	if (tmp->type == htons(UIP_ETHTYPE_IP)) {
-		uip_arp_ipin();
-		uip_input();
-		if (uip_len > 0) {
-			uip_arp_out();
-			NetSendHttpd();
-		}
-	} else if (tmp->type == htons(UIP_ETHTYPE_ARP)) {
-		uip_arp_arpin();
-		if (uip_len > 0) NetSendHttpd();
-	}
-}
-
-void HttpdHandler(void) {
-	int i;
-	for (i = 0; i < UIP_CONNS; i++) {
-		uip_periodic(i);
-		if (uip_len > 0) {
-			uip_arp_out();
-			NetSendHttpd();
-		}
-	}
-	if (++arptimer == 20) {
-		uip_arp_timer();
-		arptimer = 0;
-	}
 }
 
 int do_httpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {

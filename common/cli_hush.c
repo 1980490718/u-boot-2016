@@ -130,8 +130,8 @@
 #ifdef __U_BOOT__
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_HTTPD
-#include "../httpd/httpd.h"
+#ifdef CONFIG_LWIP_HTTPD
+#include "../failsafe/failsafe_httpd.h"
 #endif
 
 #define EXIT_SUCCESS 0
@@ -3175,7 +3175,7 @@ static int parse_stream_outer(struct in_str *inp, int flag)
 	int code = 1;
 #endif
 	do {
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 		if (httpd_is_running()) {
 			httpd_poll();
 		}

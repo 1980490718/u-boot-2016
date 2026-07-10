@@ -29,7 +29,7 @@
 #ifdef CONFIG_IPQ40XX
 #include <../board/qca/arm/common/fdt_info.h>
 #endif
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #include <ipq_api.h>
 #endif
 
@@ -237,7 +237,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 			{
 				ret = get_partition_info_efi_by_name(blk_dev,
 						(char *)part_name, &disk_info);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 				if (ret) {
 					printf("Partition %s not found, skipped\n", part_name);
 					return -1;
@@ -279,7 +279,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 			}
 
 #ifdef CONFIG_QCA_MMC
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 		} else if ((sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
 				sfi->rootfs.offset == 0xBAD0FF5E) &&
 			(smem_getpart((char *)part_name, &start_block, &size_block) == -ENOENT ||
@@ -310,7 +310,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 				{
 					ret = get_partition_info_efi_by_name(blk_dev,
 							(char *)part_name, &disk_info);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 					if (ret) {
 						printf("Partition %s not found, skipped\n", part_name);
 					return -1;
@@ -324,8 +324,8 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 					part_size = (uint32_t)disk_info.size;
 				}
 			} else {
-#ifdef CONFIG_HTTPD
-				printf("eMMC not initialized, skipped %s\n", part_name);
+#ifdef CONFIG_LWIP_HTTPD
+			printf("eMMC not initialized, skipped %s\n", part_name);
 				return -1;
 #else
 				ret = -1;
@@ -421,7 +421,7 @@ static int do_flread(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	if (argc == 3)
 		load_addr = simple_strtoul(argv[2], NULL, 16);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	else
 		load_addr = (uint32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
 #else
@@ -453,7 +453,7 @@ static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	if (argc == 3)
 		load_addr = simple_strtoul(argv[2], NULL, 16);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	else
 		load_addr = (uint32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
 #else

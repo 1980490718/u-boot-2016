@@ -348,11 +348,11 @@ const char *bootdelay_process(void)
 		s = getenv("altbootcmd");
 	} else
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	{
 #endif
 		s = getenv("bootcmd");
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 		if (s && strcmp(s, "bootipq") != 0)
 			s = "bootipq";
 	}

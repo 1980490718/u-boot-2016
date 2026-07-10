@@ -108,7 +108,7 @@
 #include "sntp.h"
 #endif
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #include "httpd.h"
 #include <ipq_api.h>
 #endif
@@ -211,14 +211,14 @@ static int net_check_prereq(enum proto_t protocol);
 static int net_try_count;
 
 int __maybe_unused net_busy_flag;
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 unsigned char *webfailsafe_data_pointer = NULL;
 int webfailsafe_is_running = 0;
 int webfailsafe_ready_for_upgrade = 0;
 int webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
 extern int webfailsafe_post_done;
 extern int file_too_big;
-void NetReceiveHttpd(volatile uchar * inpkt, int len);
+extern void failsafe_netif_input(volatile uchar *inpkt, int len);
 #endif
 
 /**********************************************************************/
@@ -1078,9 +1078,9 @@ void net_process_received_packet(uchar *in_packet, int len)
 	if (len < ETHER_HDR_SIZE)
 		return;
 
-#if defined(CONFIG_HTTPD)
+#if defined(CONFIG_LWIP_HTTPD)
 	if(webfailsafe_is_running){
-		NetReceiveHttpd(in_packet,len);
+		failsafe_netif_input(in_packet,len);
 	}
 #endif
 #ifdef CONFIG_API

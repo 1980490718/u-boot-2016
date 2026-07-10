@@ -16,8 +16,8 @@
 #include <fdtdec.h>
 #include <malloc.h>
 
-#ifdef CONFIG_HTTPD
-#include "../httpd/httpd.h"
+#ifdef CONFIG_LWIP_HTTPD
+#include "../failsafe/failsafe_httpd.h"
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -212,8 +212,8 @@ void cli_loop(void)
 	 * that's complex, we'll use a wrapper loop
 	 */
 	for (;;) {
-#ifdef CONFIG_HTTPD
-		httpd_poll();
+#ifdef CONFIG_LWIP_HTTPD
+	httpd_poll();
 #endif
 		/* Check if there's input ready before parsing */
 		if (tstc()) {

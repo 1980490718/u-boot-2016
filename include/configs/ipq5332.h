@@ -518,7 +518,7 @@ extern loff_t board_env_size;
 #define CONFIG_NAME_MAX_LEN	32
 #endif
 #endif
-#define CONFIG_HTTPD
+#define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD
 #define CONFIG_SYS_LONGHELP

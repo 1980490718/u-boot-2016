@@ -47,6 +47,7 @@
 #define PKTALIGN	ARCH_DMA_MINALIGN
 
 /* IPv4 addresses are always 32 bits in size */
+#define __UBOOT_IN_ADDR_DEFINED
 struct in_addr {
 	__be32 s_addr;
 };
@@ -334,6 +335,7 @@ struct vlan_ethernet_hdr {
 /*
  *	Internet Protocol (IP) header.
  */
+#define __UBOOT_IP_HDR_DEFINED
 struct ip_hdr {
 	u8		ip_hl_v;	/* header length and version	*/
 	u8		ip_tos;		/* type of service		*/
@@ -431,6 +433,7 @@ struct arp_hdr {
 /* Codes for NOT_REACH */
 #define ICMP_NOT_REACH_PORT	3	/* Port unreachable		*/
 
+#define __UBOOT_ICMP_HDR_DEFINED
 struct icmp_hdr {
 	u8		type;
 	u8		code;
@@ -533,7 +536,7 @@ extern u32	net_boot_file_size;
 /* Boot file size in blocks as reported by the DHCP server */
 extern u32	net_boot_file_expected_size_in_blocks;
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 extern int webfailsafe_is_running;
 extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;

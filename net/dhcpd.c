@@ -989,7 +989,7 @@ int dhcpd_request(void) {
  */
 static int global_retry_count = 0;
 int dhcpd_request_nonblocking(void) {
-#ifndef CONFIG_HTTPD
+#ifndef CONFIG_LWIP_HTTPD
 	eth_init();
 	udelay(10000);
 #endif
