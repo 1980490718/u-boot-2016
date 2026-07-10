@@ -1186,6 +1186,11 @@ int spi_nand_init(void)
 	info->chip = chip;
 	chip->priv = info;
 
+	printf("%s page=%d+%d blk=%dpg total=%lldMiB\n",
+		params->name, mtd->writesize, mtd->oobsize,
+		params->pages_per_sector,
+		(long long)mtd->size / 1024 / 1024);
+
 	if ((ret = nand_register(CONFIG_IPQ_SPI_NAND_INFO_IDX)) < 0) {
 		free(info);
 		spi_print("Failed to register with MTD subsystem\n");

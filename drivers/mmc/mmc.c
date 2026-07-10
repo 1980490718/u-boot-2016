@@ -1521,6 +1521,12 @@ static int mmc_startup(struct mmc *mmc)
 		 (strncmp(mmc->block_dev.product, "004GA", 5) == 0)))
 		mmc->quirks |= MMC_QUIRK_SECURE_TRIM;
 
+	printf("%s %s rev%s blksz=%d total=%lldMiB\n",
+		IS_SD(mmc) ? "SD" : "eMMC",
+		mmc->block_dev.product, mmc->block_dev.revision,
+		mmc->read_bl_len,
+		(long long)mmc->capacity / 1024 / 1024);
+
 	return 0;
 }
 
