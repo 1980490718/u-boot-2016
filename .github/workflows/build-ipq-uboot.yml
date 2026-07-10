@@ -2,6 +2,7 @@ name: Build U-Boot for IPQ Devices
 
 on:
   push:
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -128,6 +129,7 @@ jobs:
       - name: Set TODAY and BUILD_TIME environment variables
         run: |
           echo "TODAY=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          echo "TODAY_ISO=$(date +%Y-%m-%d)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "FULL_BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
