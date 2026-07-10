@@ -49,63 +49,61 @@ function handleSubmit(e) {
 		body: new FormData(form)
 	}).then(function(resp) {
 		if (!resp.ok) return showFail();
-		showStatus('验证中', '验证文件类型及大小', true);
+		showStep(1, '校验中...');
 		pollUpgradeStatus();
 	}).catch(function() { showFail(); });
 }
 
-function showStatus(title, desc, spinner) {
-	document.querySelector('.card').innerHTML = '<h2>' + title + '</h2><p>' + desc + '</p>' + (spinner ? '<div class="spinner"></div>' : '');
+var ST=['上传','验证','刷写','重启','访问'];
+function showStep(cur, desc) {
+	var h='';
+	for(var i=0;i<5;i++) h+=(i<cur?ST[i]+'ok ':i===cur?ST[i]+'<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg#icon-refresh"/></svg> ':'- '+ST[i]+' ');
+	document.querySelector('.card').innerHTML='<h2>'+ST[cur]+'</h2><p>'+h+'</p><p>'+desc+'</p>';
 }
-
 function showFail(isTypeMismatch) {
-	document.querySelector('.card').innerHTML = '<h2>验证失败</h2><div class="error"><p>' + (isTypeMismatch ? '类型不匹配' : '大小不匹配') + '</p></div><button onclick="window.open(\'term.html\',\'_blank\')">终端详情</button>';
+	document.querySelector('.card').innerHTML='<h2>验证失败</h2><div class="error"><p>'+(isTypeMismatch?'类型不匹配':'大小不匹配')+'</p></div><button onclick="window.open(\'term.html\',\'_blank\')">终端详情</button>';
 }
-
 function pollUpgradeStatus() {
-	var phase = 'verifying';
+	var done = 0;
 	function check() {
-		fetch('/upgrade_status').then(function(resp) {
-			return resp.text();
-		}).then(function(status) {
-			switch (status) {
-				case 'type_mismatch':
-					showFail(true);
-					break;
-				case 'rebooting':
-					if (phase !== 'rebooting') {
-						phase = 'rebooting';
-						showStatus('更新完成', '正在重启，等待设备上线...', false);
-						pingDevice();
-					}
-					break;
-				case 'flashing':
-					if (phase !== 'flashing') {
-						phase = 'flashing';
-						showStatus('更新中', '正在处理更新', true);
-					}
-					setTimeout(check, 3000);
-					break;
-				default:
-					setTimeout(check, 100);
-			}
-		}).catch(function() {
-			setTimeout(check, 3000);
-		});
+		if (done) return;
+		fetch('/upgrade_status').then(function(r) { return r.text(); }).then(function(s) {
+			if (s === 'type_mismatch') { done = 1; return showFail(true); }
+			if (s === 'rebooting') { done = 1; return pingDevice(); }
+			if (s === 'flashing') { showStep(2, '写入中...'); return setTimeout(check, 1000); }
+			showStep(1, '校验中...');
+			setTimeout(check, 500);
+		}).catch(function() { setTimeout(check, 2000); });
 	}
-	setTimeout(check, 1000);
+	showStep(1, '校验中...');
+	setTimeout(check, 500);
 }
-
 function pingDevice() {
 	var p = window.location.origin.match(/^(https?:\/\/)/)[1];
-	var c = [window.location.origin, p+'192.168.1.1', p+'192.168.0.1', p+'192.168.10.1', p+'192.168.20.1', p+'192.168.30.1', p+'6.6.6.6', p+'6.7.8.9'];
-	var i = 0;
-	function t() {
-		if (i >= c.length) { showStatus('重启完成', '请手动访问设备地址', false); return; }
-		showStatus('正在重启', '正在尝试连接 ' + c[i].replace(p, '') + '...', false);
-		fetch(c[i++], {mode: 'no-cors', cache: 'no-cache'}).then(function() { window.top.location.href = c[i-1]; }).catch(function() { setTimeout(t, 3000); });
+	var ips = [window.location.origin, p+'192.168.1.1', p+'192.168.0.1', p+'192.168.10.1', p+'192.168.20.1', p+'192.168.30.1', p+'6.6.6.6', p+'6.7.8.9'];
+	var ph = [[20,20,'设备重启中...'],[40,100,'系统加载中...'],[20,10,'尝试连接中...']];
+	var pi = 0;
+	function run() {
+		if (pi >= ph.length) return showStep(4, '请手动访问设备ip地址');
+		var c = ph[pi++];
+		showStep(3, c[2]);
+		setTimeout(function() {
+			var r = 0;
+			function go() {
+				if (r++ >= c[1]) return run();
+				var hit = 0, fail = 0;
+				ips.forEach(function(ip) {
+					fetch(ip, {mode:'no-cors', cache:'no-cache'}).then(function() {
+						!hit++ && (window.top.location.href = ip);
+					}).catch(function() {
+						++fail >= ips.length && setTimeout(go, 500);
+					});
+				});
+			}
+			go();
+		}, c[0] * 1000);
 	}
-	setTimeout(t, 30000);
+	run();
 }
 
 document.querySelector('form').addEventListener('submit', handleSubmit);
