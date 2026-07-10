@@ -31,8 +31,7 @@
 	--c-term-btn-hover: #555;
 	--c-term-placeholder: #666;
 	--c-term-scroll-track: #111;
-	--c-term-scroll-thumb: #4ecb71;
-	--c-spinner-border: #333
+	--c-term-scroll-thumb: #4ecb71
 }
 
 /* ===== 公共属性 ===== */
@@ -375,6 +374,10 @@ p {
 	vertical-align: -0.125em
 }
 
+.icon-spin {
+	animation: spin 1s linear infinite
+}
+
 .sidebar-nav-item a:hover {
 	background: var(--c-sidebar-hover)
 }
@@ -423,19 +426,9 @@ label {
 	text-decoration: underline
 }
 
-/* ===== 加载动画（flashing页面） ===== */
-.spinner,
+/* ===== 加载动画 ===== */
 .theme-thumb {
 	border-radius: 50%
-}
-
-.spinner {
-	border: 3px solid var(--c-spinner-border);
-	border-top: 3px solid var(--c-primary-hover);
-	width: 24px;
-	height: 24px;
-	margin: 15px auto;
-	animation: spin 1s linear infinite
 }
 
 @keyframes spin {
@@ -554,8 +547,7 @@ label {
 	--c-term-btn-hover: #6a6a6a;
 	--c-term-placeholder: #5a5a5a;
 	--c-term-scroll-track: #1e1e1e;
-	--c-term-scroll-thumb: #4ecb71;
-	--c-spinner-border: #f3f3f3
+	--c-term-scroll-thumb: #4ecb71
 }
 
 /* ===== 备份页面 ===== */
