@@ -236,17 +236,25 @@ static int do_firmware_upgrade(const ulong size) {
 					printf("Error: Both HLOS and rootfs partition sizes are zero\n");
 					return -1;
 				}
-				sprintf(buf, "flash 0:HLOS 0x%lx 0x%llx && flash rootfs 0x%lx 0x%llx && flash 0:HLOS_1 0x%lx 0x%llx && flash rootfs_1 0x%lx 0x%llx",
-				UPLOAD_ADDR, actual_hlos_size,
-				(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size,
+				sprintf(buf, "flash 0:HLOS 0x%lx 0x%llx && flash rootfs 0x%lx 0x%llx",
 				UPLOAD_ADDR, actual_hlos_size,
 				(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size);
-				/* Print detected HLOS size info */
-				//printf("Detected HLOS size: 0x%lx, Calculated rootfs size: 0x%lx\n", actual_hlos_size, actual_rootfs_size);
-				/* Execute flash command first */
 				if(execute_command(buf) != 0) {
-					printf("Failed to execute flash command\n");
+					printf("Failed to flash primary partitions\n");
 					return -1;
+				}
+				u64 hlos_1_size = get_hlos_1_size();
+				u64 rootfs_1_size = get_rootfs_1_size();
+				if(actual_hlos_size <= hlos_1_size && actual_rootfs_size <= rootfs_1_size) {
+					sprintf(buf, "flash 0:HLOS_1 0x%lx 0x%llx && flash rootfs_1 0x%lx 0x%llx",
+					UPLOAD_ADDR, actual_hlos_size,
+					(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size);
+					if(execute_command(buf) != 0) {
+						printf("Warning: Failed to flash backup partitions, skipping\n");
+					}
+				} else {
+					printf("Warning: Backup partitions too small, skipping (HLOS_1: %llu < %llu, rootfs_1: %llu < %llu)\n",
+						hlos_1_size, actual_hlos_size, rootfs_1_size, actual_rootfs_size);
 				}
 				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_QSDK) {
