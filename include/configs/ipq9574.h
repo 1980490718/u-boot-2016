@@ -327,7 +327,7 @@ extern loff_t board_env_size;
 #define CONFIG_IPQ_MDIO			1
 #define CONFIG_IPQ_ETH_INIT_DEFER
 #endif
-#define CONFIG_HTTPD
+#define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD
 #define CONFIG_SYS_LONGHELP

@@ -103,6 +103,9 @@ arch/arm/dts/dtbtable.S
 arch/arm/dts/compressed_dtb/dtbcombined.S
 tools/mbn_tools.pyc
 
-# httpd generated files
-httpd/fsdata.c
-httpd/vendors/debug_output/
+# failsafe generated files
+failsafe/fsdata.c
+failsafe/html/debug_output/
+failsafe/lwip/**/*.o
+failsafe/lwip/**/*.su
+failsafe/lwip/**/.*.o.cmd

@@ -97,5 +97,5 @@ obj-y += vsprintf.o panic.o strto.o
 endif
 
 # HTTPD
-obj-$(CONFIG_HTTPD) += ipq_api.o
+obj-$(CONFIG_LWIP_HTTPD) += ipq_api.o
 subdir-ccflags-$(CONFIG_CC_OPTIMIZE_LIBS_FOR_SPEED) += -O2

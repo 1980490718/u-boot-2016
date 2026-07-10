@@ -422,8 +422,8 @@ U_BOOT_CMD(gpio, 4, 0, do_gpio_cmd,
  * ----------------------------------------------------------------------- */
 
 struct fw_info check_fw_type_ex(void *address) {
-	typedef unsigned int u32;
-	typedef unsigned short u16;
+	typedef uint32_t u32;
+	typedef uint16_t u16;
 
 	struct fw_info info = {
 		.type = -1,

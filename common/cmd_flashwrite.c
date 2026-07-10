@@ -341,7 +341,7 @@ char * const argv[])
 			{
 				ret = get_partition_info_efi_by_name(blk_dev,
 				part_name, &disk_info);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 				if (ret) {
 					printf("Partition %s not found, skipped\n", part_name);
 					return 0;
@@ -380,7 +380,7 @@ char * const argv[])
 			}
 
 #ifdef CONFIG_QCA_MMC
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 		} else if ((sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
 				sfi->rootfs.offset == 0xBAD0FF5E) &&
 			(smem_getpart(part_name, &start_block, &size_block) == -ENOENT ||
@@ -414,7 +414,7 @@ char * const argv[])
 				{
 					ret = get_partition_info_efi_by_name(blk_dev,
 							part_name, &disk_info);
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 					if (ret) {
 						printf("Partition %s not found, skipped\n", part_name);
 						return 0;
@@ -428,7 +428,7 @@ char * const argv[])
 					part_size = (ulong)disk_info.size;
 				}
 			}
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 			else {
 				printf("eMMC not initialized, skipped %s\n", part_name);
 				return 0;

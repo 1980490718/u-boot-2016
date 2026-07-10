@@ -31,7 +31,7 @@
 #ifndef GPIO_H
 #define GPIO_H
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #ifndef _ASM_GENERIC_GPIO_H_
 #define _ASM_GENERIC_GPIO_H_
 #endif

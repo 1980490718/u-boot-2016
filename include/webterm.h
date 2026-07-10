@@ -6,6 +6,10 @@
 #ifndef _WEBTERM_H_
 #define _WEBTERM_H_
 
+#include "../failsafe/failsafe_httpd.h"
+
+struct failsafe_httpd_state;
+
 /* Initialize web terminal */
 int webterm_init(void);
 
@@ -19,7 +23,7 @@ int webterm_get_output(char *buf, int size);
 void webterm_reset(void);
 
 /* Handle web terminal HTTP requests */
-void webterm_http_handler(void);
+void webterm_http_handler(struct failsafe_httpd_state *hs, char *data, int data_len);
 
 /* Integration functions */
 void webterm_puts(const char *str);

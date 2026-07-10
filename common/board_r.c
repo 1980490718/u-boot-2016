@@ -64,7 +64,7 @@
 #ifdef CONFIG_AVR32
 #include <asm/arch/mmu.h>
 #endif
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #include <ipq_api.h>
 #include <webterm.h>
 #endif
@@ -227,14 +227,14 @@ static int initr_logbuffer(void)
 }
 #endif
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 static int initr_webterm(void)
 {
 	//puts("WebTerm: Initializing web terminal...\n");
 	webterm_init();
 	return 0;
 }
-#endif /* CONFIG_HTTPD */
+#endif /* CONFIG_LWIP_HTTPD */
 
 #ifdef CONFIG_POST
 static int initr_post_backlog(void)
@@ -563,7 +563,7 @@ static int initr_ethaddr(void)
 {
 	bd_t *bd = gd->bd;
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	btn_init();
 	led_init();
 #endif
@@ -938,7 +938,7 @@ init_fnc_t init_sequence_r[] = {
 	INIT_FUNC_WATCHDOG_RESET
 	initr_net,
 #endif
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	INIT_FUNC_WATCHDOG_RESET
 	initr_webterm,
 #endif

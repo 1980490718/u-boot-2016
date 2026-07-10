@@ -13,7 +13,7 @@
 #include <console.h>
 #include <version.h>
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 #include <asm/arch-qca-common/gpio.h>
 #include <ipq_api.h>
 #endif
@@ -89,7 +89,7 @@ void main_loop(void)
 	update_tftp(0UL, NULL, NULL);
 #endif /* CONFIG_UPDATE_TFTP */
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	btn_check_press();
 #endif
 #ifdef CONFIG_BOARD_DISPLAY_NAME
@@ -104,7 +104,7 @@ void main_loop(void)
 		cli_secure_boot_cmd(s);
 #endif
 
-#ifdef CONFIG_HTTPD
+#ifdef CONFIG_LWIP_HTTPD
 	if (!webfailsafe_is_running)
 #endif
 	autoboot_command(s);

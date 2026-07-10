@@ -117,7 +117,7 @@ enum firmware_type_enum {
 /* function declarations */
 struct fw_info {
     int type;
-    unsigned int hlos_size;  // HLOS actual size (bytes)
+    unsigned long hlos_size;
 };
 
 struct fw_info check_fw_type_ex(void *address);
