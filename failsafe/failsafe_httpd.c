@@ -94,11 +94,11 @@ extern struct in_addr net_netmask;
 extern uchar net_ethaddr[6];
 extern const struct fsdata_file file_index_html[];
 extern const struct fsdata_file file_404_html[];
-extern unsigned long get_firmware_upgrade_max_size(void);
-extern unsigned long get_uboot_size(void);
-extern unsigned long get_art_size(void);
-extern unsigned long get_cdt_size(void);
-extern unsigned long get_mibib_size(void);
+extern u64 get_firmware_upgrade_max_size(void);
+extern u64 get_uboot_size(void);
+extern u64 get_art_size(void);
+extern u64 get_cdt_size(void);
+extern u64 get_mibib_size(void);
 
 static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
@@ -132,8 +132,8 @@ static void print_error(const char *msg) {
 	printf("\n## Error: %s\n", msg);
 }
 
-static void print_file_size_error(u32_t max_size) {
-	printf("## Error: size too large, max size <= %u bytes\n", max_size);
+static void print_file_size_error(u64 max_size) {
+	printf("## Error: size too large, max size <= %llu bytes\n", max_size);
 }
 
 static void httpd_upload_progress(struct failsafe_httpd_state *hs) {
@@ -193,7 +193,7 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 	}
 }
 
-typedef unsigned long (*get_max_size_fn)(void);
+typedef u64 (*get_max_size_fn)(void);
 
 static const struct {
 	const char *name;
@@ -259,8 +259,8 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 		hs->upload_total, hs->upload_total);
 
 	if (upload_types[i].get_max_size) {
-		u32_t max_size = (u32_t)upload_types[i].get_max_size();
-		if (hs->upload_total > max_size) {
+		u64 max_size = upload_types[i].get_max_size();
+		if ((u64)hs->upload_total > max_size) {
 			print_file_size_error(max_size);
 			webfailsafe_upload_failed_local = 1;
 			file_too_big = 1;
