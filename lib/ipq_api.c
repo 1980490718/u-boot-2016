@@ -490,7 +490,7 @@ int check_fw_type(void *address) {
  * Partition - SMEM/GPT partition size and offset queries for webfailsafe
  * ----------------------------------------------------------------------- */
 
-unsigned long get_smem_table_size_bytes(const char *name) {
+u64 get_smem_table_size_bytes(const char *name) {
 	uint32_t offset, byte_size;
 	int ret;
 	/* First, try the traditional SMEM methods */
@@ -514,7 +514,7 @@ unsigned long get_smem_table_size_bytes(const char *name) {
 			ret = get_partition_info_efi_by_name(mmc_dev, name, &disk_info);
 			if (ret == 0) {
 				/* Successfully got partition info from GPT, return size in bytes */
-				return (unsigned long)disk_info.size * (unsigned long)mmc_dev->blksz;
+				return (u64)disk_info.size * (u64)mmc_dev->blksz;
 			}
 		}
 	}
@@ -525,7 +525,7 @@ unsigned long get_smem_table_size_bytes(const char *name) {
 
 /* define macro for get size function */
 #define DEFINE_GET_SIZE_FUNC(func_name, partition_name) \
-	unsigned long func_name(void) { \
+	u64 func_name(void) { \
 		return get_smem_table_size_bytes(partition_name); \
 	}
 
@@ -536,7 +536,7 @@ DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
 DEFINE_GET_SIZE_FUNC(get_bootconfig_size, "0:BOOTCONFIG")
 
-unsigned long get_firmware_upgrade_max_size(void) {
+u64 get_firmware_upgrade_max_size(void) {
 	uint32_t flash_type;
 	if (get_current_flash_type(&flash_type) != 0)
 		return 0;
@@ -562,8 +562,8 @@ unsigned long get_firmware_upgrade_max_size(void) {
 }
 
 /* Function to get firmware size supporting multiple rootfs partition names */
-unsigned long get_firmware_size(void) {
-	unsigned long size;
+u64 get_firmware_size(void) {
+	u64 size;
 	/* Try different possible rootfs partition names in priority order */
 	/* Priority order: rootfs -> rootfs1 -> rootfs2 -> rootfs_1 */
 	size = get_smem_table_size_bytes("rootfs");
@@ -583,7 +583,7 @@ unsigned long get_firmware_size(void) {
 }
 
 /* Get the offset start information from the smem table */
-unsigned long get_smem_table_offset(const char *name) {
+u64 get_smem_table_offset(const char *name) {
 	uint32_t offset, byte_size;
 	if (getpart_offset_size((char *)name, &offset, &byte_size) == 0) {
 		return (unsigned long)offset;
@@ -592,15 +592,15 @@ unsigned long get_smem_table_offset(const char *name) {
 }
 
 /* Get the combined size of the NOR firmware (kernel + rootfs) */
-unsigned long get_nor_firmware_combined_size(void) {
-	unsigned long kernel_size = get_smem_table_size_bytes("0:HLOS");
-	unsigned long rootfs_size = get_smem_table_size_bytes("rootfs");
+u64 get_nor_firmware_combined_size(void) {
+	u64 kernel_size = get_smem_table_size_bytes("0:HLOS");
+	u64 rootfs_size = get_smem_table_size_bytes("rootfs");
 	return kernel_size + rootfs_size;
 }
 
 /* define macro for get offset function */
 #define DEFINE_GET_OFFSET_FUNC(func_name, partition_name) \
-	unsigned long func_name(void) { \
+	u64 func_name(void) { \
 		return get_smem_table_offset(partition_name); \
 	}
 
@@ -631,8 +631,8 @@ int emmc_calculate_firmware_distribution(unsigned long firmware_size,
 	return 0;
 }
 
-unsigned long get_bootconfig_offset_blocks(void) { return get_bootconfig_offset() / 512; }
-unsigned long get_bootconfig_size_blocks(void)   { return get_bootconfig_size() / 512; }
+u64 get_bootconfig_offset_blocks(void) { return get_bootconfig_offset() / 512; }
+u64 get_bootconfig_size_blocks(void)   { return get_bootconfig_size() / 512; }
 
 unsigned long get_hlos_size_bytes(void)     { return PART_SIZE_BYTES("0:HLOS"); }
 unsigned long get_hlos_start_block(void)    { return PART_START_BLOCK("0:HLOS"); }

@@ -162,8 +162,8 @@ static void httpd_state_reset(void) {
 }
 
 /* Common error printing functions */
-static void print_file_size_error(unsigned long max_size) {
-	printf("## Error: size too large, max size <= %lu bytes\n", max_size);
+static void print_file_size_error(u64 max_size) {
+	printf("## Error: size too large, max size <= %llu bytes\n", max_size);
 }
 
 static void print_error(const char *msg) {
@@ -194,7 +194,7 @@ static void httpd_upload_complete(void) {
 	uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
 }
 
-typedef unsigned long (*get_max_size_fn)(void);
+typedef u64 (*get_max_size_fn)(void);
 
 static const struct {
 	const char *name;
@@ -252,8 +252,8 @@ static int httpd_findandstore_firstchunk(void) {
 	hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
 	printf("Upload size: %lu.%02lu MiB [%lu bytes | 0x%lx]\n", (unsigned long)hs->upload_total / (1024 * 1024), ((unsigned long)hs->upload_total % (1024 * 1024)) * 100 / (1024 * 1024), (unsigned long)hs->upload_total, (unsigned long)hs->upload_total);
 	if (upload_types[i].get_max_size) {
-		unsigned long max_size = upload_types[i].get_max_size();
-		if (hs->upload_total > max_size) {
+		u64 max_size = upload_types[i].get_max_size();
+		if ((u64)hs->upload_total > max_size) {
 			print_file_size_error(max_size);
 			webfailsafe_upload_failed = 1;
 			file_too_big = 1;

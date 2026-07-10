@@ -191,7 +191,7 @@ int do_http_upgrade(const ulong size, const int upgrade_type) {
 static int update_bootconfig(void) {
 	char buf[256];
 	/* Read BOOTCONFIG partition using dynamic offset and size */
-	sprintf(buf, "mmc read 0x%lx 0x%lx 0x%lx", UPLOAD_ADDR, get_bootconfig_offset_blocks(), get_bootconfig_size_blocks());
+	sprintf(buf, "mmc read 0x%lx 0x%lx 0x%lx", UPLOAD_ADDR, (unsigned long)get_bootconfig_offset_blocks(), (unsigned long)get_bootconfig_size_blocks());
 	if (execute_command(buf) != 0) {
 		printf("\n* Failed to read BOOTCONFIG *\n");
 		return -1;
@@ -201,7 +201,7 @@ static int update_bootconfig(void) {
 		UPLOAD_ADDR + 0x80, UPLOAD_ADDR + 0x94, UPLOAD_ADDR + 0xA8);
 	execute_command(buf);
 	/* Write back to BOOTCONFIG and BOOTCONFIG1 partitions with dynamic size */
-	sprintf(buf, "flash 0:BOOTCONFIG 0x%lx 0x%lx && flash 0:BOOTCONFIG1 0x%lx 0x%lx", UPLOAD_ADDR, get_bootconfig_size(), UPLOAD_ADDR, get_bootconfig_size());
+	sprintf(buf, "flash 0:BOOTCONFIG 0x%lx 0x%lx && flash 0:BOOTCONFIG1 0x%lx 0x%lx", UPLOAD_ADDR, (unsigned long)get_bootconfig_size(), UPLOAD_ADDR, (unsigned long)get_bootconfig_size());
 	if (execute_command(buf) != 0) {
 		printf("\n* Failed to write BOOTCONFIG *\n");
 		return -1;
@@ -224,11 +224,10 @@ static int do_firmware_upgrade(const ulong size) {
 				print_upgrade_warning("FIRMWARE");
 				/* Call extended check_fw_type to get both type and HLOS size */
 				struct fw_info info = check_fw_type_ex((void*)UPLOAD_ADDR);
-				unsigned long actual_hlos_size = (unsigned long)info.hlos_size;
-				unsigned long hlos_size = get_hlos_size();
-				unsigned long rootfs_size = get_rootfs_size();
-				/* Calculate rootfs size based on actual HLOS size */
-				unsigned long actual_rootfs_size = (size > actual_hlos_size) ? (size - actual_hlos_size) : 0;
+				u64 actual_hlos_size = info.hlos_size;
+				u64 hlos_size = get_hlos_size();
+				u64 rootfs_size = get_rootfs_size();
+				u64 actual_rootfs_size = (size > actual_hlos_size) ? (size - actual_hlos_size) : 0;
 				/* Limit actual sizes to partition capacities */
 				if(actual_hlos_size > hlos_size) actual_hlos_size = hlos_size;
 				if(actual_rootfs_size > rootfs_size) actual_rootfs_size = rootfs_size;
@@ -237,11 +236,11 @@ static int do_firmware_upgrade(const ulong size) {
 					printf("Error: Both HLOS and rootfs partition sizes are zero\n");
 					return -1;
 				}
-				sprintf(buf, "flash 0:HLOS 0x%lx 0x%lx && flash rootfs 0x%lx 0x%lx && flash 0:HLOS_1 0x%lx 0x%lx && flash rootfs_1 0x%lx 0x%lx",
+				sprintf(buf, "flash 0:HLOS 0x%lx 0x%llx && flash rootfs 0x%lx 0x%llx && flash 0:HLOS_1 0x%lx 0x%llx && flash rootfs_1 0x%lx 0x%llx",
 				UPLOAD_ADDR, actual_hlos_size,
-				UPLOAD_ADDR + actual_hlos_size, actual_rootfs_size,
+				(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size,
 				UPLOAD_ADDR, actual_hlos_size,
-				UPLOAD_ADDR + actual_hlos_size, actual_rootfs_size);
+				(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size);
 				/* Print detected HLOS size info */
 				//printf("Detected HLOS size: 0x%lx, Calculated rootfs size: 0x%lx\n", actual_hlos_size, actual_rootfs_size);
 				/* Execute flash command first */
@@ -287,10 +286,10 @@ static int do_firmware_upgrade(const ulong size) {
 			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
 				if (fw_type == FW_TYPE_FIT) {
-					sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
-				} else {
-					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
-				}
+				sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", (unsigned long)NOR_FIRMWARE_START, (unsigned long)NOR_FIRMWARE_SIZE, UPLOAD_ADDR, (unsigned long)NOR_FIRMWARE_START, size);
+			} else {
+				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
+			}
 			} else {
 				printf("\n* NOR flash only supports FIT/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 				return -1;
@@ -314,7 +313,7 @@ static int do_firmware_upgrade(const ulong size) {
 				if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
 					print_upgrade_warning("FIRMWARE");
 					if (fw_type == FW_TYPE_FIT) {
-						sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", NOR_FIRMWARE_START, NOR_FIRMWARE_SIZE, UPLOAD_ADDR, NOR_FIRMWARE_START, size);
+						sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", (unsigned long)NOR_FIRMWARE_START, (unsigned long)NOR_FIRMWARE_SIZE, UPLOAD_ADDR, (unsigned long)NOR_FIRMWARE_START, size);
 					} else {
 						sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 					}
