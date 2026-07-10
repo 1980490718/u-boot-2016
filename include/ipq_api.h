@@ -130,32 +130,32 @@ void led_init(void);
 void btn_init_by_name(const char *gpio_name);
 void btn_init(void);
 void btn_check_press(void);
-unsigned long get_nor_firmware_combined_size(void);
+u64 get_nor_firmware_combined_size(void);
 /* main api for get smem table size*/
-unsigned long get_smem_table_size_bytes(const char *name);
-unsigned long get_smem_table_offset(const char *name);
+u64 get_smem_table_size_bytes(const char *name);
+u64 get_smem_table_offset(const char *name);
 
 /* api for webfailsafe upgrade size limit */
-unsigned long get_uboot_size(void);
-unsigned long get_art_size(void);
-unsigned long get_firmware_size(void);
-unsigned long get_firmware_upgrade_max_size(void);
-unsigned long get_cdt_size(void);
-unsigned long get_mibib_size(void);
-unsigned long get_hlos_offset(void);
-unsigned long get_hlos_1_offset(void);
-unsigned long get_rootfs_offset(void);
-unsigned long get_rootfs_1_offset(void);
-unsigned long get_hlos_size(void);
-unsigned long get_hlos_1_size(void);
-unsigned long get_rootfs_size(void);
-unsigned long get_rootfs_1_size(void);
-unsigned long get_bootconfig_size(void);
-unsigned long get_bootconfig_offset(void);
-unsigned long get_bootconfig1_offset(void);
-unsigned long get_bootconfig_offset_blocks(void);
-unsigned long get_bootconfig_size_blocks(void);
-unsigned long get_nor_firmware_combined_size(void);
+u64 get_uboot_size(void);
+u64 get_art_size(void);
+u64 get_firmware_size(void);
+u64 get_firmware_upgrade_max_size(void);
+u64 get_cdt_size(void);
+u64 get_mibib_size(void);
+u64 get_hlos_offset(void);
+u64 get_hlos_1_offset(void);
+u64 get_rootfs_offset(void);
+u64 get_rootfs_1_offset(void);
+u64 get_hlos_size(void);
+u64 get_hlos_1_size(void);
+u64 get_rootfs_size(void);
+u64 get_rootfs_1_size(void);
+u64 get_bootconfig_size(void);
+u64 get_bootconfig_offset(void);
+u64 get_bootconfig1_offset(void);
+u64 get_bootconfig_offset_blocks(void);
+u64 get_bootconfig_size_blocks(void);
+u64 get_nor_firmware_combined_size(void);
 
 /* eMMC partition boundary functions */
 unsigned long get_hlos_start_block(void);
