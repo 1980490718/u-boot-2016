@@ -132,6 +132,24 @@ jobs:
           echo "BUILD_TIME=$(date '+%H:%M:%S')" >> $GITHUB_ENV
           echo "FULL_BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
           echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "BUILD_TIMESTAMP=$(date '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+
+      - name: Rename artifacts with branch-date-time suffix
+        run: |
+          cd artifacts
+          SUFFIX="${{ env.BRANCH_NAME }}-${{ env.BUILD_TIMESTAMP }}"
+          for f in *.elf *.mbn; do
+            if [ -f "$f" ]; then
+              BASENAME="${f%.*}"
+              EXT="${f##*.}"
+              NEW_NAME="${BASENAME}-${SUFFIX}.${EXT}"
+              mv "$f" "$NEW_NAME"
+              echo "Renamed: $f -> $NEW_NAME"
+            fi
+          done
+          echo "Final artifact list:"
+          ls -la
 
       - name: Check and delete all published content on Releases page
         run: |
@@ -154,7 +172,7 @@ jobs:
 
           # Filter today's releases for current branch only
           echo "Filter today's Releases for branch: ${{ env.BRANCH_NAME }}"
-          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" --arg branch "${{ env.BRANCH_NAME }}" '.[] | select(.createdAt | startswith($date)) | select(.tagName | endswith("-" + $branch)) | .tagName')
+          TODAY_TAGS=$(echo "$RELEASE_JSON" | jq -r --arg date "${{ env.TODAY_ISO }}" --arg branch "${{ env.BRANCH_NAME }}" '.[] | select(.createdAt | startswith($date)) | select(.tagName | startswith($branch + "/v")) | .tagName')
           echo "Today's Tags for branch ${{ env.BRANCH_NAME }}: $TODAY_TAGS"
 
           if [ -n "$TODAY_TAGS" ]; then
@@ -171,11 +189,11 @@ jobs:
       - name: Create new GitHub Release
         uses: softprops/action-gh-release@v3.0.1
         with:
-          tag_name: v${{ env.TODAY }}-${{ env.BRANCH_NAME }}
-          name: v${{ env.TODAY }}-${{ env.BRANCH_NAME }}
+          tag_name: ${{ env.BRANCH_NAME }}/v${{ env.TODAY }}
+          name: ${{ env.BRANCH_NAME }}/v${{ env.TODAY }}
           body: |
-            Branch：${{ env.BRANCH_NAME }}
-            Compiled U-Boot IPQ platforms:
+            Branch：`${{ env.BRANCH_NAME }}`
+            Commit：`${{ env.SHORT_SHA }}`
             Build Time：${{ env.FULL_BUILD_TIME }} ${{ env.TZ }}
             Types：ipq40xx、ipq5018、ipq5332、ipq6018、ipq806x、ipq807x、ipq9574
           files: artifacts/*
