@@ -95,6 +95,7 @@ static void reset_webfailsafe_state(void) {
 }
 
 void HttpdStop(void) {
+	failsafe_httpd_stop();
 	reset_webfailsafe_state();
 	do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
 }

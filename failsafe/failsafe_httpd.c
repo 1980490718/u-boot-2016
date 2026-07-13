@@ -32,6 +32,7 @@ extern int flashread_partition(const char *part_name, ulong addr,
 
 #include "lwip/opt.h"
 #include "lwip/tcp.h"
+#include "lwip/priv/tcp_priv.h"
 #include "lwip/pbuf.h"
 #include "lwip/etharp.h"
 #include "lwip/timeouts.h"
@@ -971,8 +972,50 @@ void failsafe_httpd_init(void) {
 
 static struct netif failsafe_netif;
 
+static int httpd_progress_start_done = 0;
+static int eth_init_attempted = 0;
+static ulong periodic_timer = 0;
+
+static void abort_port_pcb(struct tcp_pcb **list) {
+	struct tcp_pcb *pcb, *next;
+	for (pcb = *list; pcb != NULL; pcb = next) {
+		next = pcb->next;
+		if (pcb->local_port == 80) {
+			tcp_arg(pcb, NULL);
+			tcp_err(pcb, NULL);
+			tcp_recv(pcb, NULL);
+			tcp_sent(pcb, NULL);
+			tcp_poll(pcb, NULL, 0);
+			tcp_abort(pcb);
+		}
+	}
+}
+
+void failsafe_httpd_stop(void) {
+	if (listen_pcb != NULL) {
+		tcp_close(listen_pcb);
+		listen_pcb = NULL;
+	}
+	abort_port_pcb(&tcp_active_pcbs);
+	abort_port_pcb(&tcp_tw_pcbs);
+	hs_global = NULL;
+	netif_remove(&failsafe_netif);
+	httpd_progress_start_done = 0;
+	eth_init_attempted = 0;
+	periodic_timer = 0;
+}
+
+static int lwip_initialized = 0;
+
+#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
+static void ppe_arp_kickstart(void);
+#endif
+
 void failsafe_lwip_init(struct ip4_addr *ipaddr, struct ip4_addr *netmask, struct ip4_addr *gw) {
-	lwip_init();
+	if (!lwip_initialized) {
+		lwip_init();
+		lwip_initialized = 1;
+	}
 
 	netif_add(&failsafe_netif, ipaddr, netmask, gw, NULL,
 		  ethernetif_init, ethernet_input);
@@ -981,16 +1024,13 @@ void failsafe_lwip_init(struct ip4_addr *ipaddr, struct ip4_addr *netmask, struc
 	netif_set_link_up(&failsafe_netif);
 
 	failsafe_httpd_init();
-}
 
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
-static void ppe_arp_kickstart(void);
+	ppe_arp_kickstart();
 #endif
+}
 
 void failsafe_httpd_poll(void) {
-	static int httpd_progress_start_done = 0;
-	static int eth_init_attempted = 0;
-	static ulong periodic_timer = 0;
 	ulong now = get_timer(0);
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
 	int link_changed = 0;
@@ -1047,10 +1087,6 @@ void failsafe_httpd_poll(void) {
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
 			ppe_arp_kickstart();
 #endif
-			if (!httpd_progress_start_done) {
-				do_http_progress(WEBFAILSAFE_PROGRESS_START);
-				httpd_progress_start_done = 1;
-			}
 		}
 	}
 #if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
@@ -1058,6 +1094,11 @@ void failsafe_httpd_poll(void) {
 		ppe_arp_kickstart();
 	}
 #endif
+
+	if (!httpd_progress_start_done && eth_is_active(eth_get_dev())) {
+		do_http_progress(WEBFAILSAFE_PROGRESS_START);
+		httpd_progress_start_done = 1;
+	}
 
 	if (eth_rx() > 0) {
 #ifdef CONFIG_DHCPD

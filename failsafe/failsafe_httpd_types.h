@@ -21,6 +21,7 @@ struct failsafe_httpd_state {
 };
 
 void failsafe_lwip_init(struct ip4_addr *ipaddr, struct ip4_addr *netmask, struct ip4_addr *gw);
+void failsafe_httpd_stop(void);
 void httpd_send_data(struct failsafe_httpd_state *hs);
 
 #endif
