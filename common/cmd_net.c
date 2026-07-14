@@ -246,7 +246,12 @@ static int netboot_common(enum proto_t proto, cmd_tbl_t *cmdtp, int argc,
 	}
 
 	/* flush cache */
+#ifndef CONFIG_CMD_TFTPPUT
 	flush_cache(load_addr, size);
+#else
+	if (proto != TFTPPUT)
+		flush_cache(load_addr, size);
+#endif
 
 	bootstage_mark(BOOTSTAGE_ID_NET_LOADED);
 
