@@ -683,6 +683,7 @@ static int dhcpd_handle_request(const struct dhcpd_pkt *bp, unsigned int len) {
 	}
 
 send_ack:
+	net_server_ip = yiaddr;
 	dhcpd_print_ip_with_mac(yiaddr, bp->chaddr, "ACK");
 	return dhcpd_send_reply(bp, len, DHCPACK, yiaddr, NULL);
 
