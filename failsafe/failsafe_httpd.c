@@ -112,19 +112,21 @@ static u32_t upload_start_time = 0;
 static int file_too_big = 0;
 static int webfailsafe_upload_failed_local = 0;
 static int webfailsafe_post_done_local = 0;
-static u32_t backup_data_size;
-static u32_t backup_data_addr;
-static int backup_sending_header;
-static u64 backup_total_remaining;
-static u64 backup_total_sent;
-static u64 backup_total_size;
-static u64 backup_chunk_offset;
-static int backup_chunked;
-static int backup_chunk_busy;
-static int backup_chunk_num;
-static int backup_total_chunks;
-static int backup_raw;
-static char backup_part_name[64];
+static struct {
+	u32_t data_size;
+	u32_t data_addr;
+	int sending_header;
+	u64 total_remaining;
+	u64 total_sent;
+	u64 total_size;
+	u64 chunk_offset;
+	int chunked;
+	int chunk_busy;
+	int chunk_num;
+	int total_chunks;
+	int raw;
+	char part_name[64];
+} backup;
 extern u8_t *webfailsafe_data_pointer;
 int upgrade_status = 0;
 static char part_json_buf[PART_JSON_BUF_SIZE];
@@ -201,16 +203,7 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 		post_led_counter = 0;
 		upload_start_time = 0;
 		file_too_big = 0;
-		backup_data_size = 0;
-		backup_sending_header = 0;
-		backup_chunked = 0;
-		backup_chunk_busy = 0;
-		backup_raw = 0;
-		backup_total_remaining = 0;
-		backup_total_sent = 0;
-		backup_total_size = 0;
-		backup_chunk_offset = 0;
-		backup_part_name[0] = '\0';
+		memset(&backup, 0, sizeof(backup));
 		flashread_yield_fn = NULL;
 		led_on("blink_led");
 		if (boundary_value) {
@@ -614,20 +607,20 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 	}
 
 	ram_avail = (u32_t)CONFIG_SYS_SDRAM_END - (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-	backup_chunked = (total_size > ram_avail) ? 1 : 0;
-	backup_raw = raw;
-	backup_total_size = total_size;
-	strncpy(backup_part_name, part_name, sizeof(backup_part_name) - 1);
-	backup_part_name[sizeof(backup_part_name) - 1] = '\0';
+	backup.chunked = (total_size > ram_avail) ? 1 : 0;
+	backup.raw = raw;
+	backup.total_size = total_size;
+	strncpy(backup.part_name, part_name, sizeof(backup.part_name) - 1);
+	backup.part_name[sizeof(backup.part_name) - 1] = '\0';
 	flashread_yield_fn = flashread_yield;
 
-	if (backup_chunked) {
-		backup_total_chunks = (int)((total_size + ram_avail - 1) / ram_avail);
-		backup_chunk_num = 1;
+	if (backup.chunked) {
+		backup.total_chunks = (int)((total_size + ram_avail - 1) / ram_avail);
+		backup.chunk_num = 1;
 		printf("Backup: %llu.%02llu MiB > RAM %u.%02u MiB %d chunks transfer\n",
 			mib_int(total_size), mib_frac(total_size),
 			(u32)mib_int(ram_avail), (u32)mib_frac(ram_avail),
-			backup_total_chunks);
+			backup.total_chunks);
 		char chunk_detail[32] = "";
 		if (flashread_partition_chunk(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, ram_avail, raw, NULL, &size, chunk_detail) != CMD_RET_SUCCESS) {
 			static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
@@ -637,17 +630,17 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 			httpd_send_data(hs);
 			return;
 		}
-		backup_data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-		backup_data_size = (u32_t)size;
-		backup_chunk_offset = (u64)size;
-		backup_total_sent = (u64)size;
-		backup_total_remaining = backup_total_size - backup_total_sent;
+		backup.data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+		backup.data_size = (u32_t)size;
+		backup.chunk_offset = (u64)size;
+		backup.total_sent = (u64)size;
+		backup.total_remaining = backup.total_size - backup.total_sent;
 		printf("Backup: chunk %d/%d read %llu.%02llu MiB [0x%x | %s] remaining %llu.%02llu MiB\n",
-			   backup_chunk_num, backup_total_chunks,
-			   mib_int(backup_total_sent), mib_frac(backup_total_sent),
-			   backup_data_size, chunk_detail,
-			   mib_int(backup_total_remaining), mib_frac(backup_total_remaining));
-		backup_chunk_num++;
+			   backup.chunk_num, backup.total_chunks,
+			   mib_int(backup.total_sent), mib_frac(backup.total_sent),
+			   backup.data_size, chunk_detail,
+			   mib_int(backup.total_remaining), mib_frac(backup.total_remaining));
+		backup.chunk_num++;
 	} else {
 		if (flashread_partition(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, raw, &offset, &size) != CMD_RET_SUCCESS) {
 			static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
@@ -657,11 +650,11 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 			httpd_send_data(hs);
 			return;
 		}
-		backup_data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-		backup_data_size = (u32_t)size;
-		backup_total_remaining = 0;
-		backup_total_sent = 0;
-		backup_chunk_offset = 0;
+		backup.data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+		backup.data_size = (u32_t)size;
+		backup.total_remaining = 0;
+		backup.total_sent = 0;
+		backup.chunk_offset = 0;
 	}
 
 	httpd_poll_wait(1);
@@ -678,7 +671,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 	hs->upload = hdr_len;
 	httpd_send_data(hs);
 
-	backup_sending_header = 1;
+	backup.sending_header = 1;
 }
 
 static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *data, int data_len) {
@@ -759,39 +752,39 @@ void httpd_send_data(struct failsafe_httpd_state *hs) {
 
 static void backup_chunk_next(void) {
 	u32_t ram_avail = (u32_t)CONFIG_SYS_SDRAM_END - (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-	      chunk_size = (backup_total_remaining > ram_avail) ? ram_avail : (u32)backup_total_remaining;
+	      chunk_size = (backup.total_remaining > ram_avail) ? ram_avail : (u32)backup.total_remaining;
 	ulong rd_size;
 	char chunk_detail[32] = "";
 
-	if (flashread_partition_chunk(backup_part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, backup_chunk_offset, chunk_size, backup_raw, NULL, &rd_size, chunk_detail) == CMD_RET_SUCCESS && rd_size > 0) {
-		backup_data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-		backup_data_size = (u32_t)rd_size;
-		backup_chunk_offset += backup_data_size;
-		backup_total_sent += backup_data_size;
-		if (backup_total_sent > backup_total_size) {
-			backup_data_size -= (u32_t)(backup_total_sent - backup_total_size);
-			backup_total_sent = backup_total_size;
+	if (flashread_partition_chunk(backup.part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, backup.chunk_offset, chunk_size, backup.raw, NULL, &rd_size, chunk_detail) == CMD_RET_SUCCESS && rd_size > 0) {
+		backup.data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+		backup.data_size = (u32_t)rd_size;
+		backup.chunk_offset += backup.data_size;
+		backup.total_sent += backup.data_size;
+		if (backup.total_sent > backup.total_size) {
+			backup.data_size -= (u32_t)(backup.total_sent - backup.total_size);
+			backup.total_sent = backup.total_size;
 		}
-		backup_total_remaining = backup_total_size - backup_total_sent;
+		backup.total_remaining = backup.total_size - backup.total_sent;
 		printf("Backup: chunk %d/%d read %llu.%02llu MiB [0x%x | %s] remaining %llu.%02llu MiB\n",
-			   backup_chunk_num, backup_total_chunks,
-			   mib_int(backup_total_sent), mib_frac(backup_total_sent),
-			   backup_data_size, chunk_detail,
-			   mib_int(backup_total_remaining), mib_frac(backup_total_remaining));
-		backup_chunk_num++;
+			   backup.chunk_num, backup.total_chunks,
+			   mib_int(backup.total_sent), mib_frac(backup.total_sent),
+			   backup.data_size, chunk_detail,
+			   mib_int(backup.total_remaining), mib_frac(backup.total_remaining));
+		backup.chunk_num++;
 		httpd_poll_wait(2);
 		if (hs_global) {
-			hs_global->dataptr = (u8_t *)(uintptr_t)backup_data_addr;
-			hs_global->upload = backup_data_size;
+			hs_global->dataptr = (u8_t *)(uintptr_t)backup.data_addr;
+			hs_global->upload = backup.data_size;
 			httpd_send_data(hs_global);
 		}
-		backup_chunk_busy = 0;
+		backup.chunk_busy = 0;
 	} else {
 		printf("Backup: chunk failed at offset %llu.%02llu MiB\n",
-			mib_int(backup_chunk_offset), mib_frac(backup_chunk_offset));
-		backup_chunk_busy = 0;
-		backup_chunked = 0;
-		backup_total_remaining = 0;
+			mib_int(backup.chunk_offset), mib_frac(backup.chunk_offset));
+		backup.chunk_busy = 0;
+		backup.chunked = 0;
+		backup.total_remaining = 0;
 	}
 }
 
@@ -812,19 +805,19 @@ static err_t httpd_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
 
 	hs->last_activity = (u32_t)get_timer(0);
 
-	if (backup_sending_header && hs->upload <= 0) {
-		backup_sending_header = 0;
+	if (backup.sending_header && hs->upload <= 0) {
+		backup.sending_header = 0;
 		hs->state = STATE_FILE_REQUEST;
-		hs->dataptr = (u8_t *)(uintptr_t)backup_data_addr;
-		hs->upload = backup_data_size;
+		hs->dataptr = (u8_t *)(uintptr_t)backup.data_addr;
+		hs->upload = backup.data_size;
 	}
 
 	if (hs->upload <= 0) {
-		if (backup_chunked && backup_total_remaining > 0 && !backup_chunk_busy) {
-			backup_chunk_busy = 1;
+		if (backup.chunked && backup.total_remaining > 0 && !backup.chunk_busy) {
+			backup.chunk_busy = 1;
 			return ERR_OK;
 		}
-		if (backup_chunk_busy)
+		if (backup.chunk_busy)
 			return ERR_OK;
 		if (webfailsafe_post_done_local) {
 			if (!webfailsafe_upload_failed_local)
@@ -1197,7 +1190,7 @@ void failsafe_httpd_poll(void) {
 		httpd_progress_start_done = 1;
 	}
 
-	if (backup_chunked && backup_chunk_busy && backup_total_remaining > 0)
+	if (backup.chunked && backup.chunk_busy && backup.total_remaining > 0)
 		backup_chunk_next();
 
 	if (eth_rx() > 0) {
