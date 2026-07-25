@@ -54,6 +54,12 @@ extern unsigned int get_spi_flash_size(void);
 
 int flashread_partition(const char *part_name, uint32_t load_addr,
 			uint32_t user_size, int raw, uint32_t *out_offset, uint32_t *out_size);
+int flashread_partition_chunk(const char *part_name, uint32_t load_addr,
+			u64 user_offset, uint32_t user_size, int raw,
+			uint32_t *out_offset, uint32_t *out_size,
+			char *out_detail);
+
+void (*flashread_yield_fn)(void);
 
 static int read_from_flash(int flash_type, uint32_t address, uint32_t offset,
 			   uint32_t part_size, char *layout, int raw)
@@ -386,6 +392,173 @@ exit:
 	if (ret)
 		flash_type_new = -1;
 	return ret;
+}
+
+#ifdef CONFIG_CMD_NAND
+static int nand_raw_chunk_read(uint32_t load_addr, u64 user_offset,
+			uint32_t user_size, uint32_t *out_offset, uint32_t *out_size,
+			char *out_detail)
+{
+#ifdef CONFIG_IPQ40XX
+	int nand_dev = is_spi_nand_available();
+#else
+	int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
+	if (nand_dev < 0 || nand_info[nand_dev].size == 0) {
+		printf("NAND flash not available\n");
+		return CMD_RET_FAILURE;
+	}
+	struct mtd_info *mtd = &nand_info[nand_dev];
+	uint32_t page_size = mtd->writesize, oob_size = mtd->oobsize;
+	uint32_t total_pages = (uint32_t)(mtd->size / mtd->writesize);
+	uint32_t raw_page_size = page_size + oob_size;
+	uint32_t start_page = (uint32_t)(user_offset / raw_page_size);
+	uint32_t pages_avail = user_size / raw_page_size;
+	uint32_t read_bytes = 0, p;
+	uint8_t *buf = (uint8_t *)load_addr;
+
+	if (pages_avail == 0)
+		pages_avail = 1;
+	if (start_page + pages_avail > total_pages)
+		pages_avail = total_pages - start_page;
+	if (pages_avail == 0) {
+		if (out_offset) *out_offset = (uint32_t)user_offset;
+		if (out_size) *out_size = 0;
+		return CMD_RET_SUCCESS;
+	}
+	for (p = start_page; p < start_page + pages_avail; p++) {
+		struct mtd_oob_ops ops;
+		memset(&ops, 0, sizeof(ops));
+		ops.mode = MTD_OPS_RAW;
+		ops.datbuf = buf;
+		ops.oobbuf = buf + page_size;
+		ops.len = page_size;
+		ops.ooblen = oob_size;
+		if (mtd_read_oob(mtd, (loff_t)p * page_size, &ops) != 0) {
+			printf("nand raw chunk read page %u failed\n", p);
+			break;
+		}
+		buf += raw_page_size;
+		read_bytes += raw_page_size;
+		if (flashread_yield_fn && ((p - start_page + 1) % 128 == 0))
+			flashread_yield_fn();
+	}
+	if (read_bytes == 0)
+		return CMD_RET_FAILURE;
+	if (out_offset) *out_offset = (uint32_t)user_offset;
+	if (out_size) *out_size = read_bytes;
+	if (out_detail) snprintf(out_detail, 32, "%u pages", read_bytes / raw_page_size);
+	return CMD_RET_SUCCESS;
+}
+#endif
+
+#ifdef CONFIG_QCA_MMC
+static u64 emmc_cached_base_offset = 0;
+static u64 emmc_cached_part_size = 0;
+static char emmc_cached_part_name[32] = "";
+
+static int emmc_chunk_read(const char *part_name, uint32_t load_addr,
+			u64 user_offset, uint32_t user_size,
+			uint32_t *out_offset, uint32_t *out_size,
+			char *out_detail)
+{
+	block_dev_desc_t *blk_dev = mmc_get_dev(mmc_host.dev_num);
+	u64 base_offset = 0, part_total_size = 0, chunk_offset, remain;
+	uint32_t blksz, start_sector, num_sectors, chunk;
+
+	if (!blk_dev)
+		return CMD_RET_FAILURE;
+	if (strcmp(part_name, emmc_cached_part_name) == 0 && emmc_cached_part_size > 0) {
+		base_offset = emmc_cached_base_offset;
+		part_total_size = emmc_cached_part_size;
+	} else {
+		disk_partition_t disk_info;
+		int gpt_count, i;
+		gpt_count = get_partition_count_efi(blk_dev);
+		for (i = 1; i <= gpt_count; i++) {
+			if (get_partition_info_efi(blk_dev, i, &disk_info) == 0 &&
+				strcmp((const char *)disk_info.name, part_name) == 0) {
+				base_offset = (u64)disk_info.start * (u64)blk_dev->blksz;
+				part_total_size = (u64)disk_info.size * (u64)blk_dev->blksz;
+				break;
+			}
+		}
+		if (part_total_size == 0)
+			return CMD_RET_FAILURE;
+		emmc_cached_base_offset = base_offset;
+		emmc_cached_part_size = part_total_size;
+		strncpy(emmc_cached_part_name, part_name, sizeof(emmc_cached_part_name) - 1);
+	}
+	if (user_offset >= part_total_size) {
+		if (out_offset) *out_offset = (uint32_t)user_offset;
+		if (out_size) *out_size = 0;
+		return CMD_RET_SUCCESS;
+	}
+	remain = part_total_size - user_offset;
+	chunk = (user_size && (u64)user_size < remain) ? user_size : (u32)remain;
+	chunk_offset = base_offset + user_offset;
+	blksz = (uint32_t)blk_dev->blksz;
+	start_sector = (u32)(chunk_offset / blksz);
+	num_sectors = (chunk + blksz - 1) / blksz;
+	printf("MMC read: dev # %d, block # %u, count %u ...\n",
+		mmc_host.dev_num, start_sector, num_sectors);
+	if (blk_dev->block_read(mmc_host.dev_num, start_sector, num_sectors, (void *)load_addr) != num_sectors) {
+		printf("MMC read failed\n");
+		return CMD_RET_FAILURE;
+	}
+	printf("%u blocks read: OK\n", num_sectors);
+	if (out_offset) *out_offset = (uint32_t)chunk_offset;
+	if (out_size) *out_size = num_sectors * blksz;
+	if (out_detail) snprintf(out_detail, 32, "%u blocks", num_sectors);
+	return CMD_RET_SUCCESS;
+}
+#endif
+
+static int sf_chunk_read(const char *part_name, uint32_t load_addr,
+			u64 user_offset, uint32_t user_size, int raw,
+			uint32_t *out_offset, uint32_t *out_size,
+			char *out_detail)
+{
+	u64 base_offset = 0, part_total_size = 0, chunk_offset, remain;
+	uint32_t chunk_size_bytes, chunk;
+	char runcmd[256];
+
+	if (flashread_partition(part_name, load_addr,
+			0, raw, (uint32_t *)&base_offset, (uint32_t *)&part_total_size) != CMD_RET_SUCCESS)
+		return CMD_RET_FAILURE;
+	if (user_offset >= part_total_size) {
+		if (out_offset) *out_offset = (uint32_t)user_offset;
+		if (out_size) *out_size = 0;
+		return CMD_RET_SUCCESS;
+	}
+	remain = part_total_size - user_offset;
+	chunk = (user_size && (u64)user_size < remain) ? user_size : (u32)remain;
+	chunk_offset = base_offset + user_offset;
+	chunk_size_bytes = chunk;
+	snprintf(runcmd, sizeof(runcmd), "sf probe && sf read 0x%x 0x%llx 0x%x",
+		load_addr, chunk_offset, chunk_size_bytes);
+	if (run_command(runcmd, 0) != CMD_RET_SUCCESS)
+		return CMD_RET_FAILURE;
+	if (out_offset) *out_offset = (uint32_t)chunk_offset;
+	if (out_size) *out_size = chunk_size_bytes;
+	if (out_detail) out_detail[0] = '\0';
+	return CMD_RET_SUCCESS;
+}
+
+int flashread_partition_chunk(const char *part_name, uint32_t load_addr,
+			u64 user_offset, uint32_t user_size, int raw,
+			uint32_t *out_offset, uint32_t *out_size,
+			char *out_detail)
+{
+#ifdef CONFIG_CMD_NAND
+	if (!strcmp(part_name, "nand_full") && raw)
+		return nand_raw_chunk_read(load_addr, user_offset, user_size, out_offset, out_size, out_detail);
+#endif
+#ifdef CONFIG_QCA_MMC
+	if (mmc_get_dev(mmc_host.dev_num))
+		return emmc_chunk_read(part_name, load_addr, user_offset, user_size, out_offset, out_size, out_detail);
+#endif
+	return sf_chunk_read(part_name, load_addr, user_offset, user_size, raw, out_offset, out_size, out_detail);
 }
 
 static int do_flashread(cmd_tbl_t *cmdtp, int flag, int argc,
