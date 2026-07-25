@@ -430,7 +430,7 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 		.name = "MX35UF1G24AD",
 	},
 	{
-		.id = { 0xA1, 0xA5 },
+		.id = { 0xa1, 0xa5 },
 		.page_size = 2048,
 		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
@@ -446,7 +446,7 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 		.name = "FM25LS01",
 	},
 	{
-		.id = { 0xA1, 0xB6 },
+		.id = { 0xa1, 0xb6 },
 		.page_size = 2048,
 		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
@@ -462,7 +462,7 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 		.name = "FM25LS02BI3",
 	},
 	{
-		.id = { 0xA1, 0xE4 },// 3.3V 1Gb Fudan Micro SPI NAND
+		.id = { 0xa1, 0xe4 },// 3.3V 1Gb Fudan Micro SPI NAND
 		.page_size = 2048,
 		.erase_blk_size = 0x00020000,
 		.pgs_per_blk = 64,
