@@ -114,6 +114,7 @@ static struct {
 	int failed;
 	int done;
 } upload = { .packet_counter = 255 };
+
 static struct {
 	u32_t data_size;
 	u32_t data_addr;
@@ -129,6 +130,7 @@ static struct {
 	int raw;
 	char part_name[64];
 } backup;
+
 extern u8_t *webfailsafe_data_pointer;
 int upgrade_status = 0;
 static char part_json_buf[PART_JSON_BUF_SIZE];
@@ -215,6 +217,20 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 	}
 }
 
+static void httpd_conn_abort(struct failsafe_httpd_state *hs, struct tcp_pcb *pcb) {
+	tcp_arg(pcb, NULL);
+	httpd_state_reset(hs);
+	free(hs);
+	tcp_abort(pcb);
+}
+
+static err_t httpd_recv_abort(struct failsafe_httpd_state *hs, struct tcp_pcb *pcb, char *data, int need_free, struct pbuf *p) {
+	httpd_conn_abort(hs, pcb);
+	if (need_free) free(data);
+	pbuf_free(p);
+	return ERR_ABRT;
+}
+
 typedef u64 (*get_max_size_fn)(void);
 
 static const struct { const char *name; int type; const char *label; get_max_size_fn get_max_size; } upload_types[] = {
@@ -269,9 +285,7 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 
 	end += 4;
 	hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
-	printf("Upload size: %u.%02u MiB [%u bytes | 0x%x]\n",
-		(u32)mib_int(hs->upload_total), (u32)mib_frac(hs->upload_total),
-		hs->upload_total, hs->upload_total);
+	printf("Upload size: %u.%02u MiB [%u bytes | 0x%x]\n", (u32)mib_int(hs->upload_total), (u32)mib_frac(hs->upload_total), hs->upload_total, hs->upload_total);
 
 	if (upload_types[i].get_max_size) {
 		u64 max_size = upload_types[i].get_max_size();
@@ -363,8 +377,7 @@ static int httpd_check_upload_size(struct failsafe_httpd_state *hs) {
 	}
 	if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CDT &&
 		hs->upload_total < WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES) {
-		printf("## Error: CDT data too small, minimum %d bytes!\n",
-			WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
+		printf("## Error: CDT data too small, minimum %d bytes!\n", WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES);
 		return -1;
 	}
 	return 0;
@@ -619,10 +632,8 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 	if (backup.chunked) {
 		backup.total_chunks = (int)((total_size + ram_avail - 1) / ram_avail);
 		backup.chunk_num = 1;
-		printf("Backup: %llu.%02llu MiB > RAM %u.%02u MiB %d chunks transfer\n",
-			mib_int(total_size), mib_frac(total_size),
-			(u32)mib_int(ram_avail), (u32)mib_frac(ram_avail),
-			backup.total_chunks);
+		printf("Backup: %llu.%02llu MiB > RAM %u.%02u MiB %d chunks transfer\n", mib_int(total_size), mib_frac(total_size),
+			(u32)mib_int(ram_avail), (u32)mib_frac(ram_avail), backup.total_chunks);
 		char chunk_detail[32] = "";
 		if (flashread_partition_chunk(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, ram_avail, raw, NULL, &size, chunk_detail) != CMD_RET_SUCCESS) {
 			static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
@@ -697,13 +708,7 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 	}
 	if (i != 0) {
 		print_error("request file name too long!");
-		{
-			struct tcp_pcb *save_pcb = hs->pcb;
-			tcp_arg(save_pcb, NULL);
-			httpd_state_reset(hs);
-			free(hs);
-			tcp_abort(save_pcb);
-		}
+		httpd_conn_abort(hs, hs->pcb);
 		return;
 	}
 
@@ -865,10 +870,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 	data = malloc(p->tot_len + 1);
 	if (!data) {
 		pbuf_free(p);
-		tcp_arg(pcb, NULL);
-		httpd_state_reset(hs);
-		free(hs);
-		tcp_abort(pcb);
+		httpd_conn_abort(hs, pcb);
 		return ERR_ABRT;
 	}
 	offset = 0;
@@ -907,52 +909,25 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				break;
 			}
 			data[data_len] = '\0';
-			if (httpd_parse_content_length(hs, data) < 0) {
-				tcp_arg(pcb, NULL);
-				httpd_state_reset(hs);
-				free(hs);
-				tcp_abort(pcb);
-				if (need_free) free(data);
-				pbuf_free(p);
-				return ERR_ABRT;
-			}
+			if (httpd_parse_content_length(hs, data) < 0)
+				return httpd_recv_abort(hs, pcb, data, need_free, p);
 			hs->state = STATE_UPLOAD_REQUEST;
 			hs->owns_global = 1;
 			hs_global = hs;
 			tcp_setprio(pcb, TCP_PRIO_NORMAL);
 			led_off("blink_led");
-			if (httpd_parse_boundary(data) < 0 || httpd_init_upload_ram() < 0) {
-				tcp_arg(pcb, NULL);
-				httpd_state_reset(hs);
-				free(hs);
-				tcp_abort(pcb);
-				if (need_free) free(data);
-				pbuf_free(p);
-				return ERR_ABRT;
-			}
+			if (httpd_parse_boundary(data) < 0 || httpd_init_upload_ram() < 0)
+				return httpd_recv_abort(hs, pcb, data, need_free, p);
 			if (httpd_findandstore_firstchunk(hs, data, data_len)) {
 				upload.data_start_found = 1;
-				if (httpd_check_upload_size(hs) < 0) {
-					tcp_arg(pcb, NULL);
-					httpd_state_reset(hs);
-					free(hs);
-					tcp_abort(pcb);
-					if (need_free) free(data);
-					pbuf_free(p);
-					return ERR_ABRT;
-				}
+				if (httpd_check_upload_size(hs) < 0)
+					return httpd_recv_abort(hs, pcb, data, need_free, p);
 				httpd_check_upload_complete(hs);
 			} else {
 				upload.data_start_found = 0;
 			}
 		} else {
-			tcp_arg(pcb, NULL);
-			httpd_state_reset(hs);
-			free(hs);
-			tcp_abort(pcb);
-			if (need_free) free(data);
-			pbuf_free(p);
-			return ERR_ABRT;
+			return httpd_recv_abort(hs, pcb, data, need_free, p);
 		}
 		break;
 
@@ -961,24 +936,11 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			data[data_len] = '\0';
 			if (!httpd_findandstore_firstchunk(hs, data, data_len)) {
 				print_error("couldn't find start of data in next packet!");
-				tcp_arg(pcb, NULL);
-				httpd_state_reset(hs);
-				free(hs);
-				tcp_abort(pcb);
-				if (need_free) free(data);
-				pbuf_free(p);
-				return ERR_ABRT;
+				return httpd_recv_abort(hs, pcb, data, need_free, p);
 			}
 			upload.data_start_found = 1;
-			if (httpd_check_upload_size(hs) < 0) {
-				tcp_arg(pcb, NULL);
-				httpd_state_reset(hs);
-				free(hs);
-				tcp_abort(pcb);
-				if (need_free) free(data);
-				pbuf_free(p);
-				return ERR_ABRT;
-			}
+			if (httpd_check_upload_size(hs) < 0)
+				return httpd_recv_abort(hs, pcb, data, need_free, p);
 			httpd_check_upload_complete(hs);
 		} else {
 			hs->upload += data_len;
@@ -1016,10 +978,7 @@ static err_t httpd_poll_cb(void *arg, struct tcp_pcb *pcb) {
 	if (get_timer(hs->last_activity) >= 300000) {
 		if (hs == hs_global)
 			hs_global = NULL;
-		tcp_arg(pcb, NULL);
-		httpd_state_reset(hs);
-		free(hs);
-		tcp_abort(pcb);
+		httpd_conn_abort(hs, pcb);
 		return ERR_ABRT;
 	}
 
