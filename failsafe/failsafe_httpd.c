@@ -197,10 +197,13 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 	hs->upload = 0;
 	hs->upload_total = 0;
 	if (hs->owns_global) {
+		int done = upload.done, failed = upload.failed;
 		hs->owns_global = 0;
 		hs_global = NULL;
 		tcp_setprio(hs->pcb, TCP_PRIO_MIN);
 		memset(&upload, 0, sizeof(upload));
+		upload.done = done;
+		upload.failed = failed;
 		upload.packet_counter = 255;
 		memset(&backup, 0, sizeof(backup));
 		flashread_yield_fn = NULL;
@@ -701,6 +704,11 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 			tcp_abort(save_pcb);
 		}
 		return;
+	}
+
+	{
+		char *q = strstr((char *)&data[4], "?");
+		if (q) *q = 0;
 	}
 
 	if (!strstr(&data[4], ".css") && !strstr(&data[4], ".js") && !strstr(&data[4], ".svg") && !strstr(&data[4], ".ico"))
