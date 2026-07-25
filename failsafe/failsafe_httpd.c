@@ -710,7 +710,8 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 		fs_open(file_index_html[0].name, &fsfile);
 	} else {
 		if (!fs_open((const char *)&data[4], &fsfile)) {
-			print_error("file not found!");
+			if (!strstr(&data[4], "favicon.ico"))
+				print_error("file not found!");
 			fs_open(file_404_html[0].name, &fsfile);
 		}
 	}
