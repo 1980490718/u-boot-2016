@@ -52,21 +52,21 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define WEBFAILSAFE_UPLOAD_CDT_MIN_SIZE_IN_BYTES 184
 
-#define ISO_space   0x20
-#define ISO_nl      0x0a
-#define ISO_cr      0x0d
-#define ISO_tab     0x09
+#define ISO_space	0x20
+#define ISO_nl		0x0a
+#define ISO_cr		0x0d
+#define ISO_tab		0x09
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 #define is_http_whitespace(c) ((c) == ISO_space || (c) == ISO_cr || (c) == ISO_nl || (c) == ISO_tab)
 #define is_http_method_separator(c) ((c) == ISO_space || (c) == ISO_tab)
 
-#define WEBFAILSAFE_PROGRESS_START           0
-#define WEBFAILSAFE_PROGRESS_UPLOADING       1
-#define WEBFAILSAFE_PROGRESS_UPLOAD_READY    2
-#define WEBFAILSAFE_PROGRESS_UPGRADING       3
-#define WEBFAILSAFE_PROGRESS_UPGRADE_READY   4
-#define WEBFAILSAFE_PROGRESS_UPGRADE_FAILED  5
+#define WEBFAILSAFE_PROGRESS_START			0
+#define WEBFAILSAFE_PROGRESS_UPLOADING		1
+#define WEBFAILSAFE_PROGRESS_UPLOAD_READY	2
+#define WEBFAILSAFE_PROGRESS_UPGRADING		3
+#define WEBFAILSAFE_PROGRESS_UPGRADE_READY	4
+#define WEBFAILSAFE_PROGRESS_UPGRADE_FAILED	5
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define PART_JSON_BUF_SIZE 2048
@@ -104,14 +104,16 @@ extern u64 get_mibib_size(void);
 static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
 static char *boundary_value;
-static u32_t upload_ram_end;
-static int data_start_found;
-static u8_t post_packet_counter = 255;
-static u32_t post_led_counter = 0;
-static u32_t upload_start_time = 0;
-static int file_too_big = 0;
-static int webfailsafe_upload_failed_local = 0;
-static int webfailsafe_post_done_local = 0;
+static struct {
+	u32_t ram_end;
+	int data_start_found;
+	u8_t packet_counter;
+	u32_t led_counter;
+	u32_t start_time;
+	int file_too_big;
+	int failed;
+	int done;
+} upload = { .packet_counter = 255 };
 static struct {
 	u32_t data_size;
 	u32_t data_addr;
@@ -170,20 +172,20 @@ static void httpd_upload_progress(struct failsafe_httpd_state *hs) {
 	if (percent > 100)
 		percent = 100;
 
-	if (percent / 25 != post_packet_counter / 25) {
+	if (percent / 25 != upload.packet_counter / 25) {
 		filled = (percent * bar_width) / 100;
 		for (i = 0; i < bar_width; i++)
 			bar[i] = (i < filled) ? '#' : '.';
 		bar[bar_width] = '\0';
-		elapsed = (u32_t)get_timer(upload_start_time);
+		elapsed = (u32_t)get_timer(upload.start_time);
 		speed = (elapsed > 0) ? (u32_t)((u64_t)data_written * 1000 / elapsed) : 0;
 		printf("\rUploading: [%s] %3u%% %u.%02u MiB/s", bar, percent, (u32)mib_int(speed), (u32)mib_frac(speed));
-		post_packet_counter = (u8_t)percent;
+		upload.packet_counter = (u8_t)percent;
 	}
 
-	post_led_counter++;
-	if (post_led_counter >= 10000) {
-		post_led_counter = 0;
+	upload.led_counter++;
+	if (upload.led_counter >= 10000) {
+		upload.led_counter = 0;
 		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOADING);
 	}
 }
@@ -198,11 +200,8 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 		hs->owns_global = 0;
 		hs_global = NULL;
 		tcp_setprio(hs->pcb, TCP_PRIO_MIN);
-		data_start_found = 0;
-		post_packet_counter = 255;
-		post_led_counter = 0;
-		upload_start_time = 0;
-		file_too_big = 0;
+		memset(&upload, 0, sizeof(upload));
+		upload.packet_counter = 255;
 		memset(&backup, 0, sizeof(backup));
 		flashread_yield_fn = NULL;
 		led_on("blink_led");
@@ -275,25 +274,25 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 		u64 max_size = upload_types[i].get_max_size();
 		if ((u64)hs->upload_total > max_size) {
 			print_file_size_error(max_size);
-			webfailsafe_upload_failed_local = 1;
-			file_too_big = 1;
+			upload.failed = 1;
+			upload.file_too_big = 1;
 		}
 	}
 
 	hs->upload = (u32_t)(data_len - (end - data));
-	if (file_too_big)
+	if (upload.file_too_big)
 		return 1;
 
-	if (webfailsafe_data_pointer + hs->upload > (u8_t *)upload_ram_end) {
+	if (webfailsafe_data_pointer + hs->upload > (u8_t *)upload.ram_end) {
 		print_error("data larger than available RAM space!");
-		webfailsafe_upload_failed_local = 1;
-		file_too_big = 1;
+		upload.failed = 1;
+		upload.file_too_big = 1;
 		return 1;
 	}
 
 	memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
 	webfailsafe_data_pointer += hs->upload;
-	upload_start_time = (u32_t)get_timer(0);
+	upload.start_time = (u32_t)get_timer(0);
 	httpd_upload_progress(hs);
 	return 1;
 }
@@ -337,18 +336,18 @@ static int httpd_parse_boundary(char *data) {
 static int httpd_init_upload_ram(void) {
 	u32_t memset_len;
 	webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-	upload_ram_end = (u32_t)CONFIG_SYS_SDRAM_END;
+	upload.ram_end = (u32_t)CONFIG_SYS_SDRAM_END;
 	if (!webfailsafe_data_pointer) {
 		print_error("couldn't allocate RAM for data!");
 		return -1;
 	}
 	printf("Upload RAM address: 0x%x\n", (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
 	printf("Available RAM space: %u.%02u MiB\n",
-		(u32)mib_int(upload_ram_end - (u32_t)webfailsafe_data_pointer),
-		(u32)mib_frac(upload_ram_end - (u32_t)webfailsafe_data_pointer));
+		(u32)mib_int(upload.ram_end - (u32_t)webfailsafe_data_pointer),
+		(u32)mib_frac(upload.ram_end - (u32_t)webfailsafe_data_pointer));
 	memset_len = WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES;
-	if (webfailsafe_data_pointer + memset_len > (u8_t *)upload_ram_end)
-		memset_len = upload_ram_end - (u32_t)webfailsafe_data_pointer;
+	if (webfailsafe_data_pointer + memset_len > (u8_t *)upload.ram_end)
+		memset_len = upload.ram_end - (u32_t)webfailsafe_data_pointer;
 	if (memset_len > 0)
 		memset((void *)webfailsafe_data_pointer, 0xFF, memset_len);
 	return 0;
@@ -369,13 +368,13 @@ static int httpd_check_upload_size(struct failsafe_httpd_state *hs) {
 }
 
 static void httpd_upload_complete(struct failsafe_httpd_state *hs) {
-	if (webfailsafe_upload_failed_local) {
+	if (upload.failed) {
 		printf("\nfailed!\n");
 	} else {
 		printf("  Done!\n");
 	}
 	led_on("blink_led");
-	webfailsafe_post_done_local = 1;
+	upload.done = 1;
 	upgrade_status = 0;
 	net_boot_file_size = (ulong)hs->upload_total;
 }
@@ -387,7 +386,7 @@ static int httpd_check_upload_complete(struct failsafe_httpd_state *hs) {
 		static const char resp_err[] = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\n";
 		httpd_state_reset(hs);
 		hs->state = STATE_FILE_REQUEST;
-		if (!webfailsafe_upload_failed_local) {
+		if (!upload.failed) {
 			hs->dataptr = (u8_t *)resp_ok;
 			hs->upload = sizeof(resp_ok) - 1;
 		} else {
@@ -406,10 +405,10 @@ static void httpd_handle_upload_data(struct failsafe_httpd_state *hs, char *data
 	if ((u64_t)data_written + bytes_to_write > hs->upload_total)
 		bytes_to_write = hs->upload_total - data_written;
 
-	if (bytes_to_write > 0 && webfailsafe_data_pointer + bytes_to_write > (u8_t *)upload_ram_end) {
+	if (bytes_to_write > 0 && webfailsafe_data_pointer + bytes_to_write > (u8_t *)upload.ram_end) {
 		print_error("data larger than available RAM space!");
-		webfailsafe_upload_failed_local = 1;
-		file_too_big = 1;
+		upload.failed = 1;
+		upload.file_too_big = 1;
 	} else if (bytes_to_write > 0) {
 		memcpy((void *)webfailsafe_data_pointer, (void *)data, bytes_to_write);
 		webfailsafe_data_pointer += bytes_to_write;
@@ -819,11 +818,11 @@ static err_t httpd_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
 		}
 		if (backup.chunk_busy)
 			return ERR_OK;
-		if (webfailsafe_post_done_local) {
-			if (!webfailsafe_upload_failed_local)
+		if (upload.done) {
+			if (!upload.failed)
 				webfailsafe_ready_for_upgrade = 1;
-			webfailsafe_post_done_local = 0;
-			webfailsafe_upload_failed_local = 0;
+			upload.done = 0;
+			upload.failed = 0;
 		}
 		httpd_state_reset(hs);
 		tcp_close(pcb);
@@ -919,7 +918,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				return ERR_ABRT;
 			}
 			if (httpd_findandstore_firstchunk(hs, data, data_len)) {
-				data_start_found = 1;
+				upload.data_start_found = 1;
 				if (httpd_check_upload_size(hs) < 0) {
 					httpd_state_reset(hs);
 					free(hs);
@@ -930,7 +929,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				}
 				httpd_check_upload_complete(hs);
 			} else {
-				data_start_found = 0;
+				upload.data_start_found = 0;
 			}
 		} else {
 			httpd_state_reset(hs);
@@ -943,7 +942,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 		break;
 
 	case STATE_UPLOAD_REQUEST:
-		if (!data_start_found) {
+		if (!upload.data_start_found) {
 			data[data_len] = '\0';
 			if (!httpd_findandstore_firstchunk(hs, data, data_len)) {
 				print_error("couldn't find start of data in next packet!");
@@ -954,7 +953,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				pbuf_free(p);
 				return ERR_ABRT;
 			}
-			data_start_found = 1;
+			upload.data_start_found = 1;
 			if (httpd_check_upload_size(hs) < 0) {
 				httpd_state_reset(hs);
 				free(hs);
@@ -966,7 +965,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			httpd_check_upload_complete(hs);
 		} else {
 			hs->upload += data_len;
-			if (!webfailsafe_upload_failed_local)
+			if (!upload.failed)
 				httpd_handle_upload_data(hs, data, data_len);
 			httpd_check_upload_complete(hs);
 		}
