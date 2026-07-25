@@ -94,7 +94,8 @@ body.iframe-content .card,
 
 /* --- 颜色 --- */
 a,
-label {
+label,
+.label {
 	color: var(--c-link)
 }
 
@@ -173,7 +174,8 @@ body,
 }
 
 .sidebar-nav-item a,
-label {
+label,
+.label {
 	display: block
 }
 
@@ -227,6 +229,7 @@ button,
 .tips ul,
 .error p,
 .backup-col label,
+.backup-col .label,
 .backup-col select,
 .size-display {
 	font-size: .8rem
@@ -482,7 +485,8 @@ label {
 .terminal-btn,
 .terminal-clear,
 .terminal-prompt,
-.backup-col label {
+.backup-col label,
+.backup-col .label {
 	font-weight: bold
 }
 
@@ -559,7 +563,8 @@ label {
 	min-width: 0
 }
 
-.backup-col label {
+.backup-col label,
+.backup-col .label {
 	margin-bottom: .3rem
 }
 
