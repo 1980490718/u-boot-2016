@@ -530,21 +530,21 @@ function print_data_array() {
 			minify_standalone_css "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
 			_is_compressed=1
-			ascii_to_bytes "Content-type: text/css; charset=utf-8\r\n" >> "$files_content_tmp"
+			ascii_to_bytes "Content-type: text/css; charset=utf-8\r\nCache-Control: no-cache\r\n" >> "$files_content_tmp"
 			;;
 		js)
 			_temp_minified=$(mktemp)
 			minify_standalone_js "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
 			_is_compressed=1
-			ascii_to_bytes "Content-Type: application/javascript\r\n" >> "$files_content_tmp"
+			ascii_to_bytes "Content-Type: application/javascript\r\nCache-Control: no-cache\r\n" >> "$files_content_tmp"
 			;;
 		html|htm)
 			_temp_minified=$(mktemp)
 			minify_html_with_preserved_styling "$_file_path" "$_temp_minified" "$_file_name"
 			_file_content=$(compress_and_convert "$_temp_minified" "$_file_name")
 			_is_compressed=1
-			ascii_to_bytes "Content-type: text/html; charset=utf-8\r\n" >> "$files_content_tmp"
+			ascii_to_bytes "Content-type: text/html; charset=utf-8\r\nCache-Control: no-cache\r\n" >> "$files_content_tmp"
 			;;
 		png|jpg|jpeg|gif)
 			_orig_size=$(stat -c%s "$_file_path" 2>/dev/null || stat -f %z "$_file_path" 2>/dev/null)

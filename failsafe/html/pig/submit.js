@@ -57,7 +57,7 @@ function handleSubmit(e) {
 var ST=['上传','验证','刷写','重启','访问'];
 function showStep(cur, desc) {
 	var h='';
-	for(var i=0;i<5;i++) h+=(i<cur?ST[i]+'ok ':i===cur?ST[i]+'<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg#icon-refresh"/></svg> ':'- '+ST[i]+' ');
+	for(var i=0;i<5;i++) h+=(i<cur?ST[i]+'ok ':i===cur?ST[i]+'<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg> ':'- '+ST[i]+' ');
 	document.querySelector('.card').innerHTML='<h2>'+ST[cur]+'</h2><p>'+h+'</p><p>'+desc+'</p>';
 }
 function showFail(isTypeMismatch) {
