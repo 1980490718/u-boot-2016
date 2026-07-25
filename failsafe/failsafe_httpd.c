@@ -699,6 +699,7 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 		print_error("request file name too long!");
 		{
 			struct tcp_pcb *save_pcb = hs->pcb;
+			tcp_arg(save_pcb, NULL);
 			httpd_state_reset(hs);
 			free(hs);
 			tcp_abort(save_pcb);
@@ -864,6 +865,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 	data = malloc(p->tot_len + 1);
 	if (!data) {
 		pbuf_free(p);
+		tcp_arg(pcb, NULL);
 		httpd_state_reset(hs);
 		free(hs);
 		tcp_abort(pcb);
@@ -906,6 +908,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			}
 			data[data_len] = '\0';
 			if (httpd_parse_content_length(hs, data) < 0) {
+				tcp_arg(pcb, NULL);
 				httpd_state_reset(hs);
 				free(hs);
 				tcp_abort(pcb);
@@ -919,6 +922,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			tcp_setprio(pcb, TCP_PRIO_NORMAL);
 			led_off("blink_led");
 			if (httpd_parse_boundary(data) < 0 || httpd_init_upload_ram() < 0) {
+				tcp_arg(pcb, NULL);
 				httpd_state_reset(hs);
 				free(hs);
 				tcp_abort(pcb);
@@ -929,6 +933,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			if (httpd_findandstore_firstchunk(hs, data, data_len)) {
 				upload.data_start_found = 1;
 				if (httpd_check_upload_size(hs) < 0) {
+					tcp_arg(pcb, NULL);
 					httpd_state_reset(hs);
 					free(hs);
 					tcp_abort(pcb);
@@ -941,6 +946,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				upload.data_start_found = 0;
 			}
 		} else {
+			tcp_arg(pcb, NULL);
 			httpd_state_reset(hs);
 			free(hs);
 			tcp_abort(pcb);
@@ -955,6 +961,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			data[data_len] = '\0';
 			if (!httpd_findandstore_firstchunk(hs, data, data_len)) {
 				print_error("couldn't find start of data in next packet!");
+				tcp_arg(pcb, NULL);
 				httpd_state_reset(hs);
 				free(hs);
 				tcp_abort(pcb);
@@ -964,6 +971,7 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			}
 			upload.data_start_found = 1;
 			if (httpd_check_upload_size(hs) < 0) {
+				tcp_arg(pcb, NULL);
 				httpd_state_reset(hs);
 				free(hs);
 				tcp_abort(pcb);
@@ -1008,6 +1016,7 @@ static err_t httpd_poll_cb(void *arg, struct tcp_pcb *pcb) {
 	if (get_timer(hs->last_activity) >= 300000) {
 		if (hs == hs_global)
 			hs_global = NULL;
+		tcp_arg(pcb, NULL);
 		httpd_state_reset(hs);
 		free(hs);
 		tcp_abort(pcb);
