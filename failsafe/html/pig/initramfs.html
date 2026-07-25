@@ -5,11 +5,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>内存启动</title>
 	<script>var t=localStorage.getItem('theme')||'';if(t)document.documentElement.setAttribute('data-theme',t)</script>
-	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg#icon-rocket"/></svg>内存启动</h2>
+		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-rocket"/></svg>内存启动</h2>
 		<p>即将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认启动</b>按钮。</p>
 		<form enctype="multipart/form-data" name="initramfs">
 			<div class="form-group">
@@ -27,6 +27,6 @@
 			</ul>
 		</div>
 	</div>
-	<script src="submit.js"></script>
+	<script src="submit.js?v=f"></script>
 </body>
 </html>
