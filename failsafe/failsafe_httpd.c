@@ -3,7 +3,6 @@
 #include <malloc.h>
 #include <asm/byteorder.h>
 #ifdef CONFIG_CMD_NAND
-#undef LED_OFF
 #include <nand.h>
 #endif
 #include <ipq_api.h>
