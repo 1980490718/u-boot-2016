@@ -50,7 +50,7 @@ function updateSize(){
 	if(!p){sizeEl.textContent='';return;}
 	if(p.full){var eccLabel=p.name.indexOf('nand')===0?(p.oob?' Data [ECC off] + '+formatSize(p.oob)+' OOB':' Data [ECC on]'):'';sizeEl.textContent='0x0-0x'+p.size.toString(16).toUpperCase()+' ('+formatSize(p.size)+eccLabel+')';return;}
 	var emmc=p.flash==='emmc';
-	var end=p.start+p.size-1;
+	var end=p.start+p.size;
 	var sz=p.size;
 	sizeEl.textContent='0x'+p.start.toString(16).toUpperCase()+'-0x'+end.toString(16).toUpperCase()+' ('+formatSize(sz)+')';
 }
