@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>关于设备</title>
+	<script>var t=localStorage.getItem('theme')||'';if(t)document.documentElement.setAttribute('data-theme',t)</script>
+	<link rel="stylesheet" href="style.css?v=f">
+</head>
+<body class="iframe-content">
+	<div class="card about-card">
+		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-search-alert"/></svg>关于设备</h2>
+
+		<div class="about-section">
+			<h3>设备信息</h3>
+			<table class="about-table" id="info-table">
+				<tbody>
+					<tr><td>机型</td><td id="val-model">-</td></tr>
+					<tr><td>设置名称</td><td id="val-config-name">-</td></tr>
+					<tr><td>设备ID</td><td id="val-machid">-</td></tr>
+					<tr><td>内存大小</td><td id="val-ram">-</td></tr>
+					<tr><td>闪存类型</td><td id="val-flash">-</td></tr>
+					<tr><td>闪存信息</td><td id="val-flash-chips">-</td></tr>
+					<tr><td>PHY/交换机</td><td id="val-phy-switch">-</td></tr>
+					<tr><td>U-Boot版本</td><td id="val-version">-</td></tr>
+				</tbody>
+			</table>
+		</div>
+
+		<div class="about-section">
+			<h3>GPIO信息</h3>
+			<table class="about-table" id="gpio-table">
+				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>所属</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
+				<tbody id="gpio-tbody"></tbody>
+			</table>
+		</div>
+
+		<div class="about-section">
+			<h3>SMEM信息</h3>
+			<table class="about-table" id="smem-table">
+				<thead><tr><th>名称</th><th>起始地址</th><th>结束地址</th><th>Hex长度</th><th>大小</th><th>指向</th></tr></thead>
+				<tbody id="smem-tbody"></tbody>
+			</table>
+		</div>
+
+	</div>
+
+	<script>
+(function() {
+	function formatSize(v) {
+		if (v < 1024) return v + ' B';
+		if (v < 1048576) return (v / 1024).toFixed(2) + ' KiB';
+		if (v < 1073741824) return (v / 1048576).toFixed(2) + ' MiB';
+		return (v / 1073741824).toFixed(2) + ' GiB';
+	}
+
+	function formatHex(v) {
+		return '0x' + v.toString(16).toUpperCase();
+	}
+
+	function xhrGet(url, cb) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.timeout = 10000;
+		xhr.onload = function() {
+			if (xhr.status !== 200) return;
+			var data;
+			try { data = JSON.parse(xhr.responseText); } catch(e) { return; }
+			cb(data);
+		};
+		xhr.send();
+	}
+
+	function xhrPost(url, body, cb) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', url, true);
+		xhr.timeout = 10000;
+		xhr.onload = function() {
+			cb(xhr.status === 200 ? xhr.responseText : null);
+		};
+		xhr.send(body);
+	}
+
+	var ledTimers = {};
+
+	function ledControl(name, action) {
+		xhrGet('/led?name=' + encodeURIComponent(name) + '&action=' + action, function() {});
+	}
+
+	function startBlink(name) {
+		if (ledTimers[name]) return;
+		ledTimers[name] = setInterval(function() {
+			ledControl(name, 'toggle');
+		}, 500);
+	}
+
+	function stopBlink(name) {
+		if (ledTimers[name]) {
+			clearInterval(ledTimers[name]);
+			delete ledTimers[name];
+		}
+	}
+
+	function stopAllBlink() {
+		Object.keys(ledTimers).forEach(stopBlink);
+	}
+
+	function mkBtn(text, attrs, style) {
+		var b = document.createElement('button');
+		b.textContent = text;
+		for (var k in attrs) b.setAttribute(k, attrs[k]);
+		if (style) for (var k in style) b.style[k] = style[k];
+		return b;
+	}
+
+	function bindLedButtons(gpioTbody) {
+		gpioTbody.querySelectorAll('.about-sm-btn[data-act]').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				var name = this.getAttribute('data-led'), act = this.getAttribute('data-act');
+				if (act === 'blink') {
+					startBlink(name);
+					this.style.display = 'none';
+					this.parentElement.querySelector('[data-act="stop"][data-led="' + name + '"]').style.display = '';
+				} else {
+					stopBlink(name);
+					var stopBtn = this.parentElement.querySelector('[data-act="stop"][data-led="' + name + '"]'),
+					    blinkBtn = this.parentElement.querySelector('[data-act="blink"][data-led="' + name + '"]');
+					if (stopBtn) stopBtn.style.display = 'none';
+					if (blinkBtn) blinkBtn.style.display = '';
+					ledControl(name, act);
+				}
+			});
+		});
+
+		gpioTbody.querySelectorAll('.about-blink-stop').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				var name = this.getAttribute('data-led');
+				stopBlink(name);
+				this.style.display = 'none';
+				var blinkBtn = this.parentElement.querySelector('[data-act="blink"][data-led="' + name + '"]');
+				if (blinkBtn) blinkBtn.style.display = '';
+				ledControl(name, 'off');
+			});
+		});
+	}
+
+	function loadAbout() {
+		xhrGet('/about', function(data) {
+			document.getElementById('val-model').textContent = data.model || '-';
+			document.getElementById('val-machid').textContent = data.machid || '-';
+			document.getElementById('val-ram').textContent = data.ram_size ? formatSize(data.ram_size) : '-';
+			document.getElementById('val-flash').textContent = data.flash_type || '-';
+			document.getElementById('val-flash-chips').textContent = data.flash_chips || '-';
+			document.getElementById('val-phy-switch').textContent = data.phy_switch_info || '-';
+			document.getElementById('val-version').textContent = data.version || '-';
+			var cnTd = document.getElementById('val-config-name');
+			cnTd.textContent = data.config_name || '-';
+			if (data.config_name_source === 'env') {
+				cnTd.className = 'about-gpio-ops';
+				var btnRestore = mkBtn('恢复');
+				btnRestore.className = 'about-sm-btn';
+				btnRestore.onclick = function() {
+					xhrPost('/env_set', 'config_name=', function() { loadAbout(); });
+				};
+				cnTd.appendChild(btnRestore);
+			} else if (data.config_name_source === 'fdt') {
+				cnTd.className = 'about-gpio-ops';
+				var btnModify = mkBtn('修改');
+				btnModify.className = 'about-sm-btn';
+				btnModify.onclick = function() {
+					var val = prompt('输入 config_name 值 (如 config@xxx):');
+					if (val !== null && val !== '')
+						xhrPost('/env_set', 'config_name=' + encodeURIComponent(val), function() { loadAbout(); });
+				};
+				cnTd.appendChild(btnModify);
+			}
+
+			var gpioTbody = document.getElementById('gpio-tbody');
+			gpioTbody.innerHTML = '';
+			(data.gpios || []).forEach(function(g) {
+				var tr = document.createElement('tr'), isLed = g.parent === 'led_gpio',
+				    opsTd = document.createElement('td');
+				opsTd.className = 'about-gpio-ops';
+				if (isLed) {
+					var btn;
+					btn = mkBtn('点亮', {'data-led':g.name, 'data-act':'on'});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+					btn = mkBtn('熄灭', {'data-led':g.name, 'data-act':'off'});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+					btn = mkBtn('闪烁', {'data-led':g.name, 'data-act':'blink'});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+					btn = mkBtn('停止', {'data-led':g.name, 'data-act':'stop'}, {display:'none'});
+					btn.className = 'about-sm-btn about-blink-stop';
+					opsTd.appendChild(btn);
+				}
+				if (g.override) {
+					var btn = mkBtn('恢复', {'data-override': g.override});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+				} else if (!isLed && g.parent === 'key_gpio') {
+					var btn;
+					btn = mkBtn('修改', {'data-modify': 'reset_key'});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+					btn = mkBtn('探测', {'data-detect': 'reset_key'});
+					btn.className = 'about-sm-btn';
+					opsTd.appendChild(btn);
+				}
+				if (!opsTd.hasChildNodes()) opsTd.textContent = '-';
+				tr.innerHTML = [g.name||'-', g.alias||'', g.gpio, g.dir||'-',
+					g.value, g.value?'高':'低', g.parent||'-',
+					g.source==='env'?'变量':'dtb/fdt', g.override||''
+				].map(function(v){return '<td>'+v+'</td>';}).join('');
+				tr.appendChild(opsTd);
+				gpioTbody.appendChild(tr);
+			});
+			bindLedButtons(gpioTbody);
+			gpioTbody.querySelectorAll('[data-override]').forEach(function(btn) {
+				btn.onclick = function() {
+					var key = this.getAttribute('data-override');
+					xhrPost('/env_set', encodeURIComponent(key) + '=', function() { loadAbout(); });
+				};
+			});
+			gpioTbody.querySelectorAll('[data-modify]').forEach(function(btn) {
+				btn.onclick = function() {
+					var key = this.getAttribute('data-modify'),
+					    val = prompt('输入 ' + key + ' 的 GPIO 编号:');
+					if (val !== null && val !== '')
+						xhrPost('/env_set', encodeURIComponent(key) + '=' + encodeURIComponent(val), function() { loadAbout(); });
+				};
+			});
+			gpioTbody.querySelectorAll('[data-detect]').forEach(function(btn) {
+				btn.onclick = function() {
+					if (detectTimer) {
+						clearInterval(detectTimer);
+						detectTimer = null;
+						this.textContent = '探测';
+						this.classList.remove('about-btn-pressed');
+						Object.keys(detectExtraRows).forEach(function(gpio) {
+							if (detectExtraRows[gpio].parentNode)
+								detectExtraRows[gpio].parentNode.removeChild(detectExtraRows[gpio]);
+						});
+						detectExtraRows = {};
+					} else {
+						pollDetect();
+						detectTimer = setInterval(pollDetect, 200);
+						this.textContent = '停止';
+						this.classList.add('about-btn-pressed');
+					}
+				};
+			});
+		});
+
+		xhrGet('/partitions', function(data) {
+			var smemTbody = document.getElementById('smem-tbody');
+			smemTbody.innerHTML = '';
+			(data.parts || []).forEach(function(p) {
+				var tr = document.createElement('tr');
+				tr.innerHTML = [p.name||'-', formatHex(p.start), formatHex(p.start+p.size), p.size.toString(16).toUpperCase(), formatSize(p.size), p.flash||'-']
+					.map(function(v){return '<td>'+v+'</td>';}).join('');
+				smemTbody.appendChild(tr);
+			});
+		});
+	}
+
+	var detectTimer = null;
+	var detectExtraRows = {};
+
+	function pollDetect() {
+		xhrGet('/btn_detect', function(data) {
+			var gpioTbody = document.getElementById('gpio-tbody');
+			data.forEach(function(b) {
+				var found = false;
+				var rows = gpioTbody.querySelectorAll('tr');
+				for (var r = 0; r < rows.length; r++) {
+					var cells = rows[r].querySelectorAll('td');
+					if (cells.length > 1 && cells[2].textContent == b.gpio) {
+						cells[4].textContent = b.value;
+						cells[5].textContent = b.value ? '高' : '低';
+						cells[5].className = b.value ? '' : 'about-btn-pressed';
+						found = true;
+						break;
+					}
+				}
+				if (!found && !detectExtraRows[b.gpio]) {
+					var tr = document.createElement('tr');
+					tr.innerHTML =
+						'<td>-</td>' +
+						'<td></td>' +
+						'<td>' + b.gpio + '</td>' +
+						'<td>in</td>' +
+						'<td>' + b.value + '</td>' +
+						'<td' + (b.value ? '' : ' class="about-btn-pressed"') + '>' + (b.value ? '高' : '低') + '</td>' +
+						'<td>-</td><td>-</td><td></td><td>-</td>';
+					gpioTbody.appendChild(tr);
+					detectExtraRows[b.gpio] = tr;
+				}
+				if (!found && detectExtraRows[b.gpio]) {
+					var cells = detectExtraRows[b.gpio].querySelectorAll('td');
+					cells[4].textContent = b.value;
+					cells[5].textContent = b.value ? '高' : '低';
+					cells[5].className = b.value ? '' : 'about-btn-pressed';
+				}
+			});
+		});
+	}
+
+	window.addEventListener('unload', function() {
+		stopAllBlink();
+		if (detectTimer) clearInterval(detectTimer);
+	});
+
+	loadAbout();
+})();
+	</script>
+</body>
+</html>

@@ -1005,6 +1005,10 @@ int spi_nand_flash_probe(struct spi_slave *spi, struct spi_flash *flash,
 	}
 
 	flash->name = params->name;
+#ifdef CONFIG_LWIP_HTTPD
+	flash->jedec = (idcode[0] << 16) | (idcode[1] << 8) | idcode[2];
+	flash->ext_jedec = idcode[3];
+#endif
 	flash->page_size = params->page_size;
 	flash->sector_size = params->page_size;
 	flash->erase_size = params->erase_size;

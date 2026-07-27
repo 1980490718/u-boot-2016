@@ -10,4 +10,5 @@
 <g id="icon-cpu"><rect x="7" y="3" width="10" height="18" rx="1"/><path d="M11 3a1 1 0 0 0 2 0"/><path d="M3 7h4M3 11h4M3 15h4M3 19h4M17 7h4M17 11h4M17 15h4M17 19h4"/></g>
 <g id="icon-terminal"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></g>
 <g id="icon-refresh"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></g>
+<g id="icon-search-alert"><circle cx="10" cy="10" r="7"/><path d="m21 21-4.3-4.3"/><line x1="10" y1="7" x2="10" y2="10"/><line x1="10" y1="13" x2="10.01" y2="13"/></g>
 </svg>

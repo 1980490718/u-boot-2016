@@ -1160,6 +1160,7 @@ qpic_nand_onfi_save_params(struct mtd_info *mtd,
 			   struct onfi_param_page *param_page)
 {
 	struct qpic_nand_dev *dev = MTD_QPIC_NAND_DEV(mtd);
+	struct nand_chip *chip = MTD_NAND_CHIP(mtd);
 	int onfi_ret = NANDC_RESULT_SUCCESS;
 	uint32_t ecc_bits;
 
@@ -1169,6 +1170,19 @@ qpic_nand_onfi_save_params(struct mtd_info *mtd,
 		printf("Fetch ID cmd failed\n");
 		goto onfi_save_params_err;
 	}
+
+	if (param_page->rev & (1 << 5))
+		chip->onfi_version = 23;
+	else if (param_page->rev & (1 << 4))
+		chip->onfi_version = 22;
+	else if (param_page->rev & (1 << 3))
+		chip->onfi_version = 21;
+	else if (param_page->rev & (1 << 2))
+		chip->onfi_version = 20;
+	else if (param_page->rev & (1 << 1))
+		chip->onfi_version = 10;
+	memcpy(chip->onfi_params.model, param_page->device_model,
+		sizeof(chip->onfi_params.model));
 
 	dev->page_size = param_page->data_per_pg;
 	mtd->writesize = dev->page_size;
