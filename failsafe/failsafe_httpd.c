@@ -1038,12 +1038,21 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	if (flash_type == SMEM_BOOT_MMC_FLASH || flash_type == SMEM_BOOT_NO_FLASH) {
 		blk_dev = mmc_get_dev(mmc_host.dev_num);
 		if (blk_dev != NULL) {
+			pos += sprintf(part_json_buf + pos,
+				"{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\"}",
+				(unsigned long long)34 * (unsigned long long)blk_dev->blksz);
+			count++;
+			pos += sprintf(part_json_buf + pos,
+				",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+				(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
+				(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
+			count++;
 			gpt_count = get_partition_count_efi(blk_dev);
 			for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
 				if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
 					pos += sprintf(part_json_buf + pos,
-						"%s{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
-						(count > 0 ? "," : ""), disk_info.name,
+						",{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+						disk_info.name,
 						(unsigned long long)disk_info.start * (unsigned long long)blk_dev->blksz,
 						(unsigned long long)disk_info.size * (unsigned long long)blk_dev->blksz);
 					count++;
@@ -1075,12 +1084,22 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 			 sfi->rootfs.offset == 0xBAD0FF5E || flash_type == SMEM_BOOT_NORPLUSEMMC)) {
 			blk_dev = mmc_get_dev(mmc_host.dev_num);
 			if (blk_dev != NULL) {
+				pos += sprintf(part_json_buf + pos,
+					"%s{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\"}",
+					(count > 0 ? "," : ""),
+					(unsigned long long)34 * (unsigned long long)blk_dev->blksz);
+				count++;
+				pos += sprintf(part_json_buf + pos,
+					",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+					(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
+					(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
+				count++;
 				gpt_count = get_partition_count_efi(blk_dev);
 				for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
 					if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
 						pos += sprintf(part_json_buf + pos,
-						"%s{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
-						(count > 0 ? "," : ""), disk_info.name,
+						",{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+						disk_info.name,
 						(unsigned long long)disk_info.start * (unsigned long long)blk_dev->blksz,
 						(unsigned long long)disk_info.size * (unsigned long long)blk_dev->blksz);
 					count++;
