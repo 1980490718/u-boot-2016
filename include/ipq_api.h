@@ -39,9 +39,6 @@
 #define GPIO_OE_ENABLE 1
 #endif
 
-#define LED_ON 1
-#define LED_OFF 0
-
 /* WebFailsafe progress status */
 #define WEBFAILSAFE_PROGRESS_START			0
 #define WEBFAILSAFE_PROGRESS_UPLOADING			1
