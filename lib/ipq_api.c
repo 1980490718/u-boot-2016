@@ -26,7 +26,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * GPIO helper - resolve GPIO number from FDT path or environment variable
  * ----------------------------------------------------------------------- */
 
-static int fdt_find_gpio_node(const char *gpio_name) {
+int fdt_find_gpio_node(const char *gpio_name) {
 	int node = fdt_path_offset(gd->fdt_blob, gpio_name);
 	if (node >= 0)
 		return node;
@@ -39,7 +39,7 @@ static int fdt_find_gpio_node(const char *gpio_name) {
 	return fdt_path_offset(gd->fdt_blob, path);
 }
 
-static int fdt_get_gpio_number(const char *gpio_name) {
+int fdt_get_gpio_number(const char *gpio_name) {
 	char *endp;
 	ulong num = simple_strtoul(gpio_name, &endp, 10);
 	if (*endp == '\0' && endp != gpio_name)
@@ -211,18 +211,23 @@ void btn_init_by_name(const char *gpio_name) {
 	btn_init_gpio(gpio, gpio_name, "fdt");
 }
 
-static int env_reset_gpio(void) {
-	static int gpio = -2;
-	if (gpio == -2) {
+static int env_reset_gpio_cached = -2;
+
+int env_reset_gpio(void) {
+	if (env_reset_gpio_cached == -2) {
 		char *val = getenv("reset_key");
 		if (val) {
-			gpio = simple_strtoul(val, NULL, 10);
-			btn_init_gpio(gpio, "reset_key", "env");
+			env_reset_gpio_cached = simple_strtoul(val, NULL, 10);
+			btn_init_gpio(env_reset_gpio_cached, "reset_key", "env");
 		} else {
-			gpio = -1;
+			env_reset_gpio_cached = -1;
 		}
 	}
-	return gpio;
+	return env_reset_gpio_cached;
+}
+
+void env_reset_gpio_invalidate(void) {
+	env_reset_gpio_cached = -2;
 }
 
 static bool btn_pressed(char *name, int name_len) {
@@ -313,32 +318,29 @@ void btn_check_press(void) {
  * U-Boot command - gpio: control LED/GPIO via DTS name or env
  * ----------------------------------------------------------------------- */
 
-static void fdt_list_gpio(int node, const char *parent) {
+static void fdt_list_gpio_by_node(int node, const char *parent,
+	void (*cb)(int gpio, const char *name, const char *dir, int value, const char *parent, void *ctx),
+	void *ctx) {
 	int subnode;
 	fdt_for_each_subnode(gd->fdt_blob, subnode, node) {
 		int gpio = fdtdec_get_uint(gd->fdt_blob, subnode, "gpio", -1);
 		if (gpio >= 0) {
 			int value = gpio_get_value(gpio);
 			unsigned int cfg = readl(GPIO_CONFIG_ADDR(gpio));
-			printf("GPIO%d %s value=%d  %s/%s\n", gpio,
-				(cfg & (1 << 9)) ? "out" : "in", value,
-				parent, fdt_get_name(gd->fdt_blob, subnode, NULL));
+			const char *name = fdt_get_name(gd->fdt_blob, subnode, NULL);
+			cb(gpio, name ? name : "?", (cfg & (1 << 9)) ? "out" : "in", value, parent, ctx);
 		}
-		fdt_list_gpio(subnode, fdt_get_name(gd->fdt_blob, subnode, NULL));
+		fdt_list_gpio_by_node(subnode, fdt_get_name(gd->fdt_blob, subnode, NULL), cb, ctx);
 	}
 }
 
-#ifdef CONFIG_IPQ6018
-#define GPIO_MAX 80
-#elif defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ806X)
-#define GPIO_MAX 68
-#elif defined(CONFIG_IPQ5332)
-#define GPIO_MAX 52
-#elif defined(CONFIG_IPQ5018)
-#define GPIO_MAX 47
-#elif defined(CONFIG_IPQ9574)
-#define GPIO_MAX 62
-#endif
+void fdt_list_gpio(const char *path, const char *parent,
+	void (*cb)(int gpio, const char *name, const char *dir, int value, const char *parent, void *ctx),
+	void *ctx) {
+	int node = fdt_path_offset(gd->fdt_blob, path);
+	if (node >= 0)
+		fdt_list_gpio_by_node(node, parent, cb, ctx);
+}
 
 static void gpio_detect(void) {
 	int i, values[GPIO_MAX];
@@ -366,11 +368,13 @@ static void gpio_detect(void) {
 	}
 }
 
+static void gpio_printf_cb(int gpio, const char *name, const char *dir, int value, const char *parent, void *ctx) {
+	printf("GPIO%d %s value=%d  %s/%s\n", gpio, dir, value, parent, name);
+}
+
 static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	if (argc < 2) {
-		int root = fdt_path_offset(gd->fdt_blob, "/");
-		if (root >= 0)
-			fdt_list_gpio(root, "");
+		fdt_list_gpio("/", "", gpio_printf_cb, NULL);
 		return CMD_RET_USAGE;
 	}
 	if (strcmp(argv[1], "d") == 0) {
@@ -707,12 +711,24 @@ int eth_check_link_change(void) {
 		return 0;
 
 #if defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ9574)
-	for (i = 0; i < PHY_PORT_MAX; i++) {
-		if (!phy_info[i] || phy_info[i]->phy_type == UNUSED_PHY_TYPE || phy_info[i]->phy_type == SFP_PHY_TYPE)
-			continue;
-		if (read_phy_link(devname, phy_info[i]->phy_address)) {
-			link_port = i;
-			break;
+	{
+		int has_phy_info = 0;
+		for (i = 0; i < PHY_PORT_MAX; i++) {
+			if (phy_info[i] && phy_info[i]->phy_type != UNUSED_PHY_TYPE && phy_info[i]->phy_type != SFP_PHY_TYPE) {
+				has_phy_info = 1;
+				if (read_phy_link(devname, phy_info[i]->phy_address)) {
+					link_port = i;
+					break;
+				}
+			}
+		}
+		if (!has_phy_info) {
+			for (i = 0; i < PHY_MAX_ADDR; i++) {
+				if (read_phy_link(devname, i)) {
+					link_port = i;
+					break;
+				}
+			}
 		}
 	}
 #elif defined(CONFIG_IPQ5018)

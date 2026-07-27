@@ -7,11 +7,23 @@
 #include <nand.h>
 #endif
 #include <ipq_api.h>
+#include <asm/io.h>
+#include <spi_flash.h>
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
+#if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ6018) \
+	|| defined(CONFIG_IPQ5018) || defined(CONFIG_IPQ5332) \
+	|| defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ806X)
+#include <asm/arch-qca-common/qpic_nand.h>
+#endif
 #include <command.h>
 #include <webterm.h>
-#include <asm/gpio.h>
+#include <version.h>
+#include <fdtdec.h>
+#if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)
+#include <miiphy.h>
+#include <linux/mdio.h>
+#endif
 #ifdef CONFIG_QCA_MMC
 #include <mmc.h>
 #include <sdhci.h>
@@ -23,6 +35,7 @@ extern struct sdhci_host mmc_host;
 #endif
 #endif
 extern unsigned int get_spi_flash_size(void);
+extern struct spi_flash *spi_flash_ptr[MAX_SF_BUS_NUM][MAX_SF_CS_NUM];
 extern int flashread_partition(const char *part_name, ulong addr, ulong user_size, int raw, ulong *out_offset, ulong *out_size);
 extern int flashread_partition_chunk(const char *part_name, ulong addr, u64 user_offset, ulong user_size, int raw, ulong *out_offset, ulong *out_size, char *out_detail);
 extern void (*flashread_yield_fn)(void);
@@ -78,9 +91,6 @@ extern int webfailsafe_img_flash;
 extern u32 net_boot_file_size;
 extern int do_http_upgrade(ulong size, int upgrade_type);
 extern void do_http_progress(int state);
-extern void led_on(const char *name);
-extern void led_off(const char *name);
-extern void led_toggle(const char *name);
 extern ulong get_timer(ulong base);
 extern void HttpdDone(void);
 extern void HttpdStop(void);
@@ -471,6 +481,545 @@ static void httpd_handle_upgrade_status(struct failsafe_httpd_state *hs) {
 	httpd_send_data(hs);
 }
 
+#define ABOUT_BUF_SIZE 4096
+static char about_json_buf[ABOUT_BUF_SIZE];
+
+struct phy_id_name {
+	u32 id;
+	const char *name;
+};
+
+static const struct phy_id_name phy_c22_qca[] = {
+	{ 0x004DD0B0, "QCA8075 V1.0 5P" },
+	{ 0x004DD0B1, "QCA8075 V1.1 5P" },
+	{ 0x004DD0B2, "QCA8075 V1.1 2P" },
+	{ 0x004DD036, "QCA8337"          },
+	{ 0x004DD074, "QCA8033"          },
+};
+
+#if defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
+static const struct phy_id_name phy_c22_ext[] = {
+	{ 0x004DD0C0, "GEPHY"        },
+	{ 0x004DD100, "QCA8081 V1.0" },
+	{ 0x004DD101, "QCA8081 V1.1" },
+	{ 0x004DD180, "QCA8084"      },
+};
+
+static const struct phy_id_name phy_c45_aq[] = {
+	{ 0x03a1b4e2, "AQR107"        },
+	{ 0x03a1b502, "AQR109"        },
+	{ 0x03a1b610, "AQR111"        },
+	{ 0x03a1b612, "AQR111B0"      },
+	{ 0x03a1b660, "AQR112"        },
+	{ 0x03a1b792, "AQR112C"       },
+	{ 0x31c31C10, "AQR113C A0"    },
+	{ 0x31c31C11, "AQR113C A1"    },
+	{ 0x31c31C12, "AQR113C B0"    },
+	{ 0x31c31C13, "AQR113C B1"    },
+	{ 0x31c31DD3, "Marvell X3410" },
+};
+#endif
+
+static const char *phy_lookup(u32 id, const struct phy_id_name *tbl, int cnt)
+{
+	int i;
+	for (i = 0; i < cnt; i++)
+		if (id == tbl[i].id)
+			return tbl[i].name;
+	return NULL;
+}
+
+static int phy_emit(int pos, int *first, const char *name, int addr, u16 id1, u16 id2)
+{
+	if (!*first)
+		pos += sprintf(about_json_buf + pos, ", ");
+	pos += sprintf(about_json_buf + pos,
+		"%s@%d (ID %04x:%04x)", name, addr, id1, id2);
+	*first = 0;
+	return pos;
+}
+
+struct about_gpio_ctx {
+	char *buf;
+	int *pos;
+	int *first;
+	int env_rk_gpio;
+};
+
+static const char *fdt_find_alias_for_path(const char *path) {
+	int aliases = fdt_path_offset(gd->fdt_blob, "/aliases");
+	if (aliases < 0)
+		return NULL;
+	int prop_len;
+	const struct fdt_property *prop;
+	for (int offset = fdt_first_property_offset(gd->fdt_blob, aliases);
+		 offset >= 0;
+		 offset = fdt_next_property_offset(gd->fdt_blob, offset)) {
+		prop = fdt_get_property_by_offset(gd->fdt_blob, offset, &prop_len);
+		if (!prop)
+			break;
+		if (strcmp(prop->data, path) == 0)
+			return fdt_string(gd->fdt_blob, fdt32_to_cpu(prop->nameoff));
+	}
+	return NULL;
+}
+
+static void about_gpio_cb(int gpio, const char *name, const char *dir, int value, const char *parent, void *ctx) {
+	struct about_gpio_ctx *c = ctx;
+	const char *src = getenv(name) ? "env" : "fdt";
+	const char *override = "";
+	if (c->env_rk_gpio >= 0 && strcmp(parent, "key_gpio") == 0 && src[0] == 'f')
+		override = "reset_key";
+	char path[80];
+	snprintf(path, sizeof(path), "/tlmm-gpio/%s/%s", parent, name);
+	const char *alias = fdt_find_alias_for_path(path);
+	*c->pos += sprintf(c->buf + *c->pos,
+		"%s{\"gpio\":%d,\"name\":\"%s\",\"alias\":\"%s\",\"dir\":\"%s\",\"value\":%d,\"parent\":\"%s\",\"source\":\"%s\",\"override\":\"%s\"}",
+		*c->first ? "" : ",", gpio, name, alias ? alias : "", dir, value, parent, src, override);
+	*c->first = 0;
+}
+
+static void httpd_handle_about(struct failsafe_httpd_state *hs) {
+	int pos = 0, hdr_len;
+	char hdr[128];
+	pos += sprintf(about_json_buf + pos, "{\"version\":\"%s\",", version_string);
+	pos += sprintf(about_json_buf + pos, "\"machid\":\"0x%lx\",", gd->bd->bi_arch_number);
+	pos += sprintf(about_json_buf + pos, "\"ram_size\":%lu,", (unsigned long)gd->ram_size);
+
+	{
+		const char *fdt_model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
+#ifdef CONFIG_BOARD_DISPLAY_NAME
+		pos += sprintf(about_json_buf + pos, "\"model\":\"%s%s%s%s\",", CONFIG_BOARD_DISPLAY_NAME, fdt_model ? " (" : "", fdt_model ? fdt_model : "", fdt_model ? ")" : "");
+#else
+		pos += sprintf(about_json_buf + pos, "\"model\":\"%s\",", fdt_model ? fdt_model : "");
+#endif
+	}
+
+	{
+		const char *cn = fdt_getprop(gd->fdt_blob, 0, "config_name", NULL);
+		const char *cn_env = getenv("config_name");
+		if (cn_env) {
+			pos += sprintf(about_json_buf + pos, "\"config_name\":\"%s\"," "\"config_name_source\":\"env\",", cn_env);
+		} else if (cn) {
+			int cnt = fdt_count_strings(gd->fdt_blob, 0, "config_name");
+			pos += sprintf(about_json_buf + pos, "\"config_name\":\"");
+			int first = 1;
+			for (int i = 0; i < cnt && i < 8; i++) {
+				const char *s;
+				if (fdt_get_string_index(gd->fdt_blob, 0, "config_name", i, &s) == 0 && s && strchr(s, '@')) {
+					if (!first) pos += sprintf(about_json_buf + pos, ", ");
+					pos += sprintf(about_json_buf + pos, "%s", s);
+					first = 0;
+				}
+			}
+			pos += sprintf(about_json_buf + pos, "\",\"config_name_source\":\"fdt\",");
+		} else {
+			pos += sprintf(about_json_buf + pos, "\"config_name\":\"\"," "\"config_name_source\":\"\",");
+		}
+	}
+
+	{
+		static const char * const flash_type_names[] = {
+			[SMEM_BOOT_NO_FLASH]        = "none",
+			[SMEM_BOOT_NOR_FLASH]       = "nor",
+			[SMEM_BOOT_NAND_FLASH]      = "nand",
+			[SMEM_BOOT_ONENAND_FLASH]   = "onenand",
+			[SMEM_BOOT_SDC_FLASH]       = "sdc",
+			[SMEM_BOOT_MMC_FLASH]       = "emmc",
+			[SMEM_BOOT_SPI_FLASH]       = "spi",
+			[SMEM_BOOT_NORPLUSNAND]     = "nor+nand",
+			[SMEM_BOOT_NORPLUSEMMC]     = "nor+emmc",
+			[SMEM_BOOT_QSPI_NAND_FLASH] = "qspi-nand",
+		};
+		uint32_t ft;
+		const char *ft_name = "unknown";
+		if (get_current_flash_type(&ft) == 0 &&
+			ft < ARRAY_SIZE(flash_type_names) && flash_type_names[ft])
+			ft_name = flash_type_names[ft];
+		pos += sprintf(about_json_buf + pos, "\"flash_type\":\"%s\",", ft_name);
+	}
+
+	{
+		int fc_first = 1;
+		pos += sprintf(about_json_buf + pos, "\"flash_chips\":\"");
+		{
+			int b, c;
+			for (b = 0; b < MAX_SF_BUS_NUM; b++)
+				for (c = 0; c < MAX_SF_CS_NUM; c++) {
+					struct spi_flash *sf = spi_flash_ptr[b][c];
+					if (sf && sf->name && sf->size) {
+						if (!fc_first)
+							pos += sprintf(about_json_buf + pos, ", ");
+						pos += sprintf(about_json_buf + pos, "%s %luMiB",
+							sf->name, (unsigned long)(sf->size >> 20));
+						if (sf->jedec)
+							pos += sprintf(about_json_buf + pos,
+								" [ID %02x:%02x:%02x",
+								sf->jedec >> 16,
+								(sf->jedec >> 8) & 0xFF,
+								sf->jedec & 0xFF);
+						if (sf->jedec && sf->ext_jedec)
+							pos += sprintf(about_json_buf + pos, ":%02x", sf->ext_jedec & 0xFF);
+						if (sf->jedec)
+							pos += sprintf(about_json_buf + pos, "]");
+						fc_first = 0;
+					}
+				}
+		}
+#ifdef CONFIG_CMD_NAND
+		{
+			int i;
+			for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++) {
+				struct mtd_info *mtd = &nand_info[i];
+#ifdef CONFIG_IPQ_SPI_NAND_INFO_IDX
+				if (i == CONFIG_IPQ_SPI_NAND_INFO_IDX)
+					continue;
+#endif
+#ifdef CONFIG_IPQ_SPI_NOR_INFO_IDX
+				if (i == CONFIG_IPQ_SPI_NOR_INFO_IDX)
+					continue;
+#endif
+				if (mtd->size > 0 && mtd->writesize > 0 && mtd->writesize != 1) {
+					struct nand_chip *chip = mtd->priv;
+					if (!fc_first)
+						pos += sprintf(about_json_buf + pos, ", ");
+					pos += sprintf(about_json_buf + pos, "%s %luMiB", mtd->name ? mtd->name : "nand", (unsigned long)(mtd->size >> 20));
+					if (chip && chip->onfi_version) {
+						int ml = 20;
+						while (ml > 0 && chip->onfi_params.model[ml-1] == ' ')
+							ml--;
+						if (ml > 0)
+							pos += sprintf(about_json_buf + pos, " %.*s", ml, chip->onfi_params.model);
+#ifdef CONFIG_QPIC_NAND
+						if (chip->priv) {
+							struct { unsigned id; } *qd = chip->priv;
+							if (qd->id)
+								pos += sprintf(about_json_buf + pos, " [ONFI v%d ID %02x:%02x:%02x:%02x]", chip->onfi_version,
+									qd->id & 0xff, (qd->id >> 8) & 0xff, (qd->id >> 16) & 0xff, (qd->id >> 24) & 0xff);
+						} else
+#endif
+						pos += sprintf(about_json_buf + pos, " [ONFI v%d ID %02x]", chip->onfi_version, chip->onfi_params.jedec_id);
+					}
+					else if (chip && chip->jedec_version)
+						pos += sprintf(about_json_buf + pos, " [JEDEC v%d ID:%02x:%02x:%02x]", chip->jedec_version,
+							chip->jedec_params.jedec_id[0], chip->jedec_params.jedec_id[1], chip->jedec_params.jedec_id[2]);
+					else if (chip && chip->cmdfunc && chip->read_byte) {
+						u8 mid, did;
+						chip->select_chip(mtd, 0);
+						chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
+						mid = chip->read_byte(mtd);
+						did = chip->read_byte(mtd);
+						if (mid || did)
+							pos += sprintf(about_json_buf + pos, " [ID %02x:%02x]", mid, did);
+					}
+#ifdef CONFIG_QPIC_NAND
+					else if (chip && chip->priv) {
+						struct { unsigned id; unsigned type;
+							unsigned vendor; unsigned device; } *qd = chip->priv;
+						if (qd->id) {
+							extern struct nand_manufacturers nand_manuf_ids[];
+							extern struct nand_flash_dev nand_flash_ids[];
+							struct nand_manufacturers *mfr;
+							struct nand_flash_dev *fdev;
+							const char *mfr_name = NULL;
+							const char *dev_name = NULL;
+							u8 vid = qd->id & 0xff;
+							u8 did = (qd->id >> 8) & 0xff;
+							for (mfr = nand_manuf_ids; mfr->id; mfr++) {
+								if (mfr->id == vid) {
+									mfr_name = mfr->name;
+									break;
+								}
+							}
+							for (fdev = nand_flash_ids; fdev->name; fdev++) {
+								if (fdev->id[0] == vid &&
+									fdev->id[1] == did &&
+									fdev->id_len >= 4) {
+									dev_name = fdev->name;
+									break;
+								}
+							}
+							if (dev_name)
+								pos += sprintf(about_json_buf + pos, " %s", dev_name);
+							else if (mfr_name)
+								pos += sprintf(about_json_buf + pos, " %s", mfr_name);
+							pos += sprintf(about_json_buf + pos, " [ID %02x:%02x:%02x:%02x]", qd->id & 0xff,
+								(qd->id >> 8) & 0xff, (qd->id >> 16) & 0xff, (qd->id >> 24) & 0xff);
+						}
+					}
+#endif
+#ifdef CONFIG_QPIC_SERIAL
+					else {
+						extern struct qpic_serial_nand_params *serial_params;
+						if (serial_params)
+							pos += sprintf(about_json_buf + pos, " [ID %02x:%02x:%02x:%02x]",
+								serial_params->id[0], serial_params->id[1], serial_params->id[2], serial_params->id[3]);
+					}
+#endif
+					fc_first = 0;
+				}
+			}
+		}
+#endif
+#ifdef CONFIG_QCA_MMC
+		{
+			int i;
+			for (i = 0; i < get_mmc_num(); i++) {
+				struct mmc *m = find_mmc_device(i);
+				if (m && m->has_init && m->capacity > 0) {
+					if (!fc_first)
+						pos += sprintf(about_json_buf + pos, ", ");
+					pos += sprintf(about_json_buf + pos, "%s %s %luMiB",
+						m->block_dev.vendor[0] ? m->block_dev.vendor : "emmc",
+						m->block_dev.product[0] ? m->block_dev.product : "",
+						(unsigned long)(m->capacity >> 20));
+					fc_first = 0;
+				}
+			}
+		}
+#endif
+		pos += sprintf(about_json_buf + pos, "\",");
+	}
+
+	{
+		int ps_first = 1;
+		pos += sprintf(about_json_buf + pos, "\"phy_switch_info\":\"");
+#if defined(CONFIG_IPQ40XX)
+		{
+			struct mii_dev *bus = mdio_get_current_dev();
+			if (bus) {
+				int phy_addr;
+				for (phy_addr = 0; phy_addr <= 6; phy_addr++) {
+					int ret;
+					u16 id1, id2;
+					u32 phy_id;
+					const char *name;
+					ret = bus->read(bus, phy_addr,
+						MDIO_DEVAD_NONE, 2);
+					if (ret < 0)
+						continue;
+					id1 = (u16)ret;
+					ret = bus->read(bus, phy_addr,
+						MDIO_DEVAD_NONE, 3);
+					if (ret < 0)
+						continue;
+					id2 = (u16)ret;
+					phy_id = ((u32)id1 << 16) | id2;
+					if (!phy_id || phy_id == 0xFFFFFFFF)
+						continue;
+					name = phy_lookup(phy_id, phy_c22_qca,
+						ARRAY_SIZE(phy_c22_qca));
+					if (name)
+						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+				}
+			}
+		}
+#elif defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
+		{
+			extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);
+			int phy_addr;
+			for (phy_addr = 0; phy_addr <= 31; phy_addr++) {
+				int ret;
+				u16 id1, id2;
+				u32 phy_id;
+				const char *name;
+				ret = ipq_mdio_read(phy_addr, 2, NULL);
+				if (ret < 0)
+					continue;
+				id1 = (u16)ret;
+				ret = ipq_mdio_read(phy_addr, 3, NULL);
+				if (ret < 0)
+					continue;
+				id2 = (u16)ret;
+				phy_id = ((u32)id1 << 16) | id2;
+				if (!phy_id || phy_id == 0xFFFFFFFF)
+					continue;
+				name = phy_lookup(phy_id, phy_c22_qca,
+					ARRAY_SIZE(phy_c22_qca));
+				if (!name)
+					name = phy_lookup(phy_id, phy_c22_ext,
+						ARRAY_SIZE(phy_c22_ext));
+				if (name) {
+					pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+					continue;
+				}
+				{
+					u16 c45_id1, c45_id2;
+					u32 c45_phy_id;
+					c45_id1 = ipq_mdio_read(phy_addr,
+						(1 << 30) | (1 << 16) | 2, NULL);
+					c45_id2 = ipq_mdio_read(phy_addr,
+						(1 << 30) | (1 << 16) | 3, NULL);
+					c45_phy_id = ((u32)c45_id1 << 16) | c45_id2;
+					if (!c45_phy_id || c45_phy_id == 0xFFFFFFFF)
+						continue;
+					name = phy_lookup(c45_phy_id, phy_c45_aq,
+						ARRAY_SIZE(phy_c45_aq));
+					if (name)
+						pos = phy_emit(pos, &ps_first, name, phy_addr, c45_id1, c45_id2);
+				}
+			}
+		}
+#elif defined(CONFIG_IPQ806X)
+		{
+			struct mii_dev *bus = mdio_get_current_dev();
+			if (bus) {
+				int phy_addr;
+				for (phy_addr = 0; phy_addr <= 4; phy_addr++) {
+					int ret;
+					u16 id1, id2;
+					u32 phy_id;
+					const char *name;
+					ret = bus->read(bus, phy_addr,
+						MDIO_DEVAD_NONE, 2);
+					if (ret < 0)
+						continue;
+					id1 = (u16)ret;
+					ret = bus->read(bus, phy_addr,
+						MDIO_DEVAD_NONE, 3);
+					if (ret < 0)
+						continue;
+					id2 = (u16)ret;
+					phy_id = ((u32)id1 << 16) | id2;
+					if (!phy_id || phy_id == 0xFFFFFFFF)
+						continue;
+					name = phy_lookup(phy_id, phy_c22_qca,
+						ARRAY_SIZE(phy_c22_qca));
+					if (name)
+						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+				}
+			}
+		}
+#endif
+		pos += sprintf(about_json_buf + pos, "\",");
+	}
+
+	pos += sprintf(about_json_buf + pos, "\"gpios\":[");
+	{
+		int rk_gpio = env_reset_gpio();
+		struct about_gpio_ctx ctx = { about_json_buf, &pos, &(int){1}, rk_gpio };
+		fdt_list_gpio("/tlmm-gpio", "", about_gpio_cb, &ctx);
+		if (rk_gpio >= 0) {
+			int rk_value = gpio_get_value(rk_gpio);
+			about_gpio_cb(rk_gpio, "reset_key", "in", rk_value, "key_gpio", &ctx);
+		}
+	}
+	pos += sprintf(about_json_buf + pos, "]}");
+
+	hdr_len = sprintf(hdr, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", pos);
+	memmove(about_json_buf + hdr_len, about_json_buf, pos);
+	memcpy(about_json_buf, hdr, hdr_len);
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)about_json_buf;
+	hs->upload = hdr_len + pos;
+	httpd_send_data(hs);
+}
+
+static void httpd_handle_led(struct failsafe_httpd_state *hs, char *data) {
+	char *q = strchr(&data[4], '?'), name[64] = "", action[16] = "";
+	static char resp[128];
+	int len, alen;
+	if (q) {
+		char *p = q + 1, *amp, *sp;
+		if (strncmp(p, "name=", 5) == 0) {
+			p += 5;
+			amp = strchr(p, '&');
+			sp = strchr(p, ' ');
+			if (amp && (!sp || amp < sp)) { memcpy(name, p, amp - p); name[amp - p] = '\0'; p = amp + 1; }
+			else if (sp) { memcpy(name, p, sp - p); name[sp - p] = '\0'; p = sp; }
+			else { strncpy(name, p, sizeof(name) - 1); name[sizeof(name) - 1] = '\0'; p += strlen(p); }
+		}
+		if (strncmp(p, "action=", 7) == 0) {
+			p += 7;
+			sp = strchr(p, ' ');
+			amp = strchr(p, '&');
+			char *end = sp;
+			if (amp && (!end || amp < end)) end = amp;
+			if (end) alen = (int)(end - p);
+			else { for (alen = 0; p[alen] && p[alen] != ' ' && p[alen] != '\r' && p[alen] != '\n'; alen++); }
+			if (alen > (int)sizeof(action) - 1) alen = sizeof(action) - 1;
+			memcpy(action, p, alen);
+			action[alen] = '\0';
+		}
+	}
+	if (name[0] && action[0]) {
+		if (strcmp(action, "on") == 0) led_on(name);
+		else if (strcmp(action, "off") == 0) led_off(name);
+		else if (strcmp(action, "toggle") == 0) led_toggle(name);
+	}
+	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nok");
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)resp;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
+static void httpd_handle_btn_detect(struct failsafe_httpd_state *hs) {
+	static char resp[4096];
+	int pos = 0, hdr_len, len, first = 1, i, resp_size = sizeof(resp) - 256;
+	char hdr[128];
+
+	pos += sprintf(resp + pos, "[");
+	{
+		for (i = 0; i < GPIO_MAX; i++) {
+			unsigned int cfg;
+			if (pos + 32 > resp_size)
+				break;
+			cfg = readl(GPIO_CONFIG_ADDR(i));
+			if ((cfg & 0x1C) || (cfg & (1 << 9)))
+				continue;
+			if (!first)
+				pos += sprintf(resp + pos, ", ");
+			pos += sprintf(resp + pos, "{\"gpio\":%d,\"value\":%d}", i, gpio_get_value(i));
+			first = 0;
+		}
+	}
+	pos += sprintf(resp + pos, "]");
+
+	hdr_len = sprintf(hdr, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", pos);
+	len = hdr_len + pos;
+	memmove(resp + hdr_len, resp, pos);
+	memcpy(resp, hdr, hdr_len);
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)resp;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
+static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, int data_len) {
+	static char resp[128];
+	int len, ok = 0;
+	char *body = strstr(data, "\r\n\r\n");
+	if (body) {
+		body += 4;
+		char *amp = strchr(body, '&');
+		char name[64] = "", value[128] = "";
+		char *eq = strchr(body, '=');
+		if (eq && eq < (amp ? amp : body + strlen(body))) {
+			memcpy(name, body, eq - body);
+			name[eq - body] = '\0';
+			if (amp)
+				memcpy(value, eq + 1, amp - eq - 1);
+			else
+				strcpy(value, eq + 1);
+			if (strcmp(name, "reset_key") == 0 || strcmp(name, "config_name") == 0) {
+				setenv(name, value[0] ? value : NULL);
+				saveenv();
+				if (strcmp(name, "reset_key") == 0)
+					env_reset_gpio_invalidate();
+				ok = 1;
+			}
+		}
+	}
+	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", ok ? "ok" : "error");
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)resp;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
 static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	int i, pos = 0, hdr_len, count = 0, smem_count;
 	char name[SMEM_PTN_NAME_MAX], hdr[128];
@@ -508,11 +1057,16 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 		smem_count = smem_getpart_count();
 		for (i = 0; i < smem_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
 			if (smem_getpart_by_index(i, name, sizeof(name), &start, &size) == 0) {
+				const char *pflash = "nor";
+#ifdef CONFIG_CMD_NAND
+				if (get_which_flash_param(name))
+					pflash = "nand";
+#endif
 				pos += sprintf(part_json_buf + pos,
-					"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"nor\"}",
+					"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"%s\"}",
 					(count > 0 ? "," : ""), name,
 					(unsigned long)start * (unsigned long)bsize,
-					(unsigned long)size);
+					(unsigned long)size, pflash);
 				count++;
 			}
 		}
@@ -766,7 +1320,7 @@ void httpd_send_data(struct failsafe_httpd_state *hs) {
 
 static void backup_chunk_next(void) {
 	u32_t ram_avail = (u32_t)CONFIG_SYS_SDRAM_END - (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
-	      chunk_size = (backup.total_remaining > ram_avail) ? ram_avail : (u32)backup.total_remaining;
+		  chunk_size = (backup.total_remaining > ram_avail) ? ram_avail : (u32)backup.total_remaining;
 	ulong rd_size;
 	char chunk_detail[32] = "";
 
@@ -902,10 +1456,26 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				httpd_handle_backup(hs, data, data_len);
 				break;
 			}
+			if (strncmp(&data[4], "/about", 6) == 0 && data[10] == ISO_space) {
+				httpd_handle_about(hs);
+				break;
+			}
+			if (strncmp(&data[4], "/led?", 5) == 0) {
+				httpd_handle_led(hs, data);
+				break;
+			}
+			if (strncmp(&data[4], "/btn_detect", 11) == 0 && data[15] == ISO_space) {
+				httpd_handle_btn_detect(hs);
+				break;
+			}
 			httpd_handle_file_request(hs, data, data_len);
 		} else if (strncmp(data, "POST", 4) == 0 && is_http_method_separator(data[4])) {
 			if (strncmp(&data[5], "/webterm", 8) == 0) {
 				webterm_http_handler(hs, data, data_len);
+				break;
+			}
+			if (strncmp(&data[5], "/env_set", 8) == 0) {
+				httpd_handle_env_set(hs, data, data_len);
 				break;
 			}
 			data[data_len] = '\0';

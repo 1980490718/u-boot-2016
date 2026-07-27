@@ -49,7 +49,8 @@ body.iframe-content .card,
 .additional-links,
 .terminal-input-line,
 .tips,
-.backup-row {
+.backup-row,
+.about-gpio-ops {
 	display: flex
 }
 
@@ -100,7 +101,8 @@ label,
 }
 
 b,
-.backup-col select {
+.backup-col select,
+.about-table th {
 	color: var(--c-text)
 }
 
@@ -115,6 +117,7 @@ a:hover {
 }
 
 button,
+.about-sm-btn,
 .terminal-prompt,
 .terminal-input,
 .terminal-output,
@@ -130,12 +133,14 @@ button,
 }
 
 button,
+.about-sm-btn,
 .terminal-btn.active,
 .terminal-clear.active {
 	background: var(--c-primary)
 }
 
 button:hover,
+.about-sm-btn:hover,
 .terminal-btn.active:hover,
 .terminal-clear.active:hover {
 	background: var(--c-primary-hover)
@@ -195,13 +200,15 @@ body.iframe-content,
 .card,
 .form-group input,
 .backup-col select,
-.size-display {
+.size-display,
+.about-table {
 	width: 100%
 }
 
 body,
 .terminal-input-line,
-.tips {
+.tips,
+.about-gpio-ops {
 	align-items: center
 }
 
@@ -212,6 +219,7 @@ body,
 }
 
 button,
+.about-sm-btn,
 .content-frame,
 .terminal-input {
 	border: none
@@ -231,7 +239,8 @@ button,
 .backup-col label,
 .backup-col .label,
 .backup-col select,
-.size-display {
+.size-display,
+.about-table {
 	font-size: .8rem
 }
 
@@ -264,7 +273,8 @@ body {
 
 body.iframe-content,
 .terminal-output,
-.sidebar-nav {
+.sidebar-nav,
+body.iframe-content .about-card {
 	overflow-y: auto
 }
 
@@ -275,12 +285,14 @@ body.iframe-content {
 body.iframe-content .card {
 	max-width: 900px;
 	width: calc(100% - 2.5rem);
-	margin: 0 auto
+	margin: 0 auto;
+	flex-shrink: 0
 }
 
 body.iframe-content .card:has(.terminal-container),
 .terminal-output-wrapper,
-.sidebar-nav {
+.sidebar-nav,
+body.iframe-content .about-card {
 	min-height: 0
 }
 
@@ -291,7 +303,8 @@ body.iframe-content .terminal-container,
 .terminal-input,
 .terminal-output-wrapper,
 .backup-col,
-.sidebar-nav {
+.sidebar-nav,
+body.iframe-content .about-card {
 	flex: 1
 }
 
@@ -310,17 +323,26 @@ body.iframe-content .tips {
 }
 
 button,
+.about-sm-btn,
 .theme-switch {
 	cursor: pointer
 }
 
+button,
+.about-sm-btn {
+	transition: background-color .3s
+}
+
 button {
-	padding: .8rem 1.5rem;
-	transition: background-color .3s ease
+	padding: .8rem 1.5rem
+}
+
+p,
+.about-table td {
+	color: var(--c-text-light)
 }
 
 p {
-	color: var(--c-text-light);
 	font-size: 15px
 }
 
@@ -361,7 +383,7 @@ p {
 }
 
 .sidebar-nav-item a {
-	padding: .8rem 1.8rem;
+	padding: .5rem 1.8rem;
 	transition: all .3s ease
 }
 
@@ -381,22 +403,30 @@ p {
 	animation: spin 1s linear infinite
 }
 
-.sidebar-nav-item a:hover {
+.sidebar-nav-item a:hover,
+.about-table th {
 	background: var(--c-sidebar-hover)
 }
 
-.sidebar-nav-item.active a {
+.sidebar-nav-item.active a,
+.about-btn-pressed {
 	font-weight: 700
 }
 
 /* ===== 表单 ===== */
 .button-container,
+.backup-row,
+.about-gpio-ops {
+	gap: 1rem
+}
+
+.button-container,
 .backup-row {
-	gap: 1rem;
 	margin: 1rem 0
 }
 
-.button-container {
+.button-container,
+.about-gpio-ops {
 	flex-wrap: wrap
 }
 
@@ -486,7 +516,8 @@ label {
 .terminal-clear,
 .terminal-prompt,
 .backup-col label,
-.backup-col .label {
+.backup-col .label,
+.about-table th {
 	font-weight: bold
 }
 
@@ -568,9 +599,15 @@ label {
 	margin-bottom: .3rem
 }
 
+.backup-col select,
+.size-display,
+.about-table th,
+.about-table td {
+	border: 1px solid var(--c-border)
+}
+
 .backup-col select, .size-display {
 	padding: .5rem;
-	border: 1px solid var(--c-border);
 	border-radius: 4px;
 	height: 2.4em;
 	line-height: 1.4
@@ -604,4 +641,40 @@ label {
 
 [data-theme="light"] .theme-thumb {
 	transform: translateX(18px)
+}
+
+/* ===== 关于页面 ===== */
+.about-section {
+	margin-bottom: .2rem
+}
+
+.about-section h3 {
+	font-size: 1rem
+}
+
+.about-table {
+	border-collapse: collapse
+}
+
+.about-table th,
+.about-table td,
+.about-sm-btn {
+	padding: 0 8px;
+}
+
+.about-table th,
+.about-table td {
+	text-align: left;
+	height: 2rem;
+	line-height: 2rem;
+}
+
+.about-sm-btn {
+	font-size: .65rem;
+	height: 1.2rem;
+	line-height: 1.2rem;
+}
+
+.about-btn-pressed {
+	color: #e74c3c
 }

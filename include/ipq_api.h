@@ -1,5 +1,21 @@
 #define RESET_BUTTON_PRESSED 0
 
+#ifdef CONFIG_IPQ6018
+#define GPIO_MAX 80
+#elif defined(CONFIG_IPQ40XX)
+#define GPIO_MAX 100
+#elif defined(CONFIG_IPQ807X)
+#define GPIO_MAX 70
+#elif defined(CONFIG_IPQ806X)
+#define GPIO_MAX 68
+#elif defined(CONFIG_IPQ5332)
+#define GPIO_MAX 53
+#elif defined(CONFIG_IPQ5018)
+#define GPIO_MAX 47
+#elif defined(CONFIG_IPQ9574)
+#define GPIO_MAX 65
+#endif
+
 #ifndef GPIO_PULL_UP
 #ifdef CONFIG_IPQ40XX
 #define GPIO_PULL_UP 2 /* IPQ40XX platform */
@@ -125,11 +141,20 @@ int check_fw_type(void *address);
 void led_toggle(const char *gpio_name);
 void led_on(const char *gpio_name);
 void led_off(const char *gpio_name);
+void led_blink(const char *gpio_name, int duration);
 void led_init_by_name(const char *gpio_name);
 void led_init(void);
 void btn_init_by_name(const char *gpio_name);
 void btn_init(void);
 void btn_check_press(void);
+int fdt_find_gpio_node(const char *gpio_name);
+int fdt_get_gpio_number(const char *gpio_name);
+int env_reset_gpio(void);
+void env_reset_gpio_invalidate(void);
+void fdt_list_gpio(const char *path, const char *parent,
+	void (*cb)(int gpio, const char *name, const char *dir, int value, const char *parent, void *ctx),
+	void *ctx);
+
 u64 get_nor_firmware_combined_size(void);
 /* main api for get smem table size*/
 u64 get_smem_table_size_bytes(const char *name);
