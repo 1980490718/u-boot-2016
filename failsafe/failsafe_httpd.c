@@ -965,6 +965,10 @@ static void httpd_handle_btn_detect(struct failsafe_httpd_state *hs) {
 			unsigned int cfg;
 			if (pos + 32 > resp_size)
 				break;
+#if defined(CONFIG_IPQ6018) && defined(CONFIG_QCA_MMC)
+			if (i == 20)
+				continue;
+#endif
 			cfg = readl(GPIO_CONFIG_ADDR(i));
 			if ((cfg & 0x1C) || (cfg & (1 << 9)))
 				continue;
