@@ -348,6 +348,12 @@ static void gpio_detect(void) {
 	printf("Detecting GPIO 0-%d input pins...\n", GPIO_MAX - 1);
 	for (i = 0; i < GPIO_MAX; i++) {
 		unsigned int cfg = readl(GPIO_CONFIG_ADDR(i));
+#if defined(CONFIG_IPQ6018) && defined(CONFIG_QCA_MMC)
+		if (i == 20) {
+			values[i] = -1;
+			continue;
+		}
+#endif
 		if ((cfg & 0x1C) || (cfg & (1 << 9)))
 			values[i] = -1;
 		else
