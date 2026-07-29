@@ -30,7 +30,7 @@
 		<div class="about-section">
 			<h3>GPIO信息</h3>
 			<table class="about-table" id="gpio-table">
-				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>所属</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
+				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父节点</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
 				<tbody id="gpio-tbody"></tbody>
 			</table>
 		</div>
@@ -212,7 +212,7 @@
 				if (!opsTd.hasChildNodes()) opsTd.textContent = '-';
 				tr.innerHTML = [g.name||'-', g.alias||'', g.gpio, g.dir||'-',
 					g.value, g.value?'高':'低', g.parent||'-',
-					g.source==='env'?'变量':'dtb/fdt', g.override||''
+					g.source==='env'?'变量':'fdt', g.override||''
 				].map(function(v){return '<td>'+v+'</td>';}).join('');
 				tr.appendChild(opsTd);
 				gpioTbody.appendChild(tr);
