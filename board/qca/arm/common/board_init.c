@@ -35,6 +35,10 @@ extern unsigned long cdt_machid_mismatch;
 extern unsigned long dtb_machid_fallback;
 extern int nand_saveenv(void);
 extern int sf_saveenv(void);
+#ifdef CONFIG_CMD_NAND
+#include <nand.h>
+#endif
+extern unsigned int get_spi_flash_size(void);
 
 #ifdef CONFIG_QCA_MMC
 extern env_t *mmc_env_ptr;
@@ -213,13 +217,17 @@ int board_init(void)
 	 */
 	switch (sfi->flash_type) {
 	case SMEM_BOOT_MMC_FLASH:
-	case SMEM_BOOT_NO_FLASH:
 		break;
 	default:
 		ret = smem_ptable_init();
 		if (ret < 0) {
-			printf("cdp: SMEM init failed\n");
-			return ret;
+			if (sfi->flash_type == SMEM_BOOT_NO_FLASH) {
+				printf("cdp: SMEM init skipped, flash type unknown\n");
+				ret = 0;
+			} else {
+				printf("cdp: SMEM init failed\n");
+				return ret;
+			}
 		}
 	}
 
@@ -244,15 +252,19 @@ int board_init(void)
 		BUG();
 	}
 
-	if ((sfi->flash_type != SMEM_BOOT_MMC_FLASH) && (sfi->flash_type != SMEM_BOOT_NO_FLASH))  {
+	if (sfi->flash_type != SMEM_BOOT_MMC_FLASH) {
 		ret = smem_getpart("0:APPSBLENV", &start_blocks, &size_blocks);
 		if (ret < 0) {
-			printf("cdp: get environment part failed\n");
-			return ret;
+			if (sfi->flash_type == SMEM_BOOT_NO_FLASH) {
+				/* ignore, will be resolved after hardware detection */
+			} else {
+				printf("cdp: get environment part failed\n");
+				return ret;
+			}
+		} else {
+			board_env_offset = ((loff_t) sfi->flash_block_size) * start_blocks;
+			board_env_size = ((loff_t) sfi->flash_block_size) * size_blocks;
 		}
-
-		board_env_offset = ((loff_t) sfi->flash_block_size) * start_blocks;
-		board_env_size = ((loff_t) sfi->flash_block_size) * size_blocks;
 	}
 
 	switch (sfi->flash_type) {
@@ -283,7 +295,8 @@ int board_init(void)
 		env_name_spec = sf_env_name_spec;
 #endif
 #ifdef CONFIG_QCA_MMC
-	} else if (sfi->flash_type == SMEM_BOOT_MMC_FLASH) {
+	} else if (sfi->flash_type == SMEM_BOOT_MMC_FLASH ||
+		   sfi->flash_type == SMEM_BOOT_NO_FLASH) {
 		saveenv = mmc_saveenv;
 		env_ptr = mmc_env_ptr;
 		env_name_spec = mmc_env_name_spec;
@@ -330,8 +343,17 @@ int get_current_flash_type(uint32_t *flash_type)
 	ret = ipq_smem_get_boot_flash(flash_type);
 	if (ret) {
 		printf("ipq: fdt fixup cannot get boot mode\n");
-		return ret;
+		if (sfi->flash_type != SMEM_BOOT_NO_FLASH) {
+			*flash_type = sfi->flash_type;
+			ret = 0;
+		} else {
+			return ret;
+		}
 	}
+
+	if (*flash_type == SMEM_BOOT_NO_FLASH &&
+	    sfi->flash_type != SMEM_BOOT_NO_FLASH)
+		*flash_type = sfi->flash_type;
 
 	if (*flash_type == SMEM_BOOT_SPI_FLASH) {
 		if ((get_which_flash_param("rootfs") > 0) ||
@@ -490,7 +512,8 @@ int board_late_init(void)
 
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 
-	if (sfi->flash_type != SMEM_BOOT_MMC_FLASH) {
+	if (sfi->flash_type != SMEM_BOOT_MMC_FLASH &&
+	    sfi->flash_type != SMEM_BOOT_NO_FLASH) {
 		get_kernel_fs_part_details();
 	}
 
@@ -515,6 +538,51 @@ int board_late_init(void)
 	ret = get_current_flash_type(&flash_type);
 	if (!ret)
 		setenv_ulong("flash_type", (unsigned long)flash_type);
+
+	if (sfi->flash_type == SMEM_BOOT_NO_FLASH) {
+		int has_emmc = 0, has_nand = 0, has_spi = 0;
+
+#ifdef CONFIG_QCA_MMC
+		block_dev_desc_t *mmc_dev;
+		mmc_dev = mmc_get_dev(mmc_host.dev_num);
+		if (mmc_dev != NULL && mmc_dev->type != DEV_TYPE_UNKNOWN)
+			has_emmc = 1;
+#endif
+#ifdef CONFIG_CMD_NAND
+		if (nand_info[0].size > 0 ||
+		    (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0))
+			has_nand = 1;
+#endif
+		if (get_spi_flash_size() > 0)
+			has_spi = 1;
+
+		if (has_spi) {
+			sfi->flash_type = SMEM_BOOT_SPI_FLASH;
+			if (has_emmc) {
+				sfi->flash_secondary_type = SMEM_BOOT_MMC_FLASH;
+				flash_type = SMEM_BOOT_NORPLUSEMMC;
+			} else if (has_nand) {
+				sfi->flash_secondary_type = SMEM_BOOT_NAND_FLASH;
+				flash_type = SMEM_BOOT_NORPLUSNAND;
+			} else {
+				flash_type = SMEM_BOOT_SPI_FLASH;
+			}
+		} else if (has_emmc) {
+			sfi->flash_type = SMEM_BOOT_MMC_FLASH;
+			flash_type = SMEM_BOOT_MMC_FLASH;
+		} else if (has_nand) {
+			sfi->flash_type = SMEM_BOOT_NAND_FLASH;
+			flash_type = SMEM_BOOT_NAND_FLASH;
+		}
+
+		if (sfi->flash_type != SMEM_BOOT_NO_FLASH) {
+			setenv_ulong("flash_type", (unsigned long)flash_type);
+			printf("SMEM flash type lost, detected %s%s%s\n",
+				has_spi ? "NOR" : "",
+				(has_spi && (has_emmc || has_nand)) ? "+" : "",
+				has_emmc ? "eMMC" : (has_nand ? "NAND" : ""));
+		}
+	}
 
 	ret = get_soc_version(&soc_ver_major, &soc_ver_minor);
 	if (!ret) {
