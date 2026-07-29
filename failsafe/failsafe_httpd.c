@@ -1022,7 +1022,8 @@ static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, in
 static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	int i, pos = 0, hdr_len, count = 0, smem_count;
 	char name[SMEM_PTN_NAME_MAX], hdr[128];
-	uint32_t start, size, flash_type, flash_index, flash_cs, bsize, flash_density;
+	uint32_t start, size, flash_type;
+	uint32_t bsize;
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 #ifdef CONFIG_QCA_MMC
 	int gpt_count;
@@ -1030,12 +1031,13 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	disk_partition_t disk_info;
 #endif
 
-	smem_get_boot_flash(&flash_type, &flash_index, &flash_cs, &bsize, &flash_density);
+	get_current_flash_type(&flash_type);
+	bsize = sfi->flash_block_size;
 
 	pos += sprintf(part_json_buf + pos, "{\"parts\":[");
 
 #ifdef CONFIG_QCA_MMC
-	if (flash_type == SMEM_BOOT_MMC_FLASH || flash_type == SMEM_BOOT_NO_FLASH) {
+	if (flash_type == SMEM_BOOT_MMC_FLASH) {
 		blk_dev = mmc_get_dev(mmc_host.dev_num);
 		if (blk_dev != NULL) {
 			pos += sprintf(part_json_buf + pos,

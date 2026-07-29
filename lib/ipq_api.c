@@ -506,11 +506,10 @@ u64 get_smem_table_size_bytes(const char *name) {
 	}
 #if defined(CONFIG_EFI_PARTITION) && defined(CONFIG_PARTITIONS) && defined(CONFIG_CMD_MMC)
 	/* If SMEM methods fail, try getting flash type to determine if it's EMMC */
-	uint32_t flash_type, flash_index, flash_chip_select, flash_block_size, flash_density;
-	ret = smem_get_boot_flash(&flash_type, &flash_index, &flash_chip_select, &flash_block_size, &flash_density);
+	uint32_t flash_type;
+	ret = get_current_flash_type(&flash_type);
 	/* If it's an EMMC device, try getting partition info from GPT */
-	if (ret == 0 && (flash_type == SMEM_BOOT_MMC_FLASH ||
-			qca_smem_flash_info.rootfs.offset == 0xBAD0FF5E)) {
+	if (ret == 0 && (flash_type == SMEM_BOOT_MMC_FLASH || flash_type == SMEM_BOOT_NORPLUSEMMC || qca_smem_flash_info.rootfs.offset == 0xBAD0FF5E)) {
 		block_dev_desc_t *mmc_dev;
 		disk_partition_t disk_info;
 		/* Get the MMC device */
