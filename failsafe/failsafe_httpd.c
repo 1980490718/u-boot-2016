@@ -1044,11 +1044,6 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 				"{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\"}",
 				(unsigned long long)34 * (unsigned long long)blk_dev->blksz);
 			count++;
-			pos += sprintf(part_json_buf + pos,
-				",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
-				(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
-				(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
-			count++;
 			gpt_count = get_partition_count_efi(blk_dev);
 			for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
 				if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
@@ -1060,6 +1055,11 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 					count++;
 				}
 			}
+			pos += sprintf(part_json_buf + pos,
+				",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+				(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
+				(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
+			count++;
 		}
 	} else
 #endif
@@ -1091,11 +1091,6 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 					(count > 0 ? "," : ""),
 					(unsigned long long)34 * (unsigned long long)blk_dev->blksz);
 				count++;
-				pos += sprintf(part_json_buf + pos,
-					",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
-					(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
-					(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
-				count++;
 				gpt_count = get_partition_count_efi(blk_dev);
 				for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 80; i++) {
 					if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
@@ -1107,6 +1102,11 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 					count++;
 					}
 				}
+				pos += sprintf(part_json_buf + pos,
+					",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\"}",
+					(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
+					(unsigned long long)33 * (unsigned long long)blk_dev->blksz);
+				count++;
 			}
 		}
 #endif
