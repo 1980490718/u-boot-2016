@@ -7,6 +7,7 @@
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
 #include <part.h>
+#include <part_efi.h>
 #include <mmc.h>
 #include <miiphy.h>
 #include <linux/mii.h>
@@ -435,12 +436,13 @@ struct fw_info check_fw_type_ex(void *address) {
 	};
 
 	u32 *ptr_flas		= (u32 *)((uintptr_t)address + 0x5c);
-	u16 *ptr_55aa		= (u16 *)((uintptr_t)address + 0x1fe);
+	u16 *ptr_gpt		= (u16 *)((uintptr_t)address + 0x1fe);   /* Primary GPT: MBR 0xAA55 */
 	u32 *ptr_doodfeed	= (u32 *)address;
 	u32 *ptr_ubi		= (u32 *)address;
 	u32 *ptr_cdt		= (u32 *)address;
 	u32 *ptr_elf		= (u32 *)address;
 	u32 *ptr_mibib		= (u32 *)address;
+	u32 *ptr_gpt_backup	= (u32 *)((uintptr_t)address + 0x4000);  /* Backup GPT: "EFI " */
 
 	// Detect HLOS size magic number positions
 	u32 *ptr_hlos_4m	= (u32 *)((uintptr_t)address + 0x400000);
@@ -476,7 +478,7 @@ struct fw_info check_fw_type_ex(void *address) {
 	if (*ptr_flas == 0x73616c46) info.type			= FW_TYPE_QSDK;
 	else if (*ptr_ubi == 0x23494255) info.type		= FW_TYPE_UBI;
 	else if (*ptr_doodfeed == 0xedfe0dd0) info.type	= FW_TYPE_FIT;
-	else if (*ptr_55aa == 0xaa55) info.type			= FW_TYPE_GPT;
+	else if ((*ptr_gpt == 0xaa55) || (*ptr_gpt_backup == 0x20494645)) info.type = FW_TYPE_GPT;  /* GPT: Primary(MBR) or Backup("EFI ") */
 	else if (*ptr_cdt == 0x00544443) info.type		= FW_TYPE_CDT;
 	else if (*ptr_elf == 0x464c457f) info.type		= FW_TYPE_ELF;
 	else if (*ptr_mibib == 0xfe569fac) info.type	= FW_TYPE_MIBIB;
