@@ -663,10 +663,17 @@ label {
 }
 
 .about-table th,
-.about-table td {
+.about-table td,
+#info-table td:first-child {
 	text-align: left;
 	height: 2rem;
 	line-height: 2rem;
+}
+
+#info-table td:first-child {
+	white-space: nowrap;
+	width: 5.5rem;
+	min-width: 5.5rem;
 }
 
 .about-sm-btn {
