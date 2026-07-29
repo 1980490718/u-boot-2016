@@ -18,6 +18,7 @@
 #include <command.h>
 #include <asm/arch-qca-common/smem.h>
 #include <part.h>
+#include <part_efi.h>
 #include <linux/mtd/mtd.h>
 #include <nand.h>
 #include <mmc.h>
@@ -40,6 +41,19 @@ extern struct sdhci_host mmc_host;
 #define SMEM_PTN_NAME_MAX     16
 #define GPT_PART_NAME "0:GPT"
 #define GPT_BACKUP_PART_NAME "0:GPTBACKUP"
+
+/*
+ * GPT size definitions per UEFI Specification (based on Intel EFI v1.02):
+ * - Primary GPT (34 sectors): LBA 0(Protective MBR) + LBA 1(Header) + LBA 2-33(128 entries)
+ * - Backup GPT (33 sectors): Last-32 to Last-1(Entry Array) + Last(Backup Header)
+ * - Entry Array = ceil(128 entries * 128 bytes / 512 bytes/sector) = 32 sectors
+ *
+ * Reference: UEFI Forum, "Unified Extensible Firmware Interface Specification"
+ * See also: include/part_efi.h (U-Boot implementation)
+ */
+#define GPT_PRIMARY_SIZE 34
+#define GPT_BACKUP_SIZE 33
+#define GPT_HEADER_SIZE 92
 
 #ifdef CONFIG_IPQ_MIBIB_RELOAD
 #define HEADER_MAGIC1 0xFE569FAC
@@ -108,6 +122,161 @@ uint32_t part_size, uint32_t file_size, char *layout)
 
 	return CMD_RET_SUCCESS;
 }
+
+#ifdef CONFIG_QCA_MMC
+static uint32_t efi_crc32(const uint8_t *buf, uint32_t len) {
+
+	uint32_t crc = 0xFFFFFFFF;
+	int i;
+
+	while (len--) {
+		crc ^= *buf++;
+		for (i = 0; i < 8; i++)
+			crc = (crc >> 1) ^ (0xEDB88320 & (-(int32_t)(crc & 1)));
+	}
+	return crc ^ 0xFFFFFFFF;
+}
+
+static void gpt_fix_header_crc(uint8_t *hdr) {
+	gpt_header *gpt_h = (gpt_header *)hdr;
+
+	gpt_h->header_crc32 = 0;
+	gpt_h->header_crc32 = cpu_to_le32(efi_crc32(hdr, le32_to_cpu(gpt_h->header_size)));
+}
+
+static int gpt_verify_header_crc(uint8_t *hdr) {
+	gpt_header *gpt_h = (gpt_header *)hdr;
+	uint32_t stored_crc, calc_crc, hdr_size;
+
+	stored_crc = le32_to_cpu(gpt_h->header_crc32);
+	hdr_size = le32_to_cpu(gpt_h->header_size);
+
+	gpt_h->header_crc32 = 0;
+	calc_crc = efi_crc32(hdr, hdr_size);
+	gpt_h->header_crc32 = cpu_to_le32(stored_crc);
+
+	return (calc_crc == stored_crc) ? 0 : -1;
+}
+
+static int gpt_verify_entries_crc(gpt_header *gpt_h, uint8_t *entries, uint32_t entries_bytes) {
+	uint32_t stored_crc, calc_crc;
+
+	stored_crc = le32_to_cpu(gpt_h->partition_entry_array_crc32);
+	calc_crc = efi_crc32(entries, entries_bytes);
+
+	return (calc_crc == stored_crc) ? 0 : -1;
+}
+
+static int gpt_convert_and_write(block_dev_desc_t *blk_dev, const char *part_name, uint32_t load_addr, uint32_t file_size) {
+	uint8_t *src = (uint8_t *)(ulong)load_addr, *buf;
+	uint32_t blksz = blk_dev->blksz, entries_sectors, entries_bytes;
+	uint64_t lba = blk_dev->lba;
+	int is_src_primary, is_dst_primary;
+	gpt_header *gpt_h;
+
+	if (file_size < blksz)
+		return -1;
+
+	is_src_primary = (src[510] == 0x55 && src[511] == 0xAA);
+	is_dst_primary = (strncmp(part_name, GPT_PART_NAME, sizeof(GPT_PART_NAME)) == 0);
+
+	gpt_h = (gpt_header *)(is_src_primary ? src + blksz : src + (file_size - blksz));
+
+	if (gpt_verify_header_crc((uint8_t *)gpt_h) != 0) {
+		printf("GPT: Header CRC32 invalid\n");
+		return -1;
+	}
+
+	entries_bytes = le32_to_cpu(gpt_h->num_partition_entries) * le32_to_cpu(gpt_h->sizeof_partition_entry);
+	if (gpt_verify_entries_crc(gpt_h, is_src_primary ? src + 2 * blksz : src, entries_bytes) != 0) {
+		printf("GPT: Entries CRC32 invalid\n");
+		return -1;
+	}
+
+	if (is_src_primary == is_dst_primary) {
+		uint64_t exp_my, exp_alt, max_last;
+
+		exp_my = is_src_primary ? 1 : lba - 1;
+		exp_alt = is_src_primary ? lba - 1 : 1;
+		max_last = lba - 1 - (is_src_primary ? GPT_BACKUP_SIZE : GPT_PRIMARY_SIZE);
+
+		uint64_t src_my = le64_to_cpu(gpt_h->my_lba);
+		uint64_t src_alt = le64_to_cpu(gpt_h->alternate_lba);
+		uint64_t src_last = le64_to_cpu(gpt_h->last_usable_lba);
+
+		if (src_my != exp_my || src_alt != exp_alt || src_last > max_last) {
+			printf("%s LBA [file:%llu!=emmc:%llu] autofix\n",
+				is_src_primary ? "Primary" : "Backup",
+				src_alt != exp_alt ? src_alt : (src_my != exp_my ? src_my : src_last),
+				src_alt != exp_alt ? exp_alt : (src_my != exp_my ? exp_my : max_last));
+
+			gpt_h->my_lba = cpu_to_le64(exp_my);
+			gpt_h->alternate_lba = cpu_to_le64(exp_alt);
+			if (src_last > max_last)
+				gpt_h->last_usable_lba = cpu_to_le64(max_last);
+			gpt_fix_header_crc((uint8_t *)gpt_h);
+		}
+
+		unsigned long write_lba = is_dst_primary ? 0UL : (unsigned long)(lba - GPT_BACKUP_SIZE);
+		unsigned int write_size = is_dst_primary ? GPT_PRIMARY_SIZE : GPT_BACKUP_SIZE;
+
+		return (write_to_flash(SMEM_BOOT_MMC_FLASH, load_addr, (uint32_t)write_lba, write_size, write_size, "default") == CMD_RET_SUCCESS) ? 1 : -1;
+	}
+
+	printf("Converting %s GPT to %s GPT...\n", is_src_primary ? "primary" : "backup", is_dst_primary ? "primary" : "backup");
+
+	entries_sectors = GPT_PRIMARY_SIZE - 2;
+
+	buf = malloc(GPT_PRIMARY_SIZE * blksz);
+	if (!buf) {
+		printf("GPT convert: malloc failed\n");
+		return -1;
+	}
+	memset(buf, 0, GPT_PRIMARY_SIZE * blksz);
+
+	if (is_src_primary && !is_dst_primary) {
+		memcpy(buf, src + 2 * blksz, entries_sectors * blksz);
+		memcpy(buf + entries_sectors * blksz, src + blksz, blksz);
+		gpt_h = (gpt_header *)(buf + entries_sectors * blksz);
+		gpt_h->my_lba = cpu_to_le64(lba - 1);
+		gpt_h->alternate_lba = cpu_to_le64(1);
+		gpt_h->partition_entry_lba = cpu_to_le64(lba - entries_sectors - 1);
+		gpt_fix_header_crc((uint8_t *)gpt_h);
+
+		memcpy(src, buf, GPT_BACKUP_SIZE * blksz);
+		if (write_to_flash(SMEM_BOOT_MMC_FLASH, load_addr, (uint32_t)(lba - GPT_BACKUP_SIZE), GPT_BACKUP_SIZE, GPT_BACKUP_SIZE, "default") != CMD_RET_SUCCESS) {
+			free(buf);
+			return -1;
+		}
+	} else {
+		struct partition *mbr_pt = (struct partition *)(buf + 446);
+
+		mbr_pt[0].sys_ind = 0xEE;
+		mbr_pt[0].start_sect = cpu_to_le32(1);
+		mbr_pt[0].nr_sects = cpu_to_le32(lba - 1);
+		buf[510] = 0x55;
+		buf[511] = 0xAA;
+
+		memcpy(buf + blksz, src + entries_sectors * blksz, blksz);
+		memcpy(buf + 2 * blksz, src, entries_sectors * blksz);
+		gpt_h = (gpt_header *)(buf + blksz);
+		gpt_h->my_lba = cpu_to_le64(1);
+		gpt_h->alternate_lba = cpu_to_le64(lba - 1);
+		gpt_h->partition_entry_lba = cpu_to_le64(2);
+		gpt_fix_header_crc((uint8_t *)gpt_h);
+
+		memcpy(src, buf, GPT_PRIMARY_SIZE * blksz);
+		if (write_to_flash(SMEM_BOOT_MMC_FLASH, load_addr, 0, GPT_PRIMARY_SIZE, GPT_PRIMARY_SIZE, "default") != CMD_RET_SUCCESS) {
+			free(buf);
+			return -1;
+		}
+	}
+
+	free(buf);
+
+	return 1;
+}
+#endif
 
 static int fl_erase(int flash_type, uint32_t offset, uint32_t part_size,
 							 char *layout)
@@ -484,6 +653,22 @@ char * const argv[])
 			ret = CMD_RET_FAILURE;
 			goto exit;
 		}
+
+#ifdef CONFIG_QCA_MMC
+		if (flash_type == SMEM_BOOT_MMC_FLASH && blk_dev != NULL && part_name != NULL &&
+			(strncmp(part_name, GPT_PART_NAME, sizeof(GPT_PART_NAME)) == 0 ||
+			 strncmp(part_name, GPT_BACKUP_PART_NAME, sizeof(GPT_BACKUP_PART_NAME)) == 0)) {
+			ret = gpt_convert_and_write(blk_dev, part_name, load_addr, file_size_cpy);
+			if (ret == 1) {
+				ret = CMD_RET_SUCCESS;
+				goto exit;
+			}
+			if (ret == -1) {
+				ret = CMD_RET_FAILURE;
+				goto exit;
+			}
+		}
+#endif
 
 		ret = write_to_flash(flash_type, load_addr, offset, part_size,
 							file_size, layout);

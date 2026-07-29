@@ -376,6 +376,7 @@ static int do_art_upgrade(const ulong size) {
 static int do_gpt_upgrade(const ulong size) {
 	char buf[576];
 	uint32_t flash_type;
+
 	if (get_current_flash_type(&flash_type) != 0)
 		return -1;
 	if (check_fw_type((void *)UPLOAD_ADDR) != FW_TYPE_GPT) {
@@ -386,7 +387,7 @@ static int do_gpt_upgrade(const ulong size) {
 	switch (flash_type) {
 		case SMEM_BOOT_MMC_FLASH:
 		case SMEM_BOOT_NORPLUSEMMC:
-			sprintf(buf, "mmc dev 0 && mmc erase 0x0 0x%lx && mmc write 0x%lx 0x0 0x%lx", ((size - 1) / 512 + 1), UPLOAD_ADDR, ((size - 1) / 512 + 1));
+			sprintf(buf, "flash 0:GPT 0x%lx 0x%lx && flash 0:GPTBACKUP 0x%lx 0x%lx", UPLOAD_ADDR, size, UPLOAD_ADDR, size);
 			break;
 		case SMEM_BOOT_NAND_FLASH:
 		case SMEM_BOOT_SPI_FLASH:
