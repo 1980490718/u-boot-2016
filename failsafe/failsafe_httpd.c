@@ -243,7 +243,7 @@ static err_t httpd_recv_abort(struct failsafe_httpd_state *hs, struct tcp_pcb *p
 typedef u64 (*get_max_size_fn)(void);
 
 static const struct { const char *name; int type; const char *label; get_max_size_fn get_max_size; } upload_types[] = {
-	{"name=\"firmware\"",	WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE,	"firmware",	get_firmware_upgrade_max_size},
+	{"name=\"firmware\"",	WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE,	"FIRMWARE",	get_firmware_upgrade_max_size},
 	{"name=\"uboot\"",		WEBFAILSAFE_UPGRADE_TYPE_UBOOT,		"U-Boot",	get_uboot_size},
 	{"name=\"art\"",		WEBFAILSAFE_UPGRADE_TYPE_ART,		"ART",		get_art_size},
 	{"name=\"img\"",		WEBFAILSAFE_UPGRADE_TYPE_IMG,		"IMG",		NULL},
