@@ -1110,7 +1110,7 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 #endif
 	}
 
-	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"nand_raw_size\":%lu,\"ram_available\":%lu,\"has_emmc\":%s,\"emmc_size\":%lu,\"nand_type\":\"%s\"}",
+	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"nand_raw_size\":%lu,\"ram_available\":%lu,\"has_emmc\":%s,\"emmc_size\":%llu,\"nand_type\":\"%s\"}",
 		(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? "true" : "false")
 		,(unsigned long)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
 #ifdef CONFIG_CMD_NAND
@@ -1126,9 +1126,9 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 		,(unsigned long)(CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS)
 #ifdef CONFIG_QCA_MMC
 		,(blk_dev ? "true" : "false")
-		,(unsigned long)(blk_dev ? (unsigned long)blk_dev->lba * (unsigned long)blk_dev->blksz : 0UL)
+		,(unsigned long long)(blk_dev ? (unsigned long long)blk_dev->lba * (unsigned long long)blk_dev->blksz : 0ULL)
 #else
-		,"false",0UL
+		,"false",0ULL
 #endif
 #ifdef CONFIG_CMD_NAND
 		,(nand_info[0].size > 0 ? "parallel" : (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0 ? "spi" : "parallel"))
