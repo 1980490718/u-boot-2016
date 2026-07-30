@@ -891,6 +891,7 @@ void dhcpd_stop_server(void) {
 	}
 }
 
+#if 0
 /**
  * dhcpd_ip_settings - Configure IP settings from environment variables
  *
@@ -947,6 +948,73 @@ void dhcpd_ip_settings(void) {
 		/* Default to server IP (ipaddr) */
 		dhcpd_svr_cfg.gateway = server_addr;
 	}
+}
+#endif
+
+void dhcpd_ip_settings(void) {
+	char *env_ip = getenv("ipaddr");
+	char *env_netmask = getenv("netmask");
+	char *env_gateway = getenv("gatewayip");
+
+	/* Check and set ipaddr to 192.168.1.1 if not set or not equal to 192.168.1.1 */
+	if (env_ip == NULL || strcmp(env_ip, "192.168.1.1") != 0) {
+		setenv("ipaddr", "192.168.1.1");
+		env_ip = "192.168.1.1";
+	}
+
+	/* Check and set netmask to 255.255.255.0 if not set or not equal to 255.255.255.0 */
+	if (env_netmask == NULL || strcmp(env_netmask, "255.255.255.0") != 0) {
+		setenv("netmask", "255.255.255.0");
+		env_netmask = "255.255.255.0";
+	}
+
+	/* Check and set gatewayip to 192.168.1.1 if not set or not equal to 192.168.1.1 */
+	if (env_gateway == NULL || strcmp(env_gateway, "192.168.1.1") != 0) {
+		setenv("gatewayip", "192.168.1.1");
+		env_gateway = "192.168.1.1";
+	}
+
+	/* Convert strings to IP addresses */
+	struct in_addr ip_addr = string_to_ip(env_ip);
+	struct in_addr server_addr = ip_addr;  // Use ipaddr as server IP
+	struct in_addr netmask_addr = string_to_ip(env_netmask);
+
+	dhcpd_svr_cfg.server_ip = server_addr;
+
+	/* Calculate network and broadcast addresses */
+	uint32_t ip_addr_int = ntohl(ip_addr.s_addr);
+	uint32_t netmask_int = ntohl(netmask_addr.s_addr);
+	uint32_t network_addr = ip_addr_int & netmask_int;
+	uint32_t broadcast_addr = network_addr | (~netmask_int);
+	/* Calculate DHCP pool start and end IPs as ipaddr+1 and ipaddr+100 respectively */
+	uint32_t start_ip = ip_addr_int + 1;
+	uint32_t end_ip = ip_addr_int + 100;
+
+	/* Boundary check - ensure IPs are within valid range */
+	if (start_ip <= network_addr) start_ip = network_addr + 1;
+	if (end_ip >= broadcast_addr) end_ip = broadcast_addr - 1;
+	if (start_ip > end_ip) {
+		/* If start IP is greater than end IP (e.g., ipaddr set to 254), provide at least 10 IPs */
+		start_ip = network_addr + 1;
+		end_ip = (start_ip + 10 < broadcast_addr) ? start_ip + 10 : broadcast_addr - 1;
+		if (end_ip > broadcast_addr - 1) end_ip = broadcast_addr - 1;
+	}
+
+	dhcpd_svr_cfg.start_ip.s_addr = htonl(start_ip);
+	dhcpd_svr_cfg.end_ip.s_addr = htonl(end_ip);
+	dhcpd_svr_cfg.netmask = netmask_addr;
+
+	/* Set gateway to environment value or server IP if not set */
+	if (env_gateway != NULL) {
+		dhcpd_svr_cfg.gateway = string_to_ip(env_gateway);
+	} else {
+		/* Default to server IP (ipaddr) */
+		dhcpd_svr_cfg.gateway = server_addr;
+	}
+
+	net_ip = dhcpd_svr_cfg.server_ip;
+	net_netmask = dhcpd_svr_cfg.netmask;
+	net_gateway = dhcpd_svr_cfg.gateway;
 }
 
 /**
