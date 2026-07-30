@@ -103,7 +103,8 @@ label,
 b,
 .backup-col select,
 .about-table th {
-	color: var(--c-text)
+	color: var(--c-text);
+	text-align: center
 }
 
 a:hover {
@@ -658,28 +659,29 @@ label {
 
 .about-table th,
 .about-table td,
-.about-sm-btn {
-	padding: 0 8px;
+.about-sm-btn,
+#smem-table th,
+#smem-table td {
+	padding: 0 4px
 }
 
 .about-table th,
 .about-table td,
 #info-table td:first-child {
-	text-align: left;
 	height: 2rem;
-	line-height: 2rem;
+	line-height: 2rem
 }
 
 #info-table td:first-child {
 	white-space: nowrap;
 	width: 5.5rem;
-	min-width: 5.5rem;
+	min-width: 5.5rem
 }
 
 .about-sm-btn {
 	font-size: .65rem;
 	height: 1.2rem;
-	line-height: 1.2rem;
+	line-height: 1.2rem
 }
 
 .about-btn-pressed {
