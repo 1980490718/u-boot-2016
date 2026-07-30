@@ -30,15 +30,15 @@
 		<div class="about-section">
 			<h3>GPIO信息</h3>
 			<table class="about-table" id="gpio-table">
-				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父节点</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
+				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
 				<tbody id="gpio-tbody"></tbody>
 			</table>
 		</div>
 
 		<div class="about-section">
-			<h3>SMEM信息</h3>
+			<h3 id="part-title">SMEM信息</h3>
 			<table class="about-table" id="smem-table">
-				<thead><tr><th>名称</th><th>起始地址</th><th>结束地址</th><th>Hex长度</th><th>大小</th><th>指向</th></tr></thead>
+				<thead id="smem-thead"><tr><th rowspan="2">名称</th><th colspan="2">起始</th><th colspan="2">结束</th><th colspan="3">大小</th><th rowspan="2">指向</th></tr><tr><th>块</th><th>地址</th><th>块</th><th>地址</th><th>块数</th><th>Hex</th><th>容量</th></tr></thead>
 				<tbody id="smem-tbody"></tbody>
 			</table>
 		</div>
@@ -259,8 +259,14 @@
 			smemTbody.innerHTML = '';
 			(data.parts || []).forEach(function(p) {
 				var tr = document.createElement('tr');
-				tr.innerHTML = [p.name||'-', formatHex(p.start), formatHex(p.start+p.size), p.size.toString(16).toUpperCase(), formatSize(p.size), p.flash||'-']
-					.map(function(v){return '<td>'+v+'</td>';}).join('');
+				var blkStart = (p.blk_start !== undefined) ? p.blk_start : '-';
+				var blkEnd = (p.blk_start !== undefined && p.blk_size !== undefined) ? (p.blk_start + p.blk_size - 1) : '-';
+				var blkSize = (p.blk_size !== undefined) ? p.blk_size : '-';
+				tr.innerHTML = '<td>' + (p.name||'-') + '</td>'
+					+ '<td>' + blkStart + '</td><td>' + formatHex(p.start) + '</td>'
+					+ '<td>' + blkEnd + '</td><td>' + formatHex(p.start+p.size) + '</td>'
+					+ '<td>' + blkSize + '</td><td>' + p.size.toString(16).toUpperCase() + '</td><td>' + formatSize(p.size) + '</td>'
+					+ '<td>' + (p.flash||'-') + '</td>';
 				smemTbody.appendChild(tr);
 			});
 		});
