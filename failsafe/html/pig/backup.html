@@ -4,13 +4,13 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>备份分区</title>
-	<script>var t=localStorage.getItem('theme')||'';if(t)document.documentElement.setAttribute('data-theme',t)</script>
+	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
 	<div class="card">
 		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-download"/></svg>备份分区</h2>
-		<p>选择要备份的<b>分区名称</b>或<b>nor_full/nand_full</b>，点击<b>确认备份</b>按钮将数据保存到本地。</p>
+		<p>选择要备份的<b>分区名称</b>或<b>nor_full/nand_full</b>，点击<b>确认</b>按钮将数据保存到本地。</p>
 		<div class="backup-row">
 			<div class="backup-col">
 				<label for="part-select">分区名称</label>
@@ -21,7 +21,7 @@
 				<div id="size-display" class="size-display"></div>
 			</div>
 		</div>
-		<div class="button-container"><button id="backup-btn" disabled>确认备份</button></div>
+		<div class="button-container"><button id="backup-btn" disabled>确认</button></div>
 		<div class="tips">
 			<ul>
 				<li>rootfs分区可能读取及下载时间较长，请耐心等待；</li>
@@ -36,13 +36,6 @@ var sizeEl=document.getElementById('size-display');
 var dlBtn=document.getElementById('backup-btn');
 var partsData=[];
 var nandType='none';
-
-function formatSize(v){
-	if(v<1024)return v+' B';
-	if(v<1048576)return(v/1024).toFixed(1)+' KiB';
-	if(v<1073741824)return(v/1048576).toFixed(1)+' MiB';
-	return(v/1073741824).toFixed(1)+' GiB';
-}
 
 function updateSize(){
 	var idx=sel.selectedIndex;
@@ -62,13 +55,7 @@ function loadPartitions(){
 	dlBtn.disabled=true;
 	sel.innerHTML='';
 	sizeEl.textContent='';
-	var xhr=new XMLHttpRequest();
-	xhr.open('GET','/partitions',true);
-	xhr.timeout=10000;
-	xhr.onload=function(){
-		if(xhr.status!==200)return;
-		var data;
-		try{data=JSON.parse(xhr.responseText);}catch(e){return;}
+	xhrGet('/partitions',function(data){
 		if(!data.parts||!data.parts.length)return;
 		partsData=data.parts;
 		sel.innerHTML='';
@@ -94,8 +81,7 @@ function loadPartitions(){
 		});
 		nandType=data.nand_type||'none';
 		updateSize();
-	};
-	xhr.send();
+	});
 }
 
 sel.onchange=updateSize;
@@ -141,12 +127,6 @@ dlBtn.onclick=function(){
 };
 
 loadPartitions();
-
-(function(){
-	function apply(v){v?document.documentElement.setAttribute('data-theme',v):document.documentElement.removeAttribute('data-theme');}
-	window.addEventListener('storage',function(e){if(e.key==='theme')apply(e.newValue||'');});
-	window.addEventListener('message',function(e){if(e.data&&e.data.type==='theme')apply(e.data.theme||'');});
-})();
 	</script>
 </body>
 </html>

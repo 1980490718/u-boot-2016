@@ -3,84 +3,55 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>关于设备</title>
-	<script>var t=localStorage.getItem('theme')||'';if(t)document.documentElement.setAttribute('data-theme',t)</script>
+	<title>关于设置</title>
+	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
 	<div class="card about-card">
-		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-search-alert"/></svg>关于设备</h2>
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title">关于设置</span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
-		<div class="about-section">
-			<h3>设备信息</h3>
-			<table class="about-table" id="info-table">
-				<tbody>
-					<tr><td>机型</td><td id="val-model">-</td></tr>
-					<tr><td>设置名称</td><td id="val-config-name">-</td></tr>
-					<tr><td>设备ID</td><td id="val-machid">-</td></tr>
-					<tr><td>内存大小</td><td id="val-ram">-</td></tr>
-					<tr><td>闪存类型</td><td id="val-flash">-</td></tr>
-					<tr><td>闪存信息</td><td id="val-flash-chips">-</td></tr>
-					<tr><td>PHY/交换机</td><td id="val-phy-switch">-</td></tr>
-					<tr><td>U-Boot版本</td><td id="val-version">-</td></tr>
-				</tbody>
-			</table>
+		<!-- 标签页导航 -->
+		<div class="tab-nav">
+			<div class="tab-item active" data-tab="info">设备信息</div>
+			<div class="tab-item" data-tab="gpio">GPIO信息</div>
+			<div class="tab-item" data-tab="smem">SMEM信息</div>
 		</div>
 
-		<div class="about-section">
-			<h3>GPIO信息</h3>
-			<table class="about-table" id="gpio-table">
-				<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
-				<tbody id="gpio-tbody"></tbody>
-			</table>
-		</div>
+		<div class="tab-container">
+			<!-- 第1页：设备信息 -->
+			<div class="tab-content active" id="tab-info">
+				<div class="about-section">
+					<table class="about-table" id="info-table">
+						<tbody id="info-tbody"></tbody>
+					</table>
+				</div>
+			</div>
 
-		<div class="about-section">
-			<h3 id="part-title">SMEM信息</h3>
-			<table class="about-table" id="smem-table">
-				<thead id="smem-thead"><tr><th rowspan="2">名称</th><th colspan="2">起始</th><th colspan="2">结束</th><th colspan="3">大小</th><th rowspan="2">指向</th></tr><tr><th>块</th><th>地址</th><th>块</th><th>地址</th><th>块数</th><th>Hex</th><th>容量</th></tr></thead>
-				<tbody id="smem-tbody"></tbody>
-			</table>
-		</div>
+			<!-- 第2页：GPIO信息 -->
+			<div class="tab-content" id="tab-gpio">
+				<div class="about-section">
+					<table class="about-table" id="gpio-table">
+						<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
+						<tbody id="gpio-tbody"></tbody>
+					</table>
+				</div>
+			</div>
 
+			<!-- 第3页：SMEM信息 -->
+			<div class="tab-content" id="tab-smem">
+				<div class="about-section">
+					<table class="about-table" id="smem-table">
+						<thead id="smem-thead"><tr><th rowspan="2">名称</th><th colspan="2">起始</th><th colspan="2">结束</th><th colspan="3">大小</th><th rowspan="2">指向</th></tr><tr><th>块</th><th>地址</th><th>块</th><th>地址</th><th>块数</th><th>Hex</th><th>容量</th></tr></thead>
+						<tbody id="smem-tbody"></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<script>
 (function() {
-	function formatSize(v) {
-		if (v < 1024) return v + ' B';
-		if (v < 1048576) return (v / 1024).toFixed(2) + ' KiB';
-		if (v < 1073741824) return (v / 1048576).toFixed(2) + ' MiB';
-		return (v / 1073741824).toFixed(2) + ' GiB';
-	}
-
-	function formatHex(v) {
-		return '0x' + v.toString(16).toUpperCase();
-	}
-
-	function xhrGet(url, cb) {
-		var xhr = new XMLHttpRequest();
-		xhr.open('GET', url, true);
-		xhr.timeout = 10000;
-		xhr.onload = function() {
-			if (xhr.status !== 200) return;
-			var data;
-			try { data = JSON.parse(xhr.responseText); } catch(e) { return; }
-			cb(data);
-		};
-		xhr.send();
-	}
-
-	function xhrPost(url, body, cb) {
-		var xhr = new XMLHttpRequest();
-		xhr.open('POST', url, true);
-		xhr.timeout = 10000;
-		xhr.onload = function() {
-			cb(xhr.status === 200 ? xhr.responseText : null);
-		};
-		xhr.send(body);
-	}
-
 	var ledTimers = {};
 
 	function ledControl(name, action) {
@@ -108,8 +79,16 @@
 	function mkBtn(text, attrs, style) {
 		var b = document.createElement('button');
 		b.textContent = text;
+		b.className = 'about-sm-btn';
 		for (var k in attrs) b.setAttribute(k, attrs[k]);
 		if (style) for (var k in style) b.style[k] = style[k];
+		return b;
+	}
+
+	function addBtn(parent, text, attrs, style, extra) {
+		var b = mkBtn(text, attrs, style);
+		if (extra) b.className += ' ' + extra;
+		parent.appendChild(b);
 		return b;
 	}
 
@@ -144,70 +123,70 @@
 		});
 	}
 
+	var infoFields = [
+		['机型', 'model'],
+		['设置名称', 'config_name'],
+		['设备ID', 'machid'],
+		['内存大小', 'ram_size'],
+		['闪存类型', 'flash_type'],
+		['闪存信息', 'flash_chips'],
+		['PHY/交换机', 'phy_switch_info'],
+		['U-Boot版本', 'version']
+	];
+
 	function loadAbout() {
+		var infoTbody = document.getElementById('info-tbody');
+		infoTbody.innerHTML = '';
+		infoFields.forEach(function(f) {
+			var tr = document.createElement('tr');
+			var td1 = document.createElement('td');
+			td1.textContent = f[0];
+			var td2 = document.createElement('td');
+			td2.textContent = '-';
+			td2.setAttribute('data-key', f[1]);
+			tr.appendChild(td1);
+			tr.appendChild(td2);
+			infoTbody.appendChild(tr);
+		});
+
 		xhrGet('/about', function(data) {
-			document.getElementById('val-model').textContent = data.model || '-';
-			document.getElementById('val-machid').textContent = data.machid || '-';
-			document.getElementById('val-ram').textContent = data.ram_size ? formatSize(data.ram_size) : '-';
-			document.getElementById('val-flash').textContent = data.flash_type || '-';
-			document.getElementById('val-flash-chips').textContent = data.flash_chips || '-';
-			document.getElementById('val-phy-switch').textContent = data.phy_switch_info || '-';
-			document.getElementById('val-version').textContent = data.version || '-';
-			var cnTd = document.getElementById('val-config-name');
-			cnTd.textContent = data.config_name || '-';
-			if (data.config_name_source === 'env') {
-				cnTd.className = 'about-gpio-ops';
-				var btnRestore = mkBtn('恢复');
-				btnRestore.className = 'about-sm-btn';
-				btnRestore.onclick = function() {
-					xhrPost('/env_set', 'config_name=', function() { loadAbout(); });
-				};
-				cnTd.appendChild(btnRestore);
-			} else if (data.config_name_source === 'fdt') {
-				cnTd.className = 'about-gpio-ops';
-				var btnModify = mkBtn('修改');
-				btnModify.className = 'about-sm-btn';
-				btnModify.onclick = function() {
-					var val = prompt('输入 config_name 值 (如 config@xxx):');
-					if (val !== null && val !== '')
-						xhrPost('/env_set', 'config_name=' + encodeURIComponent(val), function() { loadAbout(); });
-				};
-				cnTd.appendChild(btnModify);
-			}
+			infoFields.forEach(function(f) {
+				var key = f[1];
+				var td = infoTbody.querySelector('[data-key="' + key + '"]');
+				if (!td) return;
+				td.textContent = key === 'ram_size' ? (data.ram_size ? formatSize(data.ram_size) : '-') : (data[key] || '-');
+				if (key === 'config_name' && data.config_name_source) {
+					td.className = 'about-gpio-ops';
+					if (data.config_name_source === 'env') {
+						addBtn(td, '恢复').onclick = function() { xhrPost('/env_set', 'config_name=', function() { loadAbout(); }); };
+					} else if (data.config_name_source === 'fdt') {
+						addBtn(td, '修改').onclick = function() {
+							var v = prompt('输入 config_name 值 (如 config@xxx):');
+							if (v !== null && v !== '')
+								xhrPost('/env_set', 'config_name=' + encodeURIComponent(v), function() { loadAbout(); });
+						};
+					}
+				}
+			});
 
 			var gpioTbody = document.getElementById('gpio-tbody');
 			gpioTbody.innerHTML = '';
+			var stickyIdx = 0;
 			(data.gpios || []).forEach(function(g) {
 				var tr = document.createElement('tr'), isLed = g.parent === 'led_gpio',
 				    opsTd = document.createElement('td');
 				opsTd.className = 'about-gpio-ops';
 				if (isLed) {
-					var btn;
-					btn = mkBtn('点亮', {'data-led':g.name, 'data-act':'on'});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
-					btn = mkBtn('熄灭', {'data-led':g.name, 'data-act':'off'});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
-					btn = mkBtn('闪烁', {'data-led':g.name, 'data-act':'blink'});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
-					btn = mkBtn('停止', {'data-led':g.name, 'data-act':'stop'}, {display:'none'});
-					btn.className = 'about-sm-btn about-blink-stop';
-					opsTd.appendChild(btn);
+					addBtn(opsTd, '点亮', {'data-led':g.name, 'data-act':'on'});
+					addBtn(opsTd, '熄灭', {'data-led':g.name, 'data-act':'off'});
+					addBtn(opsTd, '闪烁', {'data-led':g.name, 'data-act':'blink'});
+					addBtn(opsTd, '停止', {'data-led':g.name, 'data-act':'stop'}, {display:'none'}, 'about-blink-stop');
 				}
 				if (g.override) {
-					var btn = mkBtn('恢复', {'data-override': g.override});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
+					addBtn(opsTd, '恢复', {'data-override': g.override});
 				} else if (!isLed && g.parent === 'key_gpio') {
-					var btn;
-					btn = mkBtn('修改', {'data-modify': 'reset_key'});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
-					btn = mkBtn('探测', {'data-detect': 'reset_key'});
-					btn.className = 'about-sm-btn';
-					opsTd.appendChild(btn);
+					addBtn(opsTd, '修改', {'data-modify': 'reset_key'});
+					addBtn(opsTd, '探测', {'data-detect': 'reset_key'});
 				}
 				if (!opsTd.hasChildNodes()) opsTd.textContent = '-';
 				tr.innerHTML = [g.name||'-', g.alias||'', g.gpio, g.dir||'-',
@@ -215,6 +194,11 @@
 					g.source==='env'?'变量':'fdt', g.override||''
 				].map(function(v){return '<td>'+v+'</td>';}).join('');
 				tr.appendChild(opsTd);
+				if (opsTd.hasChildNodes() && opsTd.textContent !== '-') {
+					tr.classList.add('gpio-btn-row');
+					tr.style.top = (2 + stickyIdx * 2) + 'rem';
+					stickyIdx++;
+				}
 				gpioTbody.appendChild(tr);
 			});
 			bindLedButtons(gpioTbody);
@@ -314,12 +298,46 @@
 		});
 	}
 
-	window.addEventListener('unload', function() {
+	// ===== 标签页切换逻辑 =====
+	var indicator = document.getElementById('tab-indicator');
+	var titleEl = document.getElementById('about-title');
+	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息' };
+
+	function switchTab(tabName) {
+		var tabs = document.querySelectorAll('.tab-item');
+		var contents = document.querySelectorAll('.tab-content');
+
+		tabs.forEach(function(tab) {
+			tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
+		});
+
+		contents.forEach(function(content) {
+			content.classList.toggle('active', content.id === 'tab-' + tabName);
+		});
+
+		titleEl.textContent = tabTitles[tabName] || '关于设置';
+		document.title = tabTitles[tabName] || '关于设置';
+
+		updateTabIndicator(indicator);
+	}
+
+	// 绑定标签页点击事件
+	document.querySelectorAll('.tab-item').forEach(function(tab) {
+		tab.addEventListener('click', function() {
+			var tabName = this.getAttribute('data-tab');
+			switchTab(tabName);
+		});
+	});
+
+	window.addEventListener('pagehide', function() {
 		stopAllBlink();
 		if (detectTimer) clearInterval(detectTimer);
 	});
 
 	loadAbout();
+	titleEl.textContent = tabTitles.info;
+	updateTabIndicator(indicator);
+	window.addEventListener('resize', function() { updateTabIndicator(indicator); });
 })();
 	</script>
 </body>

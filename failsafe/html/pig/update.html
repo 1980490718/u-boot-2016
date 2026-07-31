@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title></title>
+	<script src="common.js?v=f"></script>
+	<link rel="stylesheet" href="style.css?v=f">
+</head>
+<body class="iframe-content">
+	<div class="card">
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use id="update-icon" href="icons.svg?v=f#icon-upload"/></svg><span id="update-title">更新固件</span><span class="tab-indicator" id="tab-indicator"></span></h2>
+
+		<div class="tab-nav">
+			<div class="tab-item active" data-tab="firmware">固件</div>
+			<div class="tab-item" data-tab="uboot">U-BOOT</div>
+			<div class="tab-item" data-tab="art">ART</div>
+			<div class="tab-item" data-tab="cdt">CDT</div>
+			<div class="tab-item" data-tab="ptable">分区表</div>
+			<div class="tab-item" data-tab="initramfs">内存启动</div>
+		</div>
+
+		<p id="update-desc"></p>
+		<form enctype="multipart/form-data" id="update-form">
+			<div class="form-group">
+				<label for="update-file" id="update-label"></label>
+				<input type="file" id="update-file" aria-label="选择文件" required>
+			</div>
+			<div class="button-container"><button type="submit" id="update-btn">确认</button></div>
+		</form>
+		<p id="sha256-display"></p>
+		<div class="tips" id="update-tips"></div>
+	</div>
+	<script src="submit.js?v=f"></script>
+	<script>
+	(function() {
+		var commonTips = ['更新过程中不能断开设备的电源；', '更新完成后将自动重启。'];
+		var commonAccept = '.bin,.BIN,.img,.IMG';
+		var tabData = {
+			firmware: {
+				name: '固件', icon: 'icon-upload',
+				accept: '.ubi,.UBI,.trx,.TRX'
+			},
+			uboot: {
+				name: 'U-BOOT', icon: 'icon-hard-drive',
+				accept: '.elf,.ELF,.mbn,.MBN'
+			},
+			art: {
+				name: 'ART', icon: 'icon-wifi',
+				note: '(Atheros无线芯片的频率校正数据)',
+				accept: '.art,.ART,art.*,ART.*'
+			},
+			cdt: {
+				name: 'CDT', icon: 'icon-sliders',
+				note: '(Configuration Data Table, 配置数据表)',
+				accept: '.cdt,.CDT,cdt.*,CDT.*',
+				tips: ['请确认所选的CDT文件是正确的；', '更新CDT非常危险，可能会损坏设备；', '更新完成后将自动重启。']
+			},
+			ptable: {
+				name: 'GPT/MIBIB', icon: 'icon-storage',
+				desc: '即将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)，EMMC闪存选<b>GPT</b>文件。<br>NOR/NAND闪存选<b>MIBIB</b>文件，选择适合此设备的<b>分区表文件</b>后点击<b>确认</b>按钮。',
+				label: '请选择<b>GPT/MIBIB文件</b>',
+				accept: '.gpt,.GPT,.mibib,.MIBIB',
+				tips: [
+					'请确认所选的分区表文件是正确的，跨平台/型号/版本的表文件不一定通用；',
+					'NOR/NAND闪存选择MIBIB表文件，EMMC闪存选择GPT表文件；',
+					'更新分区表非常危险，可能会损坏设备；更新完成后将自动重启。'
+				]
+			},
+			initramfs: {
+				name: 'INITRAMFS', icon: 'icon-rocket',
+				title: '内存启动',
+				desc: '即将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认</b>按钮。',
+				label: '请选择<b>INITRAMFS文件</b>',
+				fullAccept: '.itb,.uImage,.zImage',
+				tips: [
+					'请确认所选的initramfs文件是正确的,文件通常以.itb结尾；',
+					'设备将运行内存中的系统，不影响闪存中的数据，一般用于测试或者备份目的；',
+					'可以断开电源终止启动。'
+				]
+			}
+		};
+
+		function buildDesc(d) {
+			return d.desc || ('即将更新此设备的<b>' + d.name + '</b>' + (d.note || '') + '。<br>请选择要更新的<b>' + d.name + '文件</b>并点击<b>确认</b>按钮。');
+		}
+
+		function buildTips(d) {
+			if (d.tips) return d.tips;
+			return ['请确认所选的' + d.name + '文件是正确的；'].concat(commonTips);
+		}
+
+		function buildAccept(d) {
+			return d.fullAccept || (d.accept + ',' + commonAccept);
+		}
+
+		var el = {
+			title: document.getElementById('update-title'),
+			icon: document.getElementById('update-icon'),
+			desc: document.getElementById('update-desc'),
+			form: document.getElementById('update-form'),
+			file: document.getElementById('update-file'),
+			label: document.getElementById('update-label'),
+			tips: document.getElementById('update-tips'),
+			sha256: document.getElementById('sha256-display'),
+			indicator: document.getElementById('tab-indicator')
+		};
+
+		function switchTab(tabName) {
+			var d = tabData[tabName];
+			if (!d) return;
+
+			document.querySelectorAll('.tab-item').forEach(function(tab) {
+				tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
+			});
+
+			var title = d.title || ('更新' + d.name);
+			el.title.textContent = title;
+			el.icon.setAttribute('href', 'icons.svg?v=f#' + d.icon);
+			el.desc.innerHTML = buildDesc(d);
+			el.form.name = tabName;
+			el.file.name = tabName;
+			el.file.accept = buildAccept(d);
+			el.file.value = '';
+			el.label.innerHTML = d.label || ('请选择<b>' + d.name + '文件</b>');
+			el.tips.innerHTML = '<ul><li>' + buildTips(d).join('</li><li>') + '</li></ul>';
+			el.sha256.textContent = '';
+			document.title = title;
+
+			updateTabIndicator(el.indicator);
+		}
+
+		document.querySelectorAll('.tab-item').forEach(function(tab) {
+			tab.addEventListener('click', function() {
+				switchTab(this.getAttribute('data-tab'));
+			});
+		});
+
+		var hash = window.location.hash.substring(1);
+		switchTab(hash && tabData[hash] ? hash : 'firmware');
+
+		updateTabIndicator(el.indicator);
+		window.addEventListener('resize', function() { updateTabIndicator(el.indicator); });
+	})();
+	</script>
+</body>
+</html>

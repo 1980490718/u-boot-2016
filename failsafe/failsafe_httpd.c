@@ -1313,6 +1313,30 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 	if (data[4] == ISO_slash && data[5] == 0) {
 		fs_open(file_index_html[0].name, &fsfile);
 	} else {
+		{
+			static const struct { const char *url; const char *hash; } redirects[] = {
+				{"/firmware.html", "firmware"},
+				{"/uboot.html", "uboot"},
+				{"/art.html", "art"},
+				{"/cdt.html", "cdt"},
+				{"/ptable.html", "ptable"},
+				{"/initramfs.html", "initramfs"},
+			};
+			static char redirect_buf[128];
+			int i;
+			for (i = 0; i < sizeof(redirects) / sizeof(redirects[0]); i++) {
+				if (strcmp(&data[4], redirects[i].url) == 0) {
+					int len = sprintf(redirect_buf,
+						"HTTP/1.0 302 Found\r\nLocation: /update.html#%s\r\n\r\n",
+						redirects[i].hash);
+					hs->state = STATE_FILE_REQUEST;
+					hs->dataptr = (u8_t *)redirect_buf;
+					hs->upload = len;
+					httpd_send_data(hs);
+					return;
+				}
+			}
+		}
 		if (!fs_open((const char *)&data[4], &fsfile)) {
 			if (!strstr(&data[4], "favicon.ico"))
 				print_error("file not found!");
