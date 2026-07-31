@@ -10,6 +10,7 @@
 #include <spi_flash.h>
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
+#include <asm/arch-qca-common/qca_common.h>
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ6018) \
 	|| defined(CONFIG_IPQ5018) || defined(CONFIG_IPQ5332) \
 	|| defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ806X)
@@ -890,6 +891,18 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 			}
 		}
 #endif
+		pos += sprintf(about_json_buf + pos, "\",");
+	}
+
+	{
+		uchar mb[CONFIG_IPQ_NO_MACS * 6];
+		int i, f = 1, r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
+		pos += sprintf(about_json_buf + pos, "\"mac_addr\":\"");
+		if (r >= 0) for (i = 0; i < CONFIG_IPQ_NO_MACS; i++) {
+			uchar *m = &mb[i * 6];
+			if (is_valid_ethaddr(m))
+				pos += sprintf(about_json_buf + pos, "%s%02x:%02x:%02x:%02x:%02x:%02x", f ? (f = 0, "") : ", ", m[0], m[1], m[2], m[3], m[4], m[5]);
+		}
 		pos += sprintf(about_json_buf + pos, "\",");
 	}
 
