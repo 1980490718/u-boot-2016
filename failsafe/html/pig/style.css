@@ -20,7 +20,7 @@
 	--c-bg: #151525;
 	--c-card-bg: #1c2541;
 	--c-sidebar-hover: #252545;
-	--c-tip-bg: #151525;
+	--c-tip-bg: #1c2541;
 	--c-tip-border: #252545;
 	--c-border: #3a3a5a;
 	--c-shadow: rgba(0, 0, 0, .4);
@@ -103,8 +103,29 @@ label,
 b,
 .backup-col select,
 .about-table th {
-	color: var(--c-text);
+	color: var(--c-text)
+}
+
+b,
+.about-table th {
 	text-align: center
+}
+
+.about-table thead th,
+.about-table tbody tr.gpio-btn-row {
+	position: sticky;
+	background: var(--c-card-bg);
+	border-bottom: 1px solid var(--c-border);
+	z-index: 2
+}
+
+.about-table thead th {
+	top: 0
+}
+
+#smem-table thead tr:nth-child(2) th {
+	top: 2rem;
+	box-shadow: none
 }
 
 a:hover {
@@ -151,14 +172,16 @@ button:hover,
 .terminal-dropdown-menu,
 .terminal-status-bottom,
 .terminal-expand,
-.theme-thumb {
+.theme-thumb,
+.card h2 .tab-indicator {
 	position: absolute
 }
 
 body.iframe-content .terminal-container,
 .terminal-input-line,
 .terminal-output-wrapper,
-.theme-track {
+.theme-track,
+.card h2 {
 	position: relative
 }
 
@@ -188,6 +211,14 @@ label,
 p,
 .form-group {
 	margin-bottom: 1rem
+}
+
+#sha256-display {
+	font-size: .75rem;
+	color: var(--c-text-light);
+	word-break: break-all;
+	min-height: 1.2rem;
+	margin-bottom: .5rem
 }
 
 html,
@@ -251,7 +282,8 @@ button,
 
 .card h2,
 .sidebar-nav-item a,
-.button-container button {
+.button-container button,
+.tab-item {
 	white-space: nowrap
 }
 
@@ -268,14 +300,14 @@ a {
 body {
 	color: var(--c-text);
 	min-height: 100vh;
-	line-height: 1.6;
-	animation: pageIn .15s ease-out
+	line-height: 1.6
 }
 
 body.iframe-content,
 .terminal-output,
 .sidebar-nav,
-body.iframe-content .about-card {
+body.iframe-content .about-card,
+.tab-container {
 	overflow-y: auto
 }
 
@@ -293,7 +325,8 @@ body.iframe-content .card {
 body.iframe-content .card:has(.terminal-container),
 .terminal-output-wrapper,
 .sidebar-nav,
-body.iframe-content .about-card {
+body.iframe-content .about-card,
+.tab-container {
 	min-height: 0
 }
 
@@ -305,7 +338,8 @@ body.iframe-content .terminal-container,
 .terminal-output-wrapper,
 .backup-col,
 .sidebar-nav,
-body.iframe-content .about-card {
+body.iframe-content .about-card,
+.tab-container {
 	flex: 1
 }
 
@@ -313,29 +347,22 @@ body.iframe-content .tips {
 	margin: 0
 }
 
-@keyframes pageIn {
-	from {
-		opacity: 0
-	}
-
-	to {
-		opacity: 1
-	}
-}
-
 button,
 .about-sm-btn,
-.theme-switch {
+.theme-switch,
+.tab-item {
 	cursor: pointer
 }
 
 button,
-.about-sm-btn {
+.about-sm-btn,
+.terminal-btn,
+.terminal-clear {
 	transition: background-color .3s
 }
 
 button {
-	padding: .8rem 1.5rem
+	padding: .8rem 2rem
 }
 
 p,
@@ -368,6 +395,18 @@ p {
 	font-size: 2rem
 }
 
+.card h2.has-tabs {
+	margin-bottom: 0;
+	padding-bottom: .5rem
+}
+
+.card h2 .tab-indicator {
+	bottom: -1px;
+	height: 2px;
+	background: var(--c-primary);
+	transition: left 0.3s, width 0.3s
+}
+
 .card {
 	padding: 1rem 2rem
 }
@@ -379,13 +418,12 @@ p {
 
 .sidebar-nav {
 	list-style: none;
-	padding: 1rem 0;
-	justify-content: flex-end
+	padding: .8rem 0
 }
 
 .sidebar-nav-item a {
-	padding: .5rem 1.8rem;
-	transition: all .3s ease
+	padding: .6rem 1.2rem;
+	font-size: 1rem
 }
 
 .icon {
@@ -404,13 +442,18 @@ p {
 	animation: spin 1s linear infinite
 }
 
-.sidebar-nav-item a:hover,
-.about-table th {
+.sidebar-nav-item a:hover {
 	background: var(--c-sidebar-hover)
 }
 
 .sidebar-nav-item.active a,
-.about-btn-pressed {
+.tab-item.active,
+.about-btn-pressed,
+.terminal-prompt,
+.backup-col label,
+.backup-col .label,
+.about-table th,
+#info-table td:first-child {
 	font-weight: 700
 }
 
@@ -423,7 +466,7 @@ p {
 
 .button-container,
 .backup-row {
-	margin: 1rem 0
+	margin: 1.5rem 0
 }
 
 .button-container,
@@ -431,7 +474,8 @@ p {
 	flex-wrap: wrap
 }
 
-label {
+label,
+.tab-item {
 	font-weight: 500
 }
 
@@ -440,7 +484,7 @@ label {
 	background: var(--c-tip-bg);
 	border: 2px solid var(--c-tip-border);
 	padding: .8rem;
-	margin-top: .3rem;
+	margin-top: 1rem;
 	min-height: 8rem;
 	max-height: 8rem;
 	overflow: auto
@@ -513,15 +557,6 @@ label {
 	font-size: 13px
 }
 
-.terminal-btn,
-.terminal-clear,
-.terminal-prompt,
-.backup-col label,
-.backup-col .label,
-.about-table th {
-	font-weight: bold
-}
-
 .terminal-input {
 	background: transparent;
 	outline: none
@@ -535,8 +570,7 @@ label {
 .terminal-clear {
 	background: var(--c-term-btn);
 	padding: 5px 15px;
-	font-size: .7rem;
-	transition: background-color 0.3s
+	font-size: .7rem
 }
 
 .terminal-btn.active:active,
@@ -602,14 +636,23 @@ label {
 
 .backup-col select,
 .size-display,
-.about-table th,
-.about-table td {
+.form-group input {
 	border: 1px solid var(--c-border)
 }
 
-.backup-col select, .size-display {
+.about-table th,
+.about-table td {
+	border-right: 1px solid var(--c-border);
+	border-bottom: 1px solid var(--c-border)
+}
+
+.backup-col select, .size-display,
+.form-group input {
 	padding: .5rem;
-	border-radius: 4px;
+	border-radius: 4px
+}
+
+.backup-col select, .size-display {
 	height: 2.4em;
 	line-height: 1.4
 }
@@ -645,29 +688,33 @@ label {
 }
 
 /* ===== 关于页面 ===== */
+.about-card {
+	min-height: calc(100vh - 2.5rem)
+}
+
+.about-card .tab-nav {
+	margin-bottom: 0
+}
+
 .about-section {
 	margin-bottom: .2rem
 }
 
-.about-section h3 {
-	font-size: 1rem
-}
-
 .about-table {
-	border-collapse: collapse
+	border-collapse: separate;
+	border-spacing: 0;
+	border-top: 1px solid var(--c-border);
+	border-left: 1px solid var(--c-border)
 }
 
 .about-table th,
 .about-table td,
-.about-sm-btn,
-#smem-table th,
-#smem-table td {
+.about-sm-btn {
 	padding: 0 4px
 }
 
 .about-table th,
-.about-table td,
-#info-table td:first-child {
+.about-table td {
 	height: 2rem;
 	line-height: 2rem
 }
@@ -686,4 +733,58 @@ label {
 
 .about-btn-pressed {
 	color: #e74c3c
+}
+
+/* ===== 标签页组件 ===== */
+.tab-nav {
+	display: flex;
+	margin-bottom: 1.5rem;
+	overflow-x: auto
+}
+
+body.iframe-content,
+body.iframe-content .about-card,
+.tips,
+.tab-nav,
+.tab-container {
+	scrollbar-width: none;
+	-ms-overflow-style: none
+}
+
+body.iframe-content::-webkit-scrollbar,
+body.iframe-content .about-card::-webkit-scrollbar,
+.tips::-webkit-scrollbar,
+.tab-nav::-webkit-scrollbar,
+.tab-container::-webkit-scrollbar {
+	display: none
+}
+
+.sidebar-nav-item a,
+.tab-item {
+	transition: color .3s ease, background-color .3s ease
+}
+
+.tab-item {
+	padding: 0.3rem 1.5rem;
+	font-size: 1rem;
+	color: var(--c-text-light);
+	flex-shrink: 0
+}
+
+.tab-item:hover {
+	color: var(--c-primary);
+	background: rgba(255, 255, 255, 0.05)
+}
+
+.tab-item.active {
+	color: var(--c-primary);
+	background: rgba(93, 173, 226, 0.1)
+}
+
+.tab-content {
+	display: none
+}
+
+.tab-content.active {
+	display: block
 }
