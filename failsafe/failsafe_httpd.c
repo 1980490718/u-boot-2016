@@ -620,19 +620,19 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 
 	{
 		static const char * const flash_type_names[] = {
-			[SMEM_BOOT_NO_FLASH]        = "none",
-			[SMEM_BOOT_NOR_FLASH]       = "nor",
-			[SMEM_BOOT_NAND_FLASH]      = "nand",
-			[SMEM_BOOT_ONENAND_FLASH]   = "onenand",
-			[SMEM_BOOT_SDC_FLASH]       = "sdc",
-			[SMEM_BOOT_MMC_FLASH]       = "emmc",
-			[SMEM_BOOT_SPI_FLASH]       = "spi",
-			[SMEM_BOOT_NORPLUSNAND]     = "nor+nand",
-			[SMEM_BOOT_NORPLUSEMMC]     = "nor+emmc",
-			[SMEM_BOOT_QSPI_NAND_FLASH] = "qspi-nand",
+			[SMEM_BOOT_NO_FLASH]        = "NONE",
+			[SMEM_BOOT_NOR_FLASH]       = "NOR",
+			[SMEM_BOOT_NAND_FLASH]      = "NAND",
+			[SMEM_BOOT_ONENAND_FLASH]   = "ONENAND",
+			[SMEM_BOOT_SDC_FLASH]       = "SDC",
+			[SMEM_BOOT_MMC_FLASH]       = "EMMC",
+			[SMEM_BOOT_SPI_FLASH]       = "SPI",
+			[SMEM_BOOT_NORPLUSNAND]     = "NORPLUSNAND",
+			[SMEM_BOOT_NORPLUSEMMC]     = "NORPLUSEMMC",
+			[SMEM_BOOT_QSPI_NAND_FLASH] = "QSPI-NAND",
 		};
 		uint32_t ft;
-		const char *ft_name = "unknown";
+		const char *ft_name = "UNKNOWN";
 		if (get_current_flash_type(&ft) == 0 &&
 			ft < ARRAY_SIZE(flash_type_names) && flash_type_names[ft])
 			ft_name = flash_type_names[ft];
