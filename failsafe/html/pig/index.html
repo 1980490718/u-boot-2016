@@ -17,9 +17,7 @@
 				<li class="sidebar-nav-item"><a href="about.html" target="content-frame"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg>关于设置</a></li>
 				<li class="sidebar-nav-item"><a href="javascript:void(0)" id="rebootBtn"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg>重启设备</a></li>
 			</ul>
-			<div class="theme-switch" id="themeSwitch" title="切换主题">
-				<div class="theme-track"><div class="theme-thumb"></div></div>
-			</div>
+			<div class="theme-switch">主题 |<span id="themeSwitch" title="切换主题">暗色☀</span></div>
 		</aside>
 		<div class="content-frame-wrapper">
 			<iframe name="content-frame" id="content-frame" src="update.html" title="内容区域" class="content-frame"></iframe>
@@ -48,6 +46,12 @@
 
 			var saved = localStorage.getItem('theme') || '';
 			if (saved) document.documentElement.setAttribute('data-theme', saved);
+			document.documentElement.classList.add('no-transition');
+			requestAnimationFrame(function() {
+				requestAnimationFrame(function() {
+					document.documentElement.classList.remove('no-transition');
+				});
+			});
 
 			function apply(el, v) {
 				v ? el.setAttribute('data-theme', v) : el.removeAttribute('data-theme');
@@ -59,15 +63,20 @@
 				try { frame.contentWindow.postMessage({type: 'theme', theme: theme}, '*'); } catch (e) {}
 			}
 
-			document.getElementById('themeSwitch').addEventListener('click', function () {
+			var themeSw = document.getElementById('themeSwitch');
+			themeSw.addEventListener('click', function () {
 				var theme = document.documentElement.getAttribute('data-theme') === 'light' ? '' : 'light';
 				apply(document.documentElement, theme);
 				localStorage.setItem('theme', theme);
+				themeSw.textContent = theme === 'light' ? '亮色☾' : '暗色☀';
 				syncTheme();
 			});
 
 			frame.addEventListener('load', syncTheme);
 			syncTheme();
+
+			if (document.documentElement.getAttribute('data-theme') === 'light')
+				themeSw.textContent = '亮色☾';
 
 			document.getElementById('rebootBtn').addEventListener('click', function () {
 				if (confirm('确认重启？')) fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
