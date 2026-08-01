@@ -171,6 +171,8 @@
 				var val = data[key] || '-';
 				if (key === 'ram_size')
 					val = data.ram_size ? formatSize(data.ram_size) : '-';
+				if (key === 'flash_chips' && val !== '-')
+					val = val.replace(/(\d+)MiB/g, function(m, n) { var g = parseInt(n) / 1024; return g >= 1 ? g.toFixed(2) + 'GiB' : m; });
 				td.textContent = val;
 				if (key === 'config_name' && data.config_name_source) {
 					td.className = 'about-gpio-ops';

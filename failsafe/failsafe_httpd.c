@@ -770,9 +770,11 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 				if (m && m->has_init && m->capacity > 0) {
 					if (!fc_first)
 						pos += sprintf(about_json_buf + pos, ", ");
-					pos += sprintf(about_json_buf + pos, "%s %s %luMiB",
-						m->block_dev.vendor[0] ? m->block_dev.vendor : "emmc",
-						m->block_dev.product[0] ? m->block_dev.product : "",
+					pos += sprintf(about_json_buf + pos, "eMMC %s%s%s %s %luMiB",
+						m->block_dev.product[0] ? m->block_dev.product : "unknown",
+						m->block_dev.revision[0] ? " rev" : "",
+						m->block_dev.revision[0] ? m->block_dev.revision : "",
+						m->block_dev.vendor[0] ? m->block_dev.vendor : "",
 						(unsigned long)(m->capacity >> 20));
 					fc_first = 0;
 				}
