@@ -17,4 +17,5 @@ obj-y += env.o
 endif
 obj-y += fdt_fixup.o
 obj-y += ethaddr.o
+obj-$(CONFIG_MACADDR_MODIFY) += macaddr_modify.o
 obj-$(CONFIG_QCA_APPSBL_DLOAD) += crashdump.o

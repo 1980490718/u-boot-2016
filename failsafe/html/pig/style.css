@@ -102,7 +102,8 @@ label,
 
 b,
 .backup-col select,
-.about-table th {
+.about-table th,
+#info-table td:first-child {
 	color: var(--c-text)
 }
 
@@ -216,9 +217,7 @@ p,
 #sha256-display {
 	font-size: .75rem;
 	color: var(--c-text-light);
-	word-break: break-all;
-	min-height: 1.2rem;
-	margin-bottom: .5rem
+	word-break: break-all
 }
 
 html,
@@ -246,7 +245,8 @@ body,
 
 .content-frame-wrapper,
 .main-container,
-.terminal-container {
+.terminal-container,
+body.in-frame .about-card {
 	overflow: hidden
 }
 
@@ -308,7 +308,8 @@ body.iframe-content,
 .sidebar-nav,
 body.iframe-content .about-card,
 .tab-container {
-	overflow-y: auto
+	overflow-y: auto;
+	padding-bottom: 1rem
 }
 
 body.iframe-content {
@@ -339,7 +340,8 @@ body.iframe-content .terminal-container,
 .backup-col,
 .sidebar-nav,
 body.iframe-content .about-card,
-.tab-container {
+.tab-container,
+body.in-frame .tab-container {
 	flex: 1
 }
 
@@ -371,7 +373,8 @@ p,
 }
 
 p {
-	font-size: 15px
+	font-size: 15px;
+	overflow-wrap: break-word
 }
 
 /* ===== 布局 ===== */
@@ -461,7 +464,12 @@ p {
 .button-container,
 .backup-row,
 .about-gpio-ops {
-	gap: 1rem
+	gap: 1rem;
+	justify-content: center
+}
+
+#info-tbody .about-gpio-ops {
+	justify-content: flex-start
 }
 
 .button-container,
@@ -483,16 +491,22 @@ label,
 .tips {
 	background: var(--c-tip-bg);
 	border: 2px solid var(--c-tip-border);
-	padding: .8rem;
+	padding: .7rem .8rem;
 	margin-top: 1rem;
-	min-height: 8rem;
+	min-height: 7rem;
 	max-height: 8rem;
 	overflow: auto
 }
 
 .tips ul {
 	list-style: disc;
-	margin-left: 2rem
+	margin-left: 2rem;
+	overflow-wrap: break-word;
+	word-break: break-word
+}
+
+.tips-danger {
+	background: rgba(231, 76, 60, .1)
 }
 
 /* ===== 页脚链接 ===== */
@@ -653,8 +667,8 @@ label,
 }
 
 .backup-col select, .size-display {
-	height: 2.4em;
-	line-height: 1.4
+	height: 2.2rem;
+	line-height: 1.2rem
 }
 
 /* ===== 主题选择器 ===== */
@@ -692,6 +706,10 @@ label,
 	min-height: calc(100vh - 2.5rem)
 }
 
+body.in-frame .about-card {
+	max-height: 100vh
+}
+
 .about-card .tab-nav {
 	margin-bottom: 0
 }
@@ -721,18 +739,38 @@ label,
 
 #info-table td:first-child {
 	white-space: nowrap;
-	width: 5.5rem;
 	min-width: 5.5rem
 }
 
+#mac-table td,
+#mac-table th,
+#gpio-table td,
+#gpio-table th {
+	text-align: center
+}
+
 .about-sm-btn {
-	font-size: .65rem;
-	height: 1.2rem;
-	line-height: 1.2rem
+	font-size: .75rem;
+	height: 1.6rem;
+	line-height: 1.6rem;
+	padding: 0 .5rem
 }
 
 .about-btn-pressed {
 	color: #e74c3c
+}
+
+.about-table tbody tr.about-row-changed {
+	background: rgba(46, 204, 113, .3)
+}
+
+#update-desc {
+	margin-top: 1rem;
+	margin-bottom: 2rem
+}
+
+#update-form .form-group {
+	margin-bottom: 2rem
 }
 
 /* ===== 标签页组件 ===== */

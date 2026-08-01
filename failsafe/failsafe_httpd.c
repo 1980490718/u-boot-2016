@@ -11,6 +11,7 @@
 #include <asm-generic/global_data.h>
 #include <asm/arch-qca-common/smem.h>
 #include <asm/arch-qca-common/qca_common.h>
+#include "../board/qca/arm/common/macaddr_modify.h"
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ6018) \
 	|| defined(CONFIG_IPQ5018) || defined(CONFIG_IPQ5332) \
 	|| defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ806X)
@@ -896,13 +897,10 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 
 	{
 		uchar mb[CONFIG_IPQ_NO_MACS * 6];
-		int i, f = 1, r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
+		int i, r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
 		pos += sprintf(about_json_buf + pos, "\"mac_addr\":\"");
-		if (r >= 0) for (i = 0; i < CONFIG_IPQ_NO_MACS; i++) {
-			uchar *m = &mb[i * 6];
-			if (is_valid_ethaddr(m))
-				pos += sprintf(about_json_buf + pos, "%s%02x:%02x:%02x:%02x:%02x:%02x", f ? (f = 0, "") : ", ", m[0], m[1], m[2], m[3], m[4], m[5]);
-		}
+		for (i = 0; r >= 0 && i < CONFIG_IPQ_NO_MACS; i++)
+			pos += sprintf(about_json_buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", i ? ", " : "", mb[i*6], mb[i*6+1], mb[i*6+2], mb[i*6+3], mb[i*6+4], mb[i*6+5]);
 		pos += sprintf(about_json_buf + pos, "\",");
 	}
 
@@ -1027,6 +1025,83 @@ static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, in
 					env_reset_gpio_invalidate();
 				ok = 1;
 			}
+		}
+	}
+	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", ok ? "ok" : "error");
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)resp;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
+static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
+	static char buf[768];
+	char hdr[128];
+	int pos = 0, hdr_len, len, i, n, f;
+	u32 wifi_valid = 0;
+	uchar wifi_macs[MACADDR_WIFI_MAX][6];
+	static const char *wf_names[] = {"wifi_off", "wifi_cs", "wifi_cs_off", "wifi_cs_ok"};
+
+	for (i = 0; i < MACADDR_WIFI_MAX; i++)
+		if (macaddr_read_wifi(wifi_macs[i], i) >= 0 && is_valid_ethaddr(wifi_macs[i]))
+			wifi_valid |= (1 << i);
+
+	pos += sprintf(buf + pos, "{\"mac_addr\":\"");
+	{
+		uchar mb[CONFIG_IPQ_NO_MACS * 6];
+		int r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
+		for (i = 0; r >= 0 && i < CONFIG_IPQ_NO_MACS; i++)
+			pos += sprintf(buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", i ? ", " : "", mb[i*6], mb[i*6+1], mb[i*6+2], mb[i*6+3], mb[i*6+4], mb[i*6+5]);
+	}
+	pos += sprintf(buf + pos, "\",\"mac_off\":\"");
+	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++)
+		pos += sprintf(buf + pos, "%s0x%X", i ? ", " : "", i * 6);
+	pos += sprintf(buf + pos, "\",\"wifi_mac\":\"");
+	for (i = 0, n = 0; i < MACADDR_WIFI_MAX; i++)
+		if (wifi_valid & (1 << i))
+			pos += sprintf(buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", n++ ? ", " : "", wifi_macs[i][0], wifi_macs[i][1], wifi_macs[i][2], wifi_macs[i][3], wifi_macs[i][4], wifi_macs[i][5]);
+	for (f = 0; f < 4; f++) {
+		pos += sprintf(buf + pos, "\",\"%s\":\"", wf_names[f]);
+		for (i = 0, n = 0; i < MACADDR_WIFI_MAX; i++) {
+			u32 val;
+			if (!(wifi_valid & (1 << i))) continue;
+			switch (f) {
+			case 0: val = macaddr_wifi_offset(i); break;
+			case 1: val = macaddr_wifi_checksum(i); break;
+			case 2: val = macaddr_wifi_cs_offset(i); break;
+			default: val = macaddr_wifi_cs_valid(i); break;
+			}
+			pos += sprintf(buf + pos, f == 1 ? "%s%X" : f == 3 ? "%s%d" : "%s0x%X", n++ ? ", " : "", val);
+		}
+	}
+	pos += sprintf(buf + pos, "\"}");
+
+	hdr_len = sprintf(hdr, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", pos);
+	len = hdr_len + pos;
+	memmove(buf + hdr_len, buf, pos);
+	memcpy(buf, hdr, hdr_len);
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)buf;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
+static void httpd_handle_mac_set(struct failsafe_httpd_state *hs, char *data, int data_len) {
+	static char resp[128];
+	int len, ok = 0, type = -1, index = -1;
+	char *body = strstr(data, "\r\n\r\n"), *s;
+	u8 mac[6];
+	if (body) {
+		body += 4;
+		if ((s = strstr(body, "iface="))) {
+			type = !strncmp(s + 6, "eth", 3) && s[9] >= '0' && s[9] <= '9' ? 0 : !strncmp(s + 6, "wifi", 4) && s[10] >= '0' && s[10] <= '9' ? 1 : -1;
+			if (type >= 0) index = simple_strtoul(s + (type ? 10 : 9), NULL, 0);
+		}
+		if (type >= 0 && (s = strstr(body, "mac="))) {
+			eth_parse_enetaddr(s + 4, mac);
+			if (is_valid_ethaddr(mac))
+				ok = (type ? macaddr_modify_wifi(mac, index) : macaddr_modify_base(mac, index)) >= 0;
 		}
 	}
 	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", ok ? "ok" : "error");
@@ -1533,6 +1608,10 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				httpd_handle_about(hs);
 				break;
 			}
+			if (strncmp(&data[4], "/mac_info", 9) == 0 && data[13] == ISO_space) {
+				httpd_handle_mac_info(hs);
+				break;
+			}
 			if (strncmp(&data[4], "/led?", 5) == 0) {
 				httpd_handle_led(hs, data);
 				break;
@@ -1549,6 +1628,10 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			}
 			if (strncmp(&data[5], "/env_set", 8) == 0) {
 				httpd_handle_env_set(hs, data, data_len);
+				break;
+			}
+			if (strncmp(&data[5], "/mac_set", 8) == 0) {
+				httpd_handle_mac_set(hs, data, data_len);
 				break;
 			}
 			data[data_len] = '\0';
