@@ -6,6 +6,13 @@
 	font-family: Arial, sans-serif
 }
 
+.no-transition,
+.no-transition *,
+.no-transition *::before,
+.no-transition *::after {
+	transition: none !important
+}
+
 /* ===== 主题变量 ===== */
 :root {
 	--c-primary: #5dade2;
@@ -66,7 +73,8 @@ body.iframe-content .card,
 }
 
 body {
-	background: var(--c-bg)
+	background: var(--c-bg);
+	transition: background-color .6s, color .6s
 }
 
 body.iframe-content,
@@ -75,7 +83,8 @@ body.iframe-content,
 .sidebar,
 .backup-col select,
 .size-display {
-	background: var(--c-card-bg)
+	background: var(--c-card-bg);
+	transition: background-color .6s
 }
 
 .terminal-container,
@@ -245,8 +254,7 @@ body,
 
 .content-frame-wrapper,
 .main-container,
-.terminal-container,
-body.in-frame .about-card {
+.terminal-container {
 	overflow: hidden
 }
 
@@ -294,7 +302,7 @@ p,
 
 a {
 	text-decoration: none;
-	transition: color .3s ease
+	transition: color .6s ease
 }
 
 body {
@@ -305,11 +313,14 @@ body {
 
 body.iframe-content,
 .terminal-output,
-.sidebar-nav,
-body.iframe-content .about-card,
-.tab-container {
+.sidebar-nav {
 	overflow-y: auto;
-	padding-bottom: 1rem
+	padding: 1rem 0
+}
+
+body.iframe-content:has(.terminal-container),
+.tab-container {
+	overflow-y: auto
 }
 
 body.iframe-content {
@@ -339,7 +350,6 @@ body.iframe-content .terminal-container,
 .terminal-output-wrapper,
 .backup-col,
 .sidebar-nav,
-body.iframe-content .about-card,
 .tab-container,
 body.in-frame .tab-container {
 	flex: 1
@@ -407,7 +417,7 @@ p {
 	bottom: -1px;
 	height: 2px;
 	background: var(--c-primary);
-	transition: left 0.3s, width 0.3s
+	transition: left .3s, width .3s
 }
 
 .card {
@@ -495,7 +505,8 @@ label,
 	margin-top: 1rem;
 	min-height: 7rem;
 	max-height: 8rem;
-	overflow: auto
+	overflow: auto;
+	transition: background-color .6s, border-color .6s
 }
 
 .tips ul {
@@ -673,32 +684,21 @@ label,
 
 /* ===== 主题选择器 ===== */
 .theme-switch {
-	align-self: flex-start;
 	margin-top: auto;
-	padding: .5rem 1rem .5rem 1.8rem;
+	padding: .6rem 1rem .6rem 1.8rem;
 	-webkit-user-select: none;
-	user-select: none
+	user-select: none;
+	font-size: .8rem;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: .3rem
 }
 
-.theme-track {
-	width: 40px;
-	height: 22px;
-	border-radius: 11px;
-	background: var(--c-border);
-	transition: background .3s
-}
-
-.theme-thumb {
-	top: 3px;
-	left: 3px;
-	width: 16px;
-	height: 16px;
-	background: var(--c-primary);
-	transition: transform .3s
-}
-
-[data-theme="light"] .theme-thumb {
-	transform: translateX(18px)
+.theme-switch span {
+	color: var(--c-heading);
+	cursor: pointer
 }
 
 /* ===== 关于页面 ===== */
@@ -706,8 +706,22 @@ label,
 	min-height: calc(100vh - 2.5rem)
 }
 
+body.iframe-content .about-card {
+	max-width: 900px;
+	width: calc(100% - 2.5rem);
+	max-height: calc(100vh - 2rem);
+	min-height: 0;
+	flex: 1;
+	margin: .5rem auto;
+	overflow-y: auto
+}
+
 body.in-frame .about-card {
-	max-height: 100vh
+	max-height: calc(100vh - 3rem)
+}
+
+body.iframe-content:has(.about-card) {
+	justify-content: flex-start
 }
 
 .about-card .tab-nav {
@@ -799,7 +813,7 @@ body.iframe-content .about-card::-webkit-scrollbar,
 
 .sidebar-nav-item a,
 .tab-item {
-	transition: color .3s ease, background-color .3s ease
+	transition: color .6s ease, background-color .6s ease
 }
 
 .tab-item {

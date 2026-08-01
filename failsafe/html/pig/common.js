@@ -1,6 +1,12 @@
 (function() {
+	document.documentElement.classList.add('no-transition');
 	var t = localStorage.getItem('theme') || '';
 	if (t) document.documentElement.setAttribute('data-theme', t);
+	requestAnimationFrame(function() {
+		requestAnimationFrame(function() {
+			document.documentElement.classList.remove('no-transition');
+		});
+	});
 
 	function applyTheme(v) {
 		v ? document.documentElement.setAttribute('data-theme', v) : document.documentElement.removeAttribute('data-theme');
