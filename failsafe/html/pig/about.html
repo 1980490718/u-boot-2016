@@ -8,6 +8,7 @@
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
+	<script>if(window.self!==window.top)document.body.classList.add('in-frame')</script>
 	<div class="card about-card">
 		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title">关于设置</span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
@@ -16,6 +17,7 @@
 			<div class="tab-item active" data-tab="info">设备信息</div>
 			<div class="tab-item" data-tab="gpio">GPIO信息</div>
 			<div class="tab-item" data-tab="smem">SMEM信息</div>
+			<div class="tab-item" data-tab="mac">MAC管理</div>
 		</div>
 
 		<div class="tab-container">
@@ -44,6 +46,16 @@
 					<table class="about-table" id="smem-table">
 						<thead id="smem-thead"><tr><th rowspan="2">名称</th><th colspan="2">起始</th><th colspan="2">结束</th><th colspan="3">大小</th><th rowspan="2">指向</th></tr><tr><th>块</th><th>地址</th><th>块</th><th>地址</th><th>块数</th><th>Hex</th><th>容量</th></tr></thead>
 						<tbody id="smem-tbody"></tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- 第4页：MAC管理 -->
+			<div class="tab-content" id="tab-mac">
+				<div class="about-section">
+					<table class="about-table" id="mac-table">
+						<thead><tr><th>接口</th><th>MAC地址</th><th>ART偏移</th><th>校验偏移</th><th>XOR16值</th><th>校验状态</th><th>操作</th></tr></thead>
+						<tbody id="mac-tbody"></tbody>
 					</table>
 				</div>
 			</div>
@@ -125,13 +137,14 @@
 
 	var infoFields = [
 		['机型', 'model'],
-		['设置名称', 'config_name'],
-		['设备ID', 'machid'],
+		['配置名称', 'config_name'],
+		['机型ID', 'machid'],
 		['内存大小', 'ram_size'],
 		['闪存类型', 'flash_type'],
 		['闪存信息', 'flash_chips'],
 		['PHY/交换机', 'phy_switch_info'],
-		['MAC地址', 'mac_addr'],
+		['有线MAC', 'mac_addr'],
+		['无线MAC', 'wifi_mac'],
 		['U-Boot版本', 'version']
 	];
 
@@ -155,7 +168,10 @@
 				var key = f[1];
 				var td = infoTbody.querySelector('[data-key="' + key + '"]');
 				if (!td) return;
-				td.textContent = key === 'ram_size' ? (data.ram_size ? formatSize(data.ram_size) : '-') : (data[key] || '-');
+				var val = data[key] || '-';
+				if (key === 'ram_size')
+					val = data.ram_size ? formatSize(data.ram_size) : '-';
+				td.textContent = val;
 				if (key === 'config_name' && data.config_name_source) {
 					td.className = 'about-gpio-ops';
 					if (data.config_name_source === 'env') {
@@ -224,6 +240,9 @@
 						detectTimer = null;
 						this.textContent = '探测';
 						this.classList.remove('about-btn-pressed');
+						gpioTbody.querySelectorAll('.about-row-changed').forEach(function(row) {
+							row.classList.remove('about-row-changed');
+						});
 						Object.keys(detectExtraRows).forEach(function(gpio) {
 							if (detectExtraRows[gpio].parentNode)
 								detectExtraRows[gpio].parentNode.removeChild(detectExtraRows[gpio]);
@@ -237,8 +256,15 @@
 					}
 				};
 			});
-		});
 
+			xhrGet('/mac_info', function(md) {
+				var wifiTd = infoTbody.querySelector('[data-key="wifi_mac"]');
+				if (wifiTd) wifiTd.textContent = md.wifi_mac || '-';
+			});
+		});
+	}
+
+	function loadSmemTable() {
 		xhrGet('/partitions', function(data) {
 			var smemTbody = document.getElementById('smem-tbody');
 			smemTbody.innerHTML = '';
@@ -257,13 +283,59 @@
 		});
 	}
 
+	function loadMacTable(data) {
+		var macTbody = document.getElementById('mac-tbody');
+		macTbody.innerHTML = '';
+		var entries = [];
+		var ethMacs = (data.mac_addr || '').split(', ');
+		var ethOffs = (data.mac_off || '').split(', ');
+		var wifiMacs = (data.wifi_mac || '').split(', ');
+		var wifiOffs = (data.wifi_off || '').split(', ');
+		var wifiCss = (data.wifi_cs || '').split(', ');
+		var wifiCsOffs = (data.wifi_cs_off || '').split(', ');
+		var wifiCsOks = (data.wifi_cs_ok || '').split(', ');
+		for (var i = 0; i < ethMacs.length; i++)
+			if (ethMacs[i]) entries.push({iface: 'eth' + i, mac: ethMacs[i], off: ethOffs[i] || 'N/A', cso: 'N/A', cs: 'N/A', ok: 'N/A'});
+		for (var i = 0, j = 0; i < wifiMacs.length; i++)
+			if (wifiMacs[i] && wifiMacs[i] !== '-') entries.push({iface: 'wifi' + i, mac: wifiMacs[i], off: wifiOffs[j] || '-', cso: wifiCsOffs[j] || '-', cs: wifiCss[j] || '-', ok: wifiCsOks[j++] === '1' ? '✓' : '✗'});
+		entries.forEach(function(e) {
+			var tr = macTbody.insertRow();
+			['iface', 'mac', 'off', 'cso', 'cs', 'ok'].forEach(function(k) {
+				tr.insertCell().textContent = e[k];
+			});
+			var tdO = tr.insertCell();
+			tdO.className = 'about-gpio-ops';
+			var btn = addBtn(tdO, '修改');
+			btn.setAttribute('data-iface', e.iface);
+			btn.onclick = function() {
+				var v = prompt('输入 ' + e.iface + ' 的新MAC地址 (格式: XX:XX:XX:XX:XX:XX):');
+				if (!v) return;
+				if (!/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(v)) return alert('MAC地址格式无效');
+				xhrPost('/mac_set', 'iface=' + encodeURIComponent(e.iface) + '&mac=' + encodeURIComponent(v.toUpperCase()), function(r) {
+					if (r !== 'ok') return alert('修改失败');
+					xhrGet('/mac_info', function(d) {
+						loadMacTable(d);
+						var macTd = document.querySelector('[data-key="mac_addr"]');
+						if (macTd) macTd.textContent = d.mac_addr || '-';
+						var wifiTd = document.querySelector('[data-key="wifi_mac"]');
+						if (wifiTd) wifiTd.textContent = d.wifi_mac || '-';
+					});
+				});
+			};
+		});
+	}
+
 	var detectTimer = null;
 	var detectExtraRows = {};
+	var detectPrev = {};
 
 	function pollDetect() {
 		xhrGet('/btn_detect', function(data) {
+			if (!data || !data.length) return;
 			var gpioTbody = document.getElementById('gpio-tbody');
 			data.forEach(function(b) {
+				var changed = detectPrev[b.gpio] !== undefined && detectPrev[b.gpio] !== b.value;
+				detectPrev[b.gpio] = b.value;
 				var found = false;
 				var rows = gpioTbody.querySelectorAll('tr');
 				for (var r = 0; r < rows.length; r++) {
@@ -272,6 +344,10 @@
 						cells[4].textContent = b.value;
 						cells[5].textContent = b.value ? '高' : '低';
 						cells[5].className = b.value ? '' : 'about-btn-pressed';
+						if (changed) {
+							rows[r].classList.add('about-row-changed');
+							rows[r].scrollIntoView({behavior:'smooth',block:'nearest'});
+						}
 						found = true;
 						break;
 					}
@@ -294,6 +370,10 @@
 					cells[4].textContent = b.value;
 					cells[5].textContent = b.value ? '高' : '低';
 					cells[5].className = b.value ? '' : 'about-btn-pressed';
+					if (changed) {
+						detectExtraRows[b.gpio].classList.add('about-row-changed');
+						detectExtraRows[b.gpio].scrollIntoView({behavior:'smooth',block:'nearest'});
+					}
 				}
 			});
 		});
@@ -302,8 +382,9 @@
 	// ===== 标签页切换逻辑 =====
 	var indicator = document.getElementById('tab-indicator');
 	var titleEl = document.getElementById('about-title');
-	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息' };
+	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息', mac: 'MAC管理' };
 
+	var macLoaded = false, smemLoaded = false;
 	function switchTab(tabName) {
 		var tabs = document.querySelectorAll('.tab-item');
 		var contents = document.querySelectorAll('.tab-content');
@@ -318,6 +399,15 @@
 
 		titleEl.textContent = tabTitles[tabName] || '关于设置';
 		document.title = tabTitles[tabName] || '关于设置';
+
+		if (tabName === 'mac' && !macLoaded) {
+			macLoaded = true;
+			xhrGet('/mac_info', loadMacTable);
+		}
+		if (tabName === 'smem' && !smemLoaded) {
+			smemLoaded = true;
+			loadSmemTable();
+		}
 
 		updateTabIndicator(indicator);
 	}

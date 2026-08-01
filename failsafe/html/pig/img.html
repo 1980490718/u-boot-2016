@@ -10,7 +10,7 @@
 <body class="iframe-content">
 	<div class="card">
 		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-cpu"/></svg>编程模式</h2>
-		<p>即将进入<b>编程模式</b>对闪存进行全量编程刷写。<br>请选择<b>目标闪存</b>和<b>IMG文件</b>，然后点击<b>确认</b>按钮。</p>
+		<p>将进入<b>编程模式</b>对闪存进行全量编程刷写。<br>请选择<b>目标闪存</b>和<b>IMG文件</b>，然后点击<b>确认</b>按钮。</p>
 		<form enctype="multipart/form-data" name="img" id="img-form">
 			<div class="backup-row">
 				<div class="backup-col">
@@ -30,11 +30,11 @@
 			<div class="button-container"><button type="submit" id="submit-btn" disabled>确认</button></div>
 		</form>
 		<p id="sha256-display"></p>
-		<div class="tips">
+		<div class="tips tips-danger">
 			<ul>
 				<li>请确认所选的IMG文件是正确的；</li>
-				<li>编程模式将覆盖闪存上的所有数据，此操作不可逆；</li>
-				<li>刷写过程中不能断开设备的电源，完成后将自动重启。</li>
+				<li>编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
+				<li>更新完成后将自动重启。</li>
 			</ul>
 		</div>
 	</div>

@@ -43,7 +43,9 @@
 			},
 			uboot: {
 				name: 'U-BOOT', icon: 'icon-hard-drive',
-				accept: '.elf,.ELF,.mbn,.MBN'
+				accept: '.elf,.ELF,.mbn,.MBN',
+				danger: true,
+				tips: ['请确认所选的U-BOOT文件是正确的；', '更新U-BOOT<span style="color:red">非常危险</span>，可能会损坏设备；', '更新完成后将自动重启。']
 			},
 			art: {
 				name: 'ART', icon: 'icon-wifi',
@@ -54,35 +56,37 @@
 				name: 'CDT', icon: 'icon-sliders',
 				note: '(Configuration Data Table, 配置数据表)',
 				accept: '.cdt,.CDT,cdt.*,CDT.*',
-				tips: ['请确认所选的CDT文件是正确的；', '更新CDT非常危险，可能会损坏设备；', '更新完成后将自动重启。']
+				danger: true,
+				tips: ['请确认所选的CDT文件是正确的；', '更新CDT<span style="color:red">非常危险</span>，可能会损坏设备；', '更新完成后将自动重启。']
 			},
 			ptable: {
 				name: 'GPT/MIBIB', icon: 'icon-storage',
-				desc: '即将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)，EMMC闪存选<b>GPT</b>文件。<br>NOR/NAND闪存选<b>MIBIB</b>文件，选择适合此设备的<b>分区表文件</b>后点击<b>确认</b>按钮。',
+				desc: '将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)。<br>EMMC选<b>GPT</b>，NOR/NAND选<b>MIBIB</b>，请选择要更新的<b>分区表文件</b>并点击<b>确认</b>按钮。',
 				label: '请选择<b>GPT/MIBIB文件</b>',
 				accept: '.gpt,.GPT,.mibib,.MIBIB',
+				danger: true,
 				tips: [
-					'请确认所选的分区表文件是正确的，跨平台/型号/版本的表文件不一定通用；',
-					'NOR/NAND闪存选择MIBIB表文件，EMMC闪存选择GPT表文件；',
-					'更新分区表非常危险，可能会损坏设备；更新完成后将自动重启。'
+					'请确认所选的分区表文件是正确的；',
+					'更新分区表<span style="color:red">非常危险</span>，可能会损坏设备；',
+					'更新完成后将自动重启。'
 				]
 			},
 			initramfs: {
 				name: 'INITRAMFS', icon: 'icon-rocket',
 				title: '内存启动',
-				desc: '即将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认</b>按钮。',
+				desc: '将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认</b>按钮。',
 				label: '请选择<b>INITRAMFS文件</b>',
 				fullAccept: '.itb,.uImage,.zImage',
 				tips: [
-					'请确认所选的initramfs文件是正确的,文件通常以.itb结尾；',
-					'设备将运行内存中的系统，不影响闪存中的数据，一般用于测试或者备份目的；',
+					'请确认所选的initramfs文件是正确的；',
+					'运行内存系统不影响闪存中的数据；',
 					'可以断开电源终止启动。'
 				]
 			}
 		};
 
 		function buildDesc(d) {
-			return d.desc || ('即将更新此设备的<b>' + d.name + '</b>' + (d.note || '') + '。<br>请选择要更新的<b>' + d.name + '文件</b>并点击<b>确认</b>按钮。');
+			return d.desc || ('将更新此设备的<b>' + d.name + '</b>' + (d.note || '') + '。<br>请选择要更新的<b>' + d.name + '文件</b>并点击<b>确认</b>按钮。');
 		}
 
 		function buildTips(d) {
@@ -124,6 +128,7 @@
 			el.file.value = '';
 			el.label.innerHTML = d.label || ('请选择<b>' + d.name + '文件</b>');
 			el.tips.innerHTML = '<ul><li>' + buildTips(d).join('</li><li>') + '</li></ul>';
+			el.tips.classList.toggle('tips-danger', !!d.danger);
 			el.sha256.textContent = '';
 			document.title = title;
 
