@@ -1,7 +1,9 @@
 #include <common.h>
 #include <command.h>
 #include <net.h>
+#ifdef CONFIG_NAND_FLASH
 #include <nand.h>
+#endif
 #include <spi.h>
 #include <spi_flash.h>
 #include <mmc.h>
@@ -129,6 +131,7 @@ static int art_read(loff_t offset, size_t size, void *buf) {
 			return -ENODEV;
 		ret = spi_flash_read(flash, base + offset, size, buf);
 	} else if (is_nand_flash(sfi->flash_type)) {
+#if defined(CONFIG_NAND_FLASH)
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)
 		int idx = is_spi_nand_available();
 #else
@@ -138,6 +141,9 @@ static int art_read(loff_t offset, size_t size, void *buf) {
 		ret = nand_read(&nand_info[idx], base + offset, &len, buf);
 		if (len != size)
 			ret = -EIO;
+#else
+		return -EINVAL;
+#endif
 	} else {
 		return -EINVAL;
 	}
@@ -200,6 +206,7 @@ static int art_write(loff_t offset, size_t size, const void *buf) {
 			return ret;
 		ret = spi_flash_write(flash, base + offset, size, buf);
 	} else if (is_nand_flash(sfi->flash_type)) {
+#if defined(CONFIG_NAND_FLASH)
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)
 		int idx = is_spi_nand_available();
 #else
@@ -212,6 +219,9 @@ static int art_write(loff_t offset, size_t size, const void *buf) {
 		ret = nand_write(&nand_info[idx], base + offset, &len, (u_char *)buf);
 		if (len != size)
 			ret = -EIO;
+#else
+		return -EINVAL;
+#endif
 	} else {
 		return -EINVAL;
 	}
@@ -448,12 +458,13 @@ u16 macaddr_wifi_checksum(int wifi_index) {
 }
 
 int macaddr_wifi_cs_valid(int wifi_index) {
-	u8 hdr[16], *cal;
-	size_t cal_size;
+	u8 *cal;
 	int ret;
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)
 	u32 cal_off = cal_offsets[wifi_index];
 #else
+	u8 hdr[16];
+	size_t cal_size;
 	u32 cal_off = cal_offsets[wifi_index / 2];
 #endif
 
