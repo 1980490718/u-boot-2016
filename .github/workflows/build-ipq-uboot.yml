@@ -1,7 +1,7 @@
 name: Build U-Boot for IPQ Devices
 
 on:
-  # push:
+  push:
   # pull_request:
   schedule:
     - cron: '0 0 15 * *'
