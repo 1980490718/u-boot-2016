@@ -1011,6 +1011,9 @@ static int do_bootipq(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		eth_initialize();
 #endif
 #endif
+#ifdef CONFIG_LWIP_HTTPD
+		run_command("httpd", 0);
+#endif
 	}
 	return ret;
 }
