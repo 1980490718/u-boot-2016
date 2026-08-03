@@ -188,17 +188,17 @@ bool btn_is_pressed(const char *gpio_name, int value) {
 /**
  * Configure a GPIO as input with pull-up
  */
-static void gpio_input_pullup(int gpio) {
+static void gpio_input_config(int gpio, unsigned int pull) {
 	struct qca_gpio_config cfg = {
 		.gpio = gpio, .func = 0, .out = 0,
-		.pull = GPIO_PULL_UP, .drvstr = GPIO_8MA,
+		.pull = pull, .drvstr = GPIO_8MA,
 		.oe = GPIO_OE_DISABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
 	};
 	gpio_tlmm_config(&cfg);
 }
 
 static void btn_init_gpio(int gpio, const char *name, const char *source) {
-	gpio_input_pullup(gpio);
+	gpio_input_config(gpio, GPIO_PULL_UP);
 	mdelay(50);
 	int value = gpio_get_value(gpio);
 	printf("GPIO%d: %s%s\n", gpio, name, value == RESET_BUTTON_PRESSED ? " pressed" : strcmp(source, "env") == 0 ? " (env)" : "");
@@ -343,6 +343,24 @@ void fdt_list_gpio(const char *path, const char *parent,
 		fdt_list_gpio_by_node(node, parent, cb, ctx);
 }
 
+struct gpio_parent_ctx {
+	int target;
+	const char *parent;
+};
+
+static void gpio_find_parent_cb(int gpio, const char *name, const char *dir,
+	int value, const char *parent, void *ctx) {
+	struct gpio_parent_ctx *c = ctx;
+	if (gpio == c->target && !c->parent)
+		c->parent = parent;
+}
+
+static const char *gpio_get_parent_name(int gpio) {
+	struct gpio_parent_ctx ctx = { gpio, NULL };
+	fdt_list_gpio("/", "", gpio_find_parent_cb, &ctx);
+	return ctx.parent;
+}
+
 static void gpio_detect(void) {
 	int i, values[GPIO_MAX];
 	printf("Detecting GPIO 0-%d input pins...\n", GPIO_MAX - 1);
@@ -399,13 +417,34 @@ static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 		printf("GPIO%d %s value=%d\n", gpio, (cfg & (1 << 9)) ? "out" : "in", value);
 		return 0;
 	}
+	const char *parent = gpio_get_parent_name(gpio);
+	if (parent && strcmp(parent, "led_gpio") != 0 && strcmp(parent, "key_gpio") != 0) {
+		printf("GPIO%d [%s] is critical, operation blocked\n", gpio, parent);
+		return 1;
+	}
 	const char *op = argv[2];
 	struct qca_gpio_config cfg = {
 		.gpio = gpio, .func = 0, .out = 1,
 		.pull = GPIO_NO_PULL, .drvstr = GPIO_8MA,
 		.oe = GPIO_OE_ENABLE, .vm = 0, .od_en = 0, .pu_res = 0, .sr_en = 0
 	};
+	if (strcmp(op, "in") == 0) {
+		unsigned int pull = GPIO_NO_PULL;
+		if (argc >= 4) {
+			pull = !strcmp(argv[3], "up") ? GPIO_PULL_UP :
+			       !strcmp(argv[3], "down") ? GPIO_PULL_DOWN :
+			       !strcmp(argv[3], "none") ? GPIO_NO_PULL : -1U;
+			if (pull == -1U)
+				return CMD_RET_USAGE;
+		}
+		gpio_input_config(gpio, pull);
+		return 0;
+	}
 	gpio_tlmm_config(&cfg);
+	if (strcmp(op, "out") == 0) {
+		gpio_set_value(gpio, argc >= 4 ? !!simple_strtoul(argv[3], NULL, 10) : 0);
+		return 0;
+	}
 	if (strcmp(op, "on") == 0)
 		gpio_set_value(gpio, 1);
 	else if (strcmp(op, "off") == 0)
@@ -424,7 +463,9 @@ static int do_gpio_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 U_BOOT_CMD(gpio, 4, 0, do_gpio_cmd,
 	"control LED/GPIO via FDT name or env",
 	"<name|num> - show GPIO status\n"
-	"gpio <name> on|off|t(oggle)|b(link) <sec>\n"
+	"gpio <name> in [up|down|none]\n"
+	"gpio <name> out|on|off|t [0|1|<sec>]\n"
+	"gpio <name> b <sec>\n"
 	"gpio d - detect button\n"
 );
 
