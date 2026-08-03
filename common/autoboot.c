@@ -410,7 +410,13 @@ void autoboot_command(const char *s)
 
 	if (apps_iscrashed_crashdump_disabled()) {
 		printf("Crashdump disabled, resetting the board..\n");
+#ifdef CONFIG_HTTPD
+		eth_initialize();
+		run_command("httpd", 0);
+		return;
+#else
 		reset_board();
+#endif
 	}
 
 	if (stored_bootdelay != -1 && s && !abortboot(stored_bootdelay)) {
