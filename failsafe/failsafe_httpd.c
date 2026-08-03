@@ -1036,6 +1036,11 @@ static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, in
 	httpd_send_data(hs);
 }
 
+static int mac_fmt(char *buf, const uchar *m, int first) {
+	return sprintf(buf, "%s%02X:%02X:%02X:%02X:%02X:%02X", first ? "" : ", ",
+		m[0], m[1], m[2], m[3], m[4], m[5]);
+}
+
 static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	static char buf[768];
 	char hdr[128];
@@ -1053,7 +1058,7 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 		uchar mb[CONFIG_IPQ_NO_MACS * 6];
 		int r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
 		for (i = 0; r >= 0 && i < CONFIG_IPQ_NO_MACS; i++)
-			pos += sprintf(buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", i ? ", " : "", mb[i*6], mb[i*6+1], mb[i*6+2], mb[i*6+3], mb[i*6+4], mb[i*6+5]);
+			pos += mac_fmt(buf + pos, &mb[i*6], i == 0);
 	}
 	pos += sprintf(buf + pos, "\",\"mac_off\":\"");
 	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++)
@@ -1061,7 +1066,7 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	pos += sprintf(buf + pos, "\",\"wifi_mac\":\"");
 	for (i = 0, n = 0; i < MACADDR_WIFI_MAX; i++)
 		if (wifi_valid & (1 << i))
-			pos += sprintf(buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", n++ ? ", " : "", wifi_macs[i][0], wifi_macs[i][1], wifi_macs[i][2], wifi_macs[i][3], wifi_macs[i][4], wifi_macs[i][5]);
+			pos += mac_fmt(buf + pos, wifi_macs[i], n++ == 0);
 	for (f = 0; f < 4; f++) {
 		pos += sprintf(buf + pos, "\",\"%s\":\"", wf_names[f]);
 		for (i = 0, n = 0; i < MACADDR_WIFI_MAX; i++) {
