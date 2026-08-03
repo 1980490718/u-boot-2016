@@ -98,7 +98,7 @@ jobs:
   release:
     name: Create Release
     needs: build
-    if: success() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    if: success() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Shanghai
