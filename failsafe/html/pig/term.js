@@ -159,15 +159,3 @@
 		if (confirm(msg)) { api.postCommand(cmd); api.restartPollFast(); }
 	});
 })();
-
-(function() {
-	function apply(v) {
-		v ? document.documentElement.setAttribute('data-theme', v) : document.documentElement.removeAttribute('data-theme');
-	}
-	window.addEventListener('storage', function(e) {
-		if (e.key === 'theme') apply(e.newValue || '');
-	});
-	window.addEventListener('message', function(e) {
-		if (e.data && e.data.type === 'theme') apply(e.data.theme || '');
-	});
-})();
