@@ -117,12 +117,13 @@ static void print_upgrade_warning(const char *upgrade_type) {
 #ifdef CONFIG_MD5
 #include <u-boot/md5.h>
 void printChecksumMd5(ulong address, ulong size) {
-	void *buf = (void *)(address);
 	u8 output[16];
-	md5_wd(buf, size, output, CHUNKSZ_MD5);
-	printf("The md5sum from 0x%08lx to 0x%08lx is: ", address, address + size);
+	char md5str[33];
 	int i;
-	for (i = 0; i < 16; i++) printf("%02x", output[i] & 0xFF);
+	md5_wd((void *)address, size, output, CHUNKSZ_MD5);
+	for (i = 0; i < 16; i++)
+		sprintf(md5str + i * 2, "%02x", output[i]);
+	printf("md5sum [0x%08lx-0x%08lx]: %s", address, address + size, md5str);
 }
 #else
 void printChecksumMd5(int address, unsigned int size) {}
