@@ -380,10 +380,6 @@ esac
 	echo ""
 done
 
-# Restore HTML files to default version state
-echo "Restoring HTML files to default version state..."
-sed -i "s/Version:[^<]*</Version:</g" $PWD/failsafe/html/pig/*.html
-
 # Print build summary
 echo "================================================"
 echo "Build Summary"

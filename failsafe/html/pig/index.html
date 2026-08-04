@@ -4,6 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>U-BOOT控制台</title>
+	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body>
@@ -24,7 +25,7 @@
 		</div>
 	</div>
 	<div class="additional-links">
-		<p class="link-tip">获取更多信息:<a href="https://github.com/1980490718/u-boot-2016" target="_blank">GitHub</a> | Version:</p>
+		<p class="link-tip">获取更多信息:<a href="https://github.com/1980490718/u-boot-2016" target="_blank">GitHub</a> | <span id="uboot-version"></span></p>
 	</div>
 	<script>
 		(function () {
@@ -80,6 +81,12 @@
 
 			document.getElementById('rebootBtn').addEventListener('click', function () {
 				if (confirm('确认重启？')) fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
+			});
+
+			xhrGet('/about', function(data) {
+				var el = document.getElementById('uboot-version');
+				if (el && data && data.version)
+					el.textContent = 'Version: ' + data.version;
 			});
 		})();
 	</script>
