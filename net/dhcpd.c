@@ -14,15 +14,15 @@
 #include <console.h>
 #include "dhcpd.h"
 
-/* Static variables for DHCP server internal state */
-static struct dhcpd_lease dhcpd_leases[MAX_LEASES];  /* DHCP lease database */
-struct dhcpd_svr_cfg dhcpd_svr_cfg;                  /* Server configuration */
+static struct dhcpd_lease dhcpd_leases[MAX_LEASES];
+struct dhcpd_svr_cfg dhcpd_svr_cfg;
 
-/*nak message buffer*/
 static char dhcpd_nak_msg_buffer[256];
 
-static dhcpd_state_t dhcpd_state = DHCPD_STATE_STOPPED;  /* Current server state */
-static rxhand_f *original_udp_handler = NULL;           /* Original UDP handler to restore */
+static dhcpd_state_t dhcpd_state = DHCPD_STATE_STOPPED;
+static rxhand_f *original_udp_handler = NULL;
+
+/* DHCP magic cookie as defined in RFC 2131 */
 
 /* DHCP magic cookie as defined in RFC 2131 */
 static const uint8_t dhcp_magic_cookie[4] = { 99, 130, 83, 99 };
@@ -91,18 +91,6 @@ static bool dhcpd_ip_allocated_to_mac(uint32_t ip_host, const uint8_t *mac) {
 }
 
 /**
- * dhcpd_print_ip_with_mac - Helper function to print IP and MAC address
- * @ip: IP address to print
- * @mac: MAC address to print
- * @action: Action description (e.g., "offer", "ACK")
- */
-static void dhcpd_print_ip_with_mac(struct in_addr ip, const uint8_t *mac, const char *action) {
-	char ip_str[16];
-	ip_to_string(ip, ip_str);
-	printf("DHCP %-6s:%s to %pM\n", action, ip_str, mac);
-}
-
-/**
  * dhcpd_validate_config - Validate DHCP server configuration
  * @cfg: Server configuration to validate
  * Return: SUCCESS if valid, error code otherwise
@@ -154,11 +142,11 @@ static int dhcpd_get_available_lease_slot(void) {
 }
 
 /**
- * Helper function to allocate IP and create lease
- * @param mac: Client MAC address
- * @param try_ip: IP address to allocate
- * @param allocated_ip: Output parameter for allocated IP
- * @return SUCCESS on success, error code on failure
+ * dhcpd_try_allocate_ip - Allocate IP and create lease
+ * @mac: Client MAC address
+ * @try_ip: IP address to allocate
+ * @allocated_ip: Output parameter for allocated IP
+ * Return: SUCCESS on success, error code on failure
  */
 static int dhcpd_try_allocate_ip(const uint8_t *mac, uint32_t try_ip, struct in_addr *allocated_ip) {
 	int lease_idx = dhcpd_get_available_lease_slot();
@@ -169,7 +157,6 @@ static int dhcpd_try_allocate_ip(const uint8_t *mac, uint32_t try_ip, struct in_
 		*allocated_ip = dhcpd_leases[lease_idx].ip_addr;
 		return SUCCESS;
 	}
-	/* No free lease slots */
 	allocated_ip->s_addr = 0;
 	return ERR_SERVER_FULL;
 }
@@ -178,53 +165,37 @@ static int dhcpd_alloc_ip(const uint8_t *mac, struct in_addr *allocated_ip) {
     uint32_t start = ntohl(dhcpd_svr_cfg.start_ip.s_addr);
     uint32_t end = ntohl(dhcpd_svr_cfg.end_ip.s_addr);
 
-    /* First check for existing lease for this MAC */
     for (int i = 0; i < MAX_LEASES; i++) {
         if (dhcpd_leases[i].used && dhcpd_mac_equal(dhcpd_leases[i].mac_addr, mac)) {
-            /* Update lease timestamp and return the IP */
             dhcpd_leases[i].lease_start = get_timer(0);
             *allocated_ip = dhcpd_leases[i].ip_addr;
             return SUCCESS;
         }
     }
 
-    /* Total available IPs in the pool (server IP is not in range) */
     uint32_t total_ips = end - start + 1;
 
-    /* Try random allocation */
-    int max_attempts = total_ips < 100 ? total_ips : 100;  /* Limit attempts to avoid infinite loop */
+    int max_attempts = total_ips < 100 ? total_ips : 100;
     for (int attempt = 0; attempt < max_attempts; attempt++) {
-        /* Generate a random IP within the range */
         uint32_t mac_hash = 0;
         for (int i = 0; i < 6; i++) {
             mac_hash = mac_hash * 31 + mac[i];
         }
-        /* Add timer value to make it more random */
         uint32_t seed = mac_hash + get_timer(0) + attempt;
         uint32_t random_offset = seed % (end - start + 1);
         uint32_t random_ip = start + random_offset;
-        /* Check if this IP is available */
         if (!dhcpd_ip_is_allocated(random_ip)) {
-            /* Found available IP, create lease */
             return dhcpd_try_allocate_ip(mac, random_ip, allocated_ip);
-        }
-
-        /* Check if this IP belongs to this client (inconsistency case) */
-        if (dhcpd_ip_allocated_to_mac(random_ip, mac)) {
-            /* This IP is already assigned to this client */
-            allocated_ip->s_addr = htonl(random_ip);
-            return SUCCESS;
         }
     }
 
-    /* If random allocation fails, fall back to linear search for available IP */
+    /* If random allocation fails, fall back to linear search */
     uint32_t current_ip = start;
     int total_ips_in_pool = end - start + 1;
     int count = 0;
 
     while (count < total_ips_in_pool) {
         if (!dhcpd_ip_is_allocated(current_ip)) {
-            /* Found available IP, create lease */
             return dhcpd_try_allocate_ip(mac, current_ip, allocated_ip);
         }
 
@@ -232,7 +203,6 @@ static int dhcpd_alloc_ip(const uint8_t *mac, struct in_addr *allocated_ip) {
         count++;
     }
 
-    /* All IPs are taken, return error */
     allocated_ip->s_addr = 0;
     return ERR_SERVER_FULL;
 }
@@ -371,7 +341,7 @@ static int dhcpd_validate_request(const uint8_t *client_mac, struct in_addr req_
 	if (req_network != network) {
 		char ip_str[16];
 		ip_to_string(req_ip, ip_str);
-		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] not on local network", ip_str);
+		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] out of subnet", ip_str);
 		*nak_msg = dhcpd_nak_msg_buffer;
 		return ERR_INVALID_PACKET;
 	}
@@ -380,12 +350,10 @@ static int dhcpd_validate_request(const uint8_t *client_mac, struct in_addr req_
 	if (!dhcpd_ip_in_pool(ip_host)) {
 		char ip_str[16];
 		ip_to_string(req_ip, ip_str);
-		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] not available", ip_str);
+		snprintf(dhcpd_nak_msg_buffer, sizeof(dhcpd_nak_msg_buffer), "[%s] out of pool", ip_str);
 		*nak_msg = dhcpd_nak_msg_buffer;
 		return ERR_OUT_OF_RANGE;
 	}
-
-	/* Since server IP is not in the pool range, no need to check if requested IP equals server IP */
 
 	return SUCCESS;  /* Request is valid */
 }
@@ -407,32 +375,25 @@ static int dhcpd_process_lease(const uint8_t *client_mac, struct in_addr req_ip,
 
 	lease = dhcpd_find_lease(client_mac);
 
-	/* First check if requested IP is already taken by another client */
 	if (dhcpd_ip_is_allocated(ip_host) && !dhcpd_ip_allocated_to_mac(ip_host, client_mac)) {
-		/* IP is taken by another client, can't assign it */
 		return dhcpd_alloc_ip(client_mac, processed_ip);
 	}
 
-	/* Find existing lease */
 	if (lease) {
-		/* Update existing lease's IP */
 		lease->ip_addr = req_ip;
 		lease->lease_start = get_timer(0);
 		lease->lease_time = 3600 * CONFIG_SYS_HZ; /* 1 hour */
 		*processed_ip = req_ip;
 		return SUCCESS;
-	} else {
-		/* Create new lease */
-		int lease_idx = dhcpd_get_available_lease_slot();
-		if (lease_idx >= 0) {
-			dhcpd_create_lease(client_mac, req_ip, lease_idx);
-			*processed_ip = req_ip;
-			return SUCCESS;
-		}
-		/* No free lease slots */
-		*processed_ip = req_ip;
-		return ERR_SERVER_FULL;
 	}
+
+	int lease_idx = dhcpd_get_available_lease_slot();
+	*processed_ip = req_ip;
+	if (lease_idx < 0)
+		return ERR_SERVER_FULL;
+
+	dhcpd_create_lease(client_mac, req_ip, lease_idx);
+	return SUCCESS;
 }
 
 /* DHCP option helper functions */
@@ -507,12 +468,10 @@ static int dhcpd_send_reply(const struct dhcpd_pkt *req, unsigned int req_len, u
 
 	eth_hdr_size = net_set_ether(pkt, net_bcast_ethaddr, PROT_IP);
 
-	/* For DHCP responses, we need to send to the client */
-	/* If ciaddr is set, send to that IP, otherwise broadcast to 255.255.255.255 */
 	if (req->ciaddr != 0) {
 		dest_addr.s_addr = req->ciaddr;
 	} else {
-		dest_addr.s_addr = htonl(0xFFFFFFFF); /* Broadcast in network byte order */
+		dest_addr.s_addr = htonl(0xFFFFFFFF);
 	}
 
 	payload = pkt + eth_hdr_size + IP_HDR_SIZE + UDP_HDR_SIZE;
@@ -528,7 +487,6 @@ static int dhcpd_send_reply(const struct dhcpd_pkt *req, unsigned int req_len, u
 	bp->flags = htons(DHCP_FLAG_BROADCAST);
 	bp->ciaddr = req->ciaddr;
 
-	/* For NAK, yiaddr is set to 0 */
 	if (dhcp_msg_type == DHCPNAK) {
 		bp->yiaddr = 0;
 		bp->siaddr = 0;
@@ -546,72 +504,50 @@ static int dhcpd_send_reply(const struct dhcpd_pkt *req, unsigned int req_len, u
 
 	opt_end = (uint8_t *)bp->vend + sizeof(bp->vend);
 
-	/* Add message type option */
-	if (opt + 3 <= opt_end) {  /* At least 1 byte code + 1 byte len + 1 byte data */
-		opt = dhcpd_opt_add_u8(opt, OPTION_MESSAGE_TYPE, dhcp_msg_type);
-	} else {
+	if (opt + 3 > opt_end)  /* At least 1 byte code + 1 byte len + 1 byte data */
 		return ERR_BUFFER_OVERFLOW;
-	}
+	opt = dhcpd_opt_add_u8(opt, OPTION_MESSAGE_TYPE, dhcp_msg_type);
 
 	/* For NAK, only include Server Identifier and Message options */
 	if (dhcp_msg_type == DHCPNAK) {
-		/* Add server identifier */
-		if (opt + 6 <= opt_end) {  /* At least 1 byte code + 1 byte len + 4 bytes data */
-			opt = dhcpd_opt_add_inaddr(opt, OPTION_SERVER_ID, server_ip);
-		} else {
+		if (opt + 6 > opt_end)  /* At least 1 byte code + 1 byte len + 4 bytes data */
 			return ERR_BUFFER_OVERFLOW;
-		}
+		opt = dhcpd_opt_add_inaddr(opt, OPTION_SERVER_ID, server_ip);
 
-		/* Add NAK message if provided */
 		if (nak_message && *nak_message) {
 			int msg_len = strlen(nak_message);
-			/* Limit message length to prevent buffer overflow */
-			if (msg_len > 64) msg_len = 64;  // Limit to 64 bytes to be safe
+			if (msg_len > 64) msg_len = 64;
 
-			/* Ensure we have enough space: 1 byte code + 1 byte len + msg_len bytes */
 			if (opt + 2 + msg_len <= opt_end) {
 				*opt++ = OPTION_MESSAGE;
 				*opt++ = msg_len;
 				memcpy(opt, nak_message, msg_len);
 				opt += msg_len;
-			} else {
-				/* Not enough space, skip adding message */
 			}
 		}
 	} else {
-		/* For OFFER/ACK, include complete network configuration */
-		if (opt + 6 <= opt_end) {  /* Server ID option */
-			opt = dhcpd_opt_add_inaddr(opt, OPTION_SERVER_ID, server_ip);
-		} else {
+		if (opt + 6 > opt_end)
 			return ERR_BUFFER_OVERFLOW;
-		}
+		opt = dhcpd_opt_add_inaddr(opt, OPTION_SERVER_ID, server_ip);
 
-		if (opt + 6 <= opt_end) {  /* Subnet mask option */
-			opt = dhcpd_opt_add_inaddr(opt, OPTION_SUBNET_MASK, netmask);
-		} else {
+		if (opt + 6 > opt_end)
 			return ERR_BUFFER_OVERFLOW;
-		}
+		opt = dhcpd_opt_add_inaddr(opt, OPTION_SUBNET_MASK, netmask);
 
 		if (gateway.s_addr != 0) {
-			if (opt + 6 <= opt_end) {  /* Router option */
-				opt = dhcpd_opt_add_inaddr(opt, OPTION_ROUTER, gateway);
-			} else {
+			if (opt + 6 > opt_end)
 				return ERR_BUFFER_OVERFLOW;
-			}
+			opt = dhcpd_opt_add_inaddr(opt, OPTION_ROUTER, gateway);
 		}
 
-		if (opt + 6 <= opt_end) {  /* DNS server option */
-			opt = dhcpd_opt_add_inaddr(opt, OPTION_DNS_SERVER, dns);
-		} else {
+		if (opt + 6 > opt_end)
 			return ERR_BUFFER_OVERFLOW;
-		}
+		opt = dhcpd_opt_add_inaddr(opt, OPTION_DNS_SERVER, dns);
 
-		lease = htonl(3600); /* 1 hour lease time */
-		if (opt + 6 <= opt_end) {  /* Lease time option */
-			opt = dhcpd_opt_add_u32(opt, OPTION_LEASE_TIME, lease);
-		} else {
+		lease = htonl(3600); /* 1 hour */
+		if (opt + 6 > opt_end)
 			return ERR_BUFFER_OVERFLOW;
-		}
+		opt = dhcpd_opt_add_u32(opt, OPTION_LEASE_TIME, lease);
 	}
 
 	if (opt < opt_end) {
@@ -623,12 +559,10 @@ static int dhcpd_send_reply(const struct dhcpd_pkt *req, unsigned int req_len, u
 	if (payload_len < 300) {
 		int padding_needed = 300 - payload_len;
 		if (opt + padding_needed <= opt_end) {
-			/* Use OPTION_PAD (0) to fill the remaining space */
 			memset(opt, OPTION_PAD, padding_needed);
 			opt += padding_needed;
 			payload_len = 300;
 		} else {
-			/* Buffer too small for minimum packet size, but we'll still send what we have */
 			printf("DHCP: Warning - cannot pad to 300 bytes (buffer full)\n");
 		}
 	}
@@ -650,19 +584,16 @@ static int dhcpd_handle_request(const struct dhcpd_pkt *bp, unsigned int len) {
 	int ret;
 	const char *nak_msg = NULL;
 
-	/* Check if request is for our server */
 	ret = dhcpd_parse_server_id(bp, len, &server_id);
 	if (ret == SUCCESS) {
 		if (server_id.s_addr != dhcpd_svr_cfg.server_ip.s_addr) {
-			return SUCCESS;  /* Not for our server, ignore */
+			return SUCCESS;
 		}
 	} else if (ret != ERR_NOT_FOUND) {
-		return ret;  /* Other error occurred */
+		return ret;
 	}
 
-	/* Parse requested IP address */
 	if (dhcpd_parse_req_ip(bp, len, &req_ip) != SUCCESS) {
-		/* No requested IP specified, allocate new IP */
 		ret = dhcpd_alloc_ip(bp->chaddr, &yiaddr);
 		if (ret != SUCCESS) {
 			return ret;
@@ -670,13 +601,11 @@ static int dhcpd_handle_request(const struct dhcpd_pkt *bp, unsigned int len) {
 		goto send_ack;
 	}
 
-	/* Validate requested IP address */
 	ret = dhcpd_validate_request(bp->chaddr, req_ip, &nak_msg);
 	if (ret != SUCCESS) {
 		goto send_nak;
 	}
 
-	/* Request is valid, process lease */
 	ret = dhcpd_process_lease(bp->chaddr, req_ip, &yiaddr);
 	if (ret != SUCCESS) {
 		return ret;
@@ -684,11 +613,14 @@ static int dhcpd_handle_request(const struct dhcpd_pkt *bp, unsigned int len) {
 
 send_ack:
 	net_server_ip = yiaddr;
-	dhcpd_print_ip_with_mac(yiaddr, bp->chaddr, "ACK");
+	{
+		uint32_t t = ntohl(yiaddr.s_addr);
+		printf("DHCP ACK  :%d.%d.%d.%d -> %pM\n", t>>24&0xff, t>>16&0xff, t>>8&0xff, t&0xff, bp->chaddr);
+	}
 	return dhcpd_send_reply(bp, len, DHCPACK, yiaddr, NULL);
 
 send_nak:
-	printf("DHCP: NAK to %pM (%s)\n", bp->chaddr, nak_msg ? nak_msg : "");
+	printf("DHCP NAK -> %pM (%s)\n", bp->chaddr, nak_msg ? nak_msg : "");
 	return dhcpd_send_reply(bp, len, DHCPNAK, (struct in_addr){0}, nak_msg);
 }
 
@@ -699,7 +631,6 @@ send_nak:
  * Return: SUCCESS on success, error code on failure
  */
 static int dhcpd_handle_discover(const uint8_t *client_mac, struct in_addr *yiaddr) {
-	/* Find existing lease */
 	struct dhcpd_lease *lease;
 	uint32_t ip_host;
 	if (!client_mac || !yiaddr) {
@@ -709,27 +640,18 @@ static int dhcpd_handle_discover(const uint8_t *client_mac, struct in_addr *yiad
 	lease = dhcpd_find_lease(client_mac);
 
 	if (lease) {
-		/* Check if IP in lease is still available */
 		ip_host = ntohl(lease->ip_addr.s_addr);
 
 		if (!dhcpd_ip_is_allocated(ip_host) || dhcpd_ip_allocated_to_mac(ip_host, client_mac)) {
-			/* IP is available or still belongs to this client */
 			*yiaddr = lease->ip_addr;
 			return SUCCESS;
 		} else {
 			/* IP has been taken by another client, reallocate */
-			/* Remove old lease */
-			for (int i = 0; i < MAX_LEASES; i++) {
-				if (dhcpd_leases[i].used && dhcpd_mac_equal(dhcpd_leases[i].mac_addr, client_mac)) {
-					dhcpd_leases[i].used = false;
-					memset(dhcpd_leases[i].mac_addr, 0, 6);
-					break;
-				}
-			}
+			lease->used = false;
+			memset(lease->mac_addr, 0, 6);
 		}
 	}
 
-	/* New client or needs reallocation, use MAC-based allocation */
 	return dhcpd_alloc_ip(client_mac, yiaddr);
 }
 
@@ -753,19 +675,16 @@ static void dhcpd_handler_with_fallback(uchar *pkt, unsigned dport, struct in_ad
 	struct in_addr yiaddr;
 	int ret;
 
-	/* Check if this is a DHCP packet by validating its structure */
 	if (len >= offsetof(struct dhcpd_pkt, vend) && bp->op == BOOTREQUEST && bp->htype == HTYPE_ETHER && bp->hlen == HLEN_ETHER) {
-		/* Check if this is a DHCP packet by looking for the magic cookie */
 		unsigned int fixed = offsetof(struct dhcpd_pkt, vend);
 		if (len >= fixed + 4 && memcmp((const uint8_t *)bp->vend, dhcp_magic_cookie, sizeof(dhcp_magic_cookie)) == 0) {
-			/* This is a DHCP packet, check message type */
 			if (dhcpd_parse_msg_type(bp, len, &msg_type) == SUCCESS) {
-				/* Process as DHCP packet */
 				switch (msg_type) {
 					case DHCPDISCOVER:
 						ret = dhcpd_handle_discover(bp->chaddr, &yiaddr);
 						if (ret == SUCCESS) {
-							dhcpd_print_ip_with_mac(yiaddr, bp->chaddr, "Offer");
+							uint32_t t = ntohl(yiaddr.s_addr);
+							printf("DHCP Offer:%d.%d.%d.%d -> %pM\n", t>>24&0xff, t>>16&0xff, t>>8&0xff, t&0xff, bp->chaddr);
 						} else {
 							printf("Failed to handle DHCP DISCOVER: error %d\n", ret);
 						}
@@ -781,7 +700,6 @@ static void dhcpd_handler_with_fallback(uchar *pkt, unsigned dport, struct in_ad
 		}
 	}
 
-	/* This is not a DHCP packet, forward to original handler if available */
 	if (original_udp_handler) {
 		original_udp_handler(pkt, dport, sip, sport, len);
 	}
@@ -798,7 +716,6 @@ int dhcpd_set_config(struct dhcpd_svr_cfg *cfg) {
 		return ret;
 	}
 
-	/* Copy configuration */
 	memcpy(&dhcpd_svr_cfg, cfg, sizeof(dhcpd_svr_cfg));
 	return SUCCESS;
 }
@@ -807,21 +724,17 @@ int dhcpd_set_config(struct dhcpd_svr_cfg *cfg) {
  * dhcpd_init_server - Initialize DHCP server
  * Return: SUCCESS on success, error code on failure
  *
- * Initializes network, sets up UDP handler, and prints server info.
+ * Initializes network and sets up UDP handler with DHCP detection.
  */
 int dhcpd_init_server(void) {
-	/* Configure IP settings first */
 	dhcpd_ip_settings();
-	/* Initialize leases if not already done */
 	memset(dhcpd_leases, 0, sizeof(dhcpd_leases));
 
-	/* Save the original UDP handler to restore later */
 	original_udp_handler = net_get_udp_handler();
 
-	/* Set up DHCP handler with fallback to original handler for non-DHCP traffic */
 	net_set_udp_handler(dhcpd_handler_with_fallback);
 
-	/* Print server info */
+#if 0
 	char start_str[16], end_str[16], server_str[16], gateway_str[16], netmask_str[16];
 	ip_to_string(dhcpd_svr_cfg.start_ip, start_str);
 	ip_to_string(dhcpd_svr_cfg.end_ip, end_str);
@@ -834,23 +747,21 @@ int dhcpd_init_server(void) {
 	printf("Gateway    :%s\n", gateway_str);
 	printf("PoolStart  :%s\n", start_str);
 	printf("PoolEnd    :%s\n", end_str);
+#endif
 
 	return SUCCESS;
 }
 
 /**
  * dhcpd_deinit_server - Deinitialize DHCP server
- *
  * Restores original UDP handler and resets network state.
  */
 void dhcpd_deinit_server(void) {
-	/* Clean up - restore original UDP handler */
 	if (original_udp_handler) {
 		net_set_udp_handler(original_udp_handler);
 		original_udp_handler = NULL;
 	}
 
-	/* Reset network state */
 	net_set_state(NETLOOP_SUCCESS);
 
 	printf("DHCP server stopped\n");
@@ -859,9 +770,6 @@ void dhcpd_deinit_server(void) {
 /**
  * dhcpd_poll_server - Non-blocking server polling function
  * Return: SUCCESS if running, error code if stopped or interrupted
- *
- * This function should be called periodically in non-blocking mode
- * to process incoming DHCP packets.
  */
 int dhcpd_poll_server(void) {
 	if (dhcpd_state != DHCPD_STATE_RUNNING) {
@@ -881,8 +789,6 @@ int dhcpd_poll_server(void) {
 
 /**
  * dhcpd_stop_server - Stop DHCP server
- *
- * Gracefully stops the server and cleans up resources.
  */
 void dhcpd_stop_server(void) {
 	if (dhcpd_state != DHCPD_STATE_STOPPED) {
@@ -904,34 +810,29 @@ void dhcpd_ip_settings(void) {
 	char *env_ip = getenv("ipaddr");
 	char *env_netmask = getenv("netmask");
 	char *env_gateway = getenv("gatewayip");
-	/* If ipaddr or netmask not set, use default values */
+
 	if (env_ip == NULL || env_netmask == NULL) {
 		run_command("env default ipaddr netmask", 0);
 		env_ip = getenv("ipaddr");
 		env_netmask = getenv("netmask");
 	}
 
-	/* Convert strings to IP addresses */
 	struct in_addr ip_addr = string_to_ip(env_ip);
-	struct in_addr server_addr = ip_addr;  // Use ipaddr as server IP
+	struct in_addr server_addr = ip_addr;
 	struct in_addr netmask_addr = string_to_ip(env_netmask);
 
 	dhcpd_svr_cfg.server_ip = server_addr;
 
-	/* Calculate network and broadcast addresses */
 	uint32_t ip_addr_int = ntohl(ip_addr.s_addr);
 	uint32_t netmask_int = ntohl(netmask_addr.s_addr);
 	uint32_t network_addr = ip_addr_int & netmask_int;
 	uint32_t broadcast_addr = network_addr | (~netmask_int);
-	/* Calculate DHCP pool start and end IPs as ipaddr+1 and ipaddr+100 respectively */
 	uint32_t start_ip = ip_addr_int + 1;
 	uint32_t end_ip = ip_addr_int + 100;
 
-	/* Boundary check - ensure IPs are within valid range */
 	if (start_ip <= network_addr) start_ip = network_addr + 1;
 	if (end_ip >= broadcast_addr) end_ip = broadcast_addr - 1;
 	if (start_ip > end_ip) {
-		/* If start IP is greater than end IP (e.g., ipaddr set to 254), provide at least 10 IPs */
 		start_ip = network_addr + 1;
 		end_ip = (start_ip + 10 < broadcast_addr) ? start_ip + 10 : broadcast_addr - 1;
 		if (end_ip > broadcast_addr - 1) end_ip = broadcast_addr - 1;
@@ -941,11 +842,9 @@ void dhcpd_ip_settings(void) {
 	dhcpd_svr_cfg.end_ip.s_addr = htonl(end_ip);
 	dhcpd_svr_cfg.netmask = netmask_addr;
 
-	/* Set gateway to environment value or server IP if not set */
 	if (env_gateway != NULL) {
 		dhcpd_svr_cfg.gateway = string_to_ip(env_gateway);
 	} else {
-		/* Default to server IP (ipaddr) */
 		dhcpd_svr_cfg.gateway = server_addr;
 	}
 }
@@ -956,61 +855,47 @@ void dhcpd_ip_settings(void) {
 	char *env_netmask = getenv("netmask");
 	char *env_gateway = getenv("gatewayip");
 
-	/* Check and set ipaddr to 192.168.1.1 if not set or not equal to 192.168.1.1 */
 	if (env_ip == NULL || strcmp(env_ip, "192.168.1.1") != 0) {
 		setenv("ipaddr", "192.168.1.1");
 		env_ip = "192.168.1.1";
 	}
 
-	/* Check and set netmask to 255.255.255.0 if not set or not equal to 255.255.255.0 */
 	if (env_netmask == NULL || strcmp(env_netmask, "255.255.255.0") != 0) {
 		setenv("netmask", "255.255.255.0");
 		env_netmask = "255.255.255.0";
 	}
 
-	/* Check and set gatewayip to 192.168.1.1 if not set or not equal to 192.168.1.1 */
 	if (env_gateway == NULL || strcmp(env_gateway, "192.168.1.1") != 0) {
 		setenv("gatewayip", "192.168.1.1");
 		env_gateway = "192.168.1.1";
 	}
 
-	/* Convert strings to IP addresses */
 	struct in_addr ip_addr = string_to_ip(env_ip);
-	struct in_addr server_addr = ip_addr;  // Use ipaddr as server IP
+	struct in_addr server_addr = ip_addr;
 	struct in_addr netmask_addr = string_to_ip(env_netmask);
 
 	dhcpd_svr_cfg.server_ip = server_addr;
 
-	/* Calculate network and broadcast addresses */
 	uint32_t ip_addr_int = ntohl(ip_addr.s_addr);
 	uint32_t netmask_int = ntohl(netmask_addr.s_addr);
 	uint32_t network_addr = ip_addr_int & netmask_int;
 	uint32_t broadcast_addr = network_addr | (~netmask_int);
-	/* Calculate DHCP pool start and end IPs as ipaddr+1 and ipaddr+100 respectively */
 	uint32_t start_ip = ip_addr_int + 1;
 	uint32_t end_ip = ip_addr_int + 100;
 
-	/* Boundary check - ensure IPs are within valid range */
 	if (start_ip <= network_addr) start_ip = network_addr + 1;
 	if (end_ip >= broadcast_addr) end_ip = broadcast_addr - 1;
 	if (start_ip > end_ip) {
 		/* If start IP is greater than end IP (e.g., ipaddr set to 254), provide at least 10 IPs */
 		start_ip = network_addr + 1;
 		end_ip = (start_ip + 10 < broadcast_addr) ? start_ip + 10 : broadcast_addr - 1;
-		if (end_ip > broadcast_addr - 1) end_ip = broadcast_addr - 1;
 	}
 
 	dhcpd_svr_cfg.start_ip.s_addr = htonl(start_ip);
 	dhcpd_svr_cfg.end_ip.s_addr = htonl(end_ip);
 	dhcpd_svr_cfg.netmask = netmask_addr;
 
-	/* Set gateway to environment value or server IP if not set */
-	if (env_gateway != NULL) {
-		dhcpd_svr_cfg.gateway = string_to_ip(env_gateway);
-	} else {
-		/* Default to server IP (ipaddr) */
-		dhcpd_svr_cfg.gateway = server_addr;
-	}
+	dhcpd_svr_cfg.gateway = (env_gateway != NULL) ? string_to_ip(env_gateway) : server_addr;
 
 	net_ip = dhcpd_svr_cfg.server_ip;
 	net_netmask = dhcpd_svr_cfg.netmask;
@@ -1020,21 +905,17 @@ void dhcpd_ip_settings(void) {
 /**
  * dhcpd_request - Start DHCP server in blocking mode (for console)
  * Return: SUCCESS on normal exit, error code on failure
- *
- * This function runs a blocking main loop that processes DHCP requests
- * until interrupted by Ctrl+C. It's intended for standalone console use.
  */
 int dhcpd_request(void) {
 	eth_init();
 	mdelay(1500);
-	/* Initialize the server */
+
 	if (dhcpd_init_server() != SUCCESS) {
 		return ERR_NETWORK;
 	}
 
 	dhcpd_state = DHCPD_STATE_RUNNING;
 
-	/* Main server loop */
 	while (1) {
 		eth_rx();
 		if (ctrlc()) {
@@ -1043,18 +924,13 @@ int dhcpd_request(void) {
 		udelay(1000);
 	}
 
-	/* Deinitialize the server */
 	dhcpd_stop_server();
 	return SUCCESS;
 }
 
 /**
  * dhcpd_request_nonblocking - Start DHCP server in non-blocking mode
- * @return: SUCCESS on success, error code on failure
- *
- * This function initializes the DHCP server and processes incoming packets
- * for a limited duration before returning. It's designed for integration
- * with other network services like HTTP server.
+ * Return: SUCCESS on success, error code on failure
  */
 static int global_retry_count = 0;
 int dhcpd_request_nonblocking(void) {
@@ -1062,7 +938,7 @@ int dhcpd_request_nonblocking(void) {
 	eth_init();
 	udelay(10000);
 #endif
-	/* Initialize the server */
+
 	if (dhcpd_init_server() != SUCCESS) {
 		return ERR_NETWORK;
 	}
@@ -1070,10 +946,10 @@ int dhcpd_request_nonblocking(void) {
 	dhcpd_state = DHCPD_STATE_RUNNING;
 
 	unsigned long start = get_timer(0);
-	unsigned long max_timeout = 10 * CONFIG_SYS_HZ;  // Max processing time: 10 seconds
-	unsigned long idle_timeout = 3 * CONFIG_SYS_HZ;  // Idle timeout: 3 seconds
+	unsigned long max_timeout = 10 * CONFIG_SYS_HZ;
+	unsigned long idle_timeout = 3 * CONFIG_SYS_HZ;
 	unsigned long last_pkt_time = start;
-	int prcd_pkts = 0;  /* Processed packets counter */
+	int prcd_pkts = 0;
 
 	while (get_timer(start) < max_timeout) {
 		unsigned long current_time = get_timer(0);
@@ -1082,13 +958,12 @@ int dhcpd_request_nonblocking(void) {
 		if (rx_result > 0) {
 			last_pkt_time = current_time;
 			prcd_pkts += rx_result;
-			if (prcd_pkts >= 300) {  /* Success threshold: 300 packets processed */
+			if (prcd_pkts >= 300) {
 				global_retry_count = 0;
 				return SUCCESS;
 			}
 		}
 
-		/* Exit if no packets received for idle_timeout duration */
 		if ((current_time - last_pkt_time) >= idle_timeout) {
 			break;
 		}
@@ -1096,19 +971,16 @@ int dhcpd_request_nonblocking(void) {
 		udelay(1000);
 	}
 
-	/* Handle retry logic if insufficient packets processed */
 	if (prcd_pkts < 300) {
-		if (global_retry_count < 5) {  /* Max retry attempts: 5 */
+		if (global_retry_count < 5) {
 			global_retry_count++;
-			return RETRY_REQUEST;  /* Signal to retry */
-		} else {
-			global_retry_count = 0;
-			return ERR_DHCP_FAILURE;  /* Permanent failure after max retries */
+			return RETRY_REQUEST;
 		}
-	} else {
-		global_retry_count = 0;  /* Reset retry counter on success */
+		global_retry_count = 0;
+		return ERR_DHCP_FAILURE;
 	}
 
+	global_retry_count = 0;
 	return SUCCESS;
 }
 
@@ -1119,16 +991,10 @@ int dhcpd_request_nonblocking(void) {
  * @argc: Argument count
  * @argv: Argument vector
  * Return: SUCCESS on success, error code on failure
- *
- * Command usage:
- *   dhcpd      - Start DHCP server in blocking mode
- *   dhcpd -nb  - Start DHCP server in non-blocking mode
  */
 int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
-	/* Configure IP settings from environment or defaults */
 	dhcpd_ip_settings();
 
-	/* Validate IP configuration */
 	int ret = dhcpd_validate_config(&dhcpd_svr_cfg);
 	if (ret != SUCCESS) {
 		printf("Error: Invalid IP configuration\n");
@@ -1143,7 +1009,6 @@ int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
 	if (!net_gateway.s_addr)
 		net_gateway = dhcpd_svr_cfg.gateway;
 
-	/* Check for non-blocking flag */
 	if (argc > 1 && strcmp(argv[1], "-nb") == 0) {
 		return dhcpd_request_nonblocking();
 	}
