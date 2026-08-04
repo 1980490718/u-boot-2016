@@ -73,8 +73,7 @@ body.iframe-content .card,
 }
 
 body {
-	background: var(--c-bg);
-	transition: background-color .6s, color .6s
+	background: var(--c-bg)
 }
 
 body.iframe-content,
@@ -83,8 +82,7 @@ body.iframe-content,
 .sidebar,
 .backup-col select,
 .size-display {
-	background: var(--c-card-bg);
-	transition: background-color .6s
+	background: var(--c-card-bg)
 }
 
 .terminal-container,
@@ -505,8 +503,7 @@ label,
 	margin-top: 1rem;
 	min-height: 7rem;
 	max-height: 8rem;
-	overflow: auto;
-	transition: background-color .6s, border-color .6s
+	overflow: auto
 }
 
 .tips ul {

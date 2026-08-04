@@ -67,10 +67,18 @@
 			var themeSw = document.getElementById('themeSwitch');
 			themeSw.addEventListener('click', function () {
 				var theme = document.documentElement.getAttribute('data-theme') === 'light' ? '' : 'light';
+				document.documentElement.classList.add('no-transition');
+				try { frame.contentDocument.documentElement.classList.add('no-transition'); } catch (e) {}
 				apply(document.documentElement, theme);
 				localStorage.setItem('theme', theme);
 				themeSw.textContent = theme === 'light' ? '暗☾' : '亮☀';
 				syncTheme();
+				requestAnimationFrame(function () {
+					requestAnimationFrame(function () {
+						document.documentElement.classList.remove('no-transition');
+						try { frame.contentDocument.documentElement.classList.remove('no-transition'); } catch (e) {}
+					});
+				});
 			});
 
 			frame.addEventListener('load', syncTheme);
