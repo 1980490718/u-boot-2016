@@ -18,7 +18,7 @@
 				<li class="sidebar-nav-item"><a href="about.html" target="content-frame"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg>关于设置</a></li>
 				<li class="sidebar-nav-item"><a href="javascript:void(0)" id="rebootBtn"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg>重启设备</a></li>
 			</ul>
-			<div class="theme-switch">主题 |<span id="themeSwitch" title="切换主题">暗色☀</span></div>
+			<div class="theme-switch">主题 | <span id="themeSwitch">亮☀</span></div>
 		</aside>
 		<div class="content-frame-wrapper">
 			<iframe name="content-frame" id="content-frame" src="update.html" title="内容区域" class="content-frame"></iframe>
@@ -69,7 +69,7 @@
 				var theme = document.documentElement.getAttribute('data-theme') === 'light' ? '' : 'light';
 				apply(document.documentElement, theme);
 				localStorage.setItem('theme', theme);
-				themeSw.textContent = theme === 'light' ? '亮色☾' : '暗色☀';
+				themeSw.textContent = theme === 'light' ? '暗☾' : '亮☀';
 				syncTheme();
 			});
 
@@ -77,7 +77,7 @@
 			syncTheme();
 
 			if (document.documentElement.getAttribute('data-theme') === 'light')
-				themeSw.textContent = '亮色☾';
+				themeSw.textContent = '暗☾';
 
 			document.getElementById('rebootBtn').addEventListener('click', function () {
 				if (confirm('确认重启？')) fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
