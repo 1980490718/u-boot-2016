@@ -50,35 +50,17 @@ void HttpdStart(void) {
 	dhcpd_ip_settings();
 	dhcpd_request_nonblocking();
 
-	tmp_ip_addr = ntohl(dhcpd_svr_cfg.server_ip.s_addr);
-	IP4_ADDR(&ipaddr,
-		(tmp_ip_addr >> 24) & 0xff,
-		(tmp_ip_addr >> 16) & 0xff,
-		(tmp_ip_addr >> 8) & 0xff,
-		tmp_ip_addr & 0xff);
-
-	{
-		ulong nm = ntohl(dhcpd_svr_cfg.netmask.s_addr);
-		IP4_ADDR(&netmask,
-			(nm >> 24) & 0xff,
-			(nm >> 16) & 0xff,
-			(nm >> 8) & 0xff,
-			nm & 0xff);
-	}
+	ip4_addr_set_u32(&ipaddr, dhcpd_svr_cfg.server_ip.s_addr);
+	ip4_addr_set_u32(&netmask, dhcpd_svr_cfg.netmask.s_addr);
 	net_netmask.s_addr = dhcpd_svr_cfg.netmask.s_addr;
 #else
-	tmp_ip_addr = ntohl(net_ip.s_addr);
-	IP4_ADDR(&ipaddr,
-		(tmp_ip_addr >> 24) & 0xff,
-		(tmp_ip_addr >> 16) & 0xff,
-		(tmp_ip_addr >> 8) & 0xff,
-		tmp_ip_addr & 0xff);
-
+	ip4_addr_set_u32(&ipaddr, net_ip.s_addr);
 	IP4_ADDR(&netmask, 255, 255, 255, 0);
 	net_netmask.s_addr = htonl(0xFFFFFF00);
 #endif
 
-	printf("Starting HTTP server at IP: %ld.%ld.%ld.%ld\n",
+	tmp_ip_addr = ntohl(ip4_addr_get_u32(&ipaddr));
+	printf("HTTP server:%ld.%ld.%ld.%ld\n",
 		(tmp_ip_addr >> 24) & 0xff,
 		(tmp_ip_addr >> 16) & 0xff,
 		(tmp_ip_addr >> 8) & 0xff,
