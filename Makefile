@@ -1397,9 +1397,8 @@ $(version_h): include/config/uboot.release FORCE
 $(timestamp_h): $(srctree)/Makefile FORCE
 	$(call filechk,timestamp.h)
 #ifdef CONFIG_LWIP_HTTPD
-	sed -i "s/Version:[^<]*</Version: U-Boot $(UBOOTRELEASE) (`LC_ALL=C date +'%b %d %C%y - %T %z'`)</g" $(CURDIR)/failsafe/html/pig/*.html
 	cd $(srctree)/failsafe; ./html/makefsdatac; cd -
-# endif
+#endif
 
 # ---------------------------------------------------------------------------
 quiet_cmd_cpp_lds = LDS     $@
