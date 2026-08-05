@@ -503,7 +503,7 @@ void putc(const char c)
 #endif
 
 #ifdef CONFIG_LWIP_HTTPD
-webterm_putc(c);
+	webterm_putc(c);
 #endif
 
 	if (!gd->have_console)
