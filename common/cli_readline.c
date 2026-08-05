@@ -272,13 +272,10 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 				if (get_ticks() >= etime)
 					return -2;	/* timed out */
 				WATCHDOG_RESET();
-#ifdef CONFIG_HTTPD
-				httpd_poll();
-#endif
 			}
 			first = 0;
 		}
-		/* Also poll httpd in the main loop waiting for characters */
+		/* Wait for characters */
 		while (!tstc()) {
 			WATCHDOG_RESET();
 #ifdef CONFIG_HTTPD
@@ -518,6 +515,13 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 			initted = 1;
 		}
 
+#ifdef CONFIG_HTTPD
+		while (!tstc()) {
+			WATCHDOG_RESET();
+			httpd_poll();
+		}
+#endif
+
 		if (prompt)
 			puts(prompt);
 
@@ -531,6 +535,13 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 	int	plen = 0;			/* prompt length	*/
 	int	col;				/* output column cnt	*/
 	char	c;
+
+#ifdef CONFIG_HTTPD
+	while (!tstc()) {
+		WATCHDOG_RESET();
+		httpd_poll();
+	}
+#endif
 
 	/* print prompt */
 	if (prompt) {

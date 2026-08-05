@@ -13,6 +13,7 @@
 #include <bootretry.h>
 #include <cli.h>
 #include <console.h>
+#include <watchdog.h>
 #include <linux/ctype.h>
 
 #ifdef CONFIG_HTTPD
