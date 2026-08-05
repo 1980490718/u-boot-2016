@@ -192,7 +192,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 				*out_size, part_name, load_addr,
 				raw ? " (raw)" : "");
 		}
-		return ret;
+		return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 	}
 
 	flash_type = (flash_type_new != -1) ? flash_type_new : sfi->flash_type;
@@ -246,7 +246,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 #ifdef CONFIG_LWIP_HTTPD
 				if (ret) {
 					printf("Partition %s not found, skipped\n", part_name);
-					return -1;
+					return CMD_RET_FAILURE;
 				}
 #else
 				if (ret)
@@ -319,7 +319,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 #ifdef CONFIG_LWIP_HTTPD
 					if (ret) {
 						printf("Partition %s not found, skipped\n", part_name);
-					return -1;
+					return CMD_RET_FAILURE;
 					}
 #else
 					if (ret)
@@ -332,7 +332,7 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 			} else {
 #ifdef CONFIG_LWIP_HTTPD
 			printf("eMMC not initialized, skipped %s\n", part_name);
-				return -1;
+				return CMD_RET_FAILURE;
 #else
 				ret = -1;
 				goto exit;
@@ -389,9 +389,11 @@ int flashread_partition(const char *part_name, uint32_t load_addr,
 	}
 
 exit:
-	if (ret)
+	if (ret) {
 		flash_type_new = -1;
-	return ret;
+		return CMD_RET_FAILURE;
+	}
+	return CMD_RET_SUCCESS;
 }
 
 #ifdef CONFIG_CMD_NAND
@@ -578,7 +580,7 @@ static int do_flashread(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	ret = flashread_partition(part_name, load_addr, user_size, 0, NULL, NULL);
 
-	return ret;
+	return ret ? CMD_RET_USAGE : CMD_RET_SUCCESS;
 }
 
 static int do_flread(cmd_tbl_t *cmdtp, int flag, int argc,
@@ -586,6 +588,7 @@ static int do_flread(cmd_tbl_t *cmdtp, int flag, int argc,
 {
 	uint32_t load_addr;
 	char *part_name = NULL;
+	int ret;
 
 	if (argc < 2 || argc > 3)
 		return CMD_RET_USAGE;
@@ -602,13 +605,14 @@ static int do_flread(cmd_tbl_t *cmdtp, int flag, int argc,
 		load_addr = (uint32_t)CONFIG_LOADADDR;
 #endif
 
-	return flashread_partition(part_name, load_addr, 0, 0, NULL, NULL);
+	ret = flashread_partition(part_name, load_addr, 0, 0, NULL, NULL);
+	return ret ? CMD_RET_USAGE : CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(
 	flread, 3, 0, do_flread,
-	"flread part_name [load_addr]\n",
-	"read partition from flash to RAM address\n"
+	"flread part_name [load_addr]",
+	"read partition from flash to RAM address"
 );
 
 static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
@@ -636,7 +640,7 @@ static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	ret = flashread_partition(part_name, load_addr, 0, 0, &offset, &size);
 	if (ret)
-		return ret;
+		return CMD_RET_USAGE;
 
 	serverip = getenv("serverip");
 	if (serverip)
@@ -647,19 +651,20 @@ static int do_backup(cmd_tbl_t *cmdtp, int flag, int argc,
 	snprintf(runcmd, sizeof(runcmd), "tftpput 0x%x 0x%x %s",
 		load_addr, size, filename);
 
-	return run_command(runcmd, 0);
+	ret = run_command(runcmd, 0);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 
 #ifdef CONFIG_CMD_TFTPPUT
 U_BOOT_CMD(
 	backup, 3, 0, do_backup,
-	"backup part_name|nor_full|nand_full [load_addr]\n",
-	"backup partition or full flash to TFTP server\n"
+	"backup part_name|nor_full|nand_full [load_addr]",
+	"backup partition or full flash to TFTP server"
 );
 #endif
 
 U_BOOT_CMD(
 	flashread, 4, 0, do_flashread,
-	"flashread part_name load_addr [size]\n",
-	"read partition from flash to RAM address\n"
+	"flashread part_name load_addr [size]",
+	"read partition from flash to RAM address"
 );
