@@ -573,19 +573,19 @@ KBUILD_CFLAGS += -DBUILD_TAG='"$(BUILD_TAG)"'
 endif
 
 ifdef CONFIG_ARCH_IPQ807x
-KBUILD_CFLAGS += $(call cc-option,-fstack-protector)
+KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
 else
 ifdef CONFIG_ARCH_IPQ5018
-KBUILD_CFLAGS += $(call cc-option,-fstack-protector)
+KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
 else
 ifdef CONFIG_ARCH_IPQ5332
-KBUILD_CFLAGS += $(call cc-option,-fstack-protector)
+KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
 else
 ifdef CONFIG_ARCH_IPQ6018
-KBUILD_CFLAGS += $(call cc-option,-fstack-protector)
+KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
 else
 ifdef CONFIG_ARCH_IPQ9574
-KBUILD_CFLAGS += $(call cc-option,-fstack-protector)
+KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
 else
 KBUILD_CFLAGS += $(call cc-option, -fno-stack-protector)
 endif
