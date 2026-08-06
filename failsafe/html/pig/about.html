@@ -392,21 +392,13 @@
 	}
 
 	function isBackupPartition(name) {
-		if (!name) return false;
-		var u = name.toUpperCase();
-		return u.indexOf('_1') === u.length - 2 ||
-		       u.indexOf('BACKUP') !== -1 ||
-		       u === 'BOOTCONFIG1';
+		var u = (name || '').toUpperCase();
+		return u.indexOf('_1') === u.length - 2 || u.indexOf('BACKUP') !== -1 || u === 'BOOTCONFIG1';
 	}
 
 	function loadUpdsetTable() {
 		var tbody = document.getElementById('updset-tbody');
 		tbody.innerHTML = '';
-		var tr = document.createElement('tr');
-		var tdName = document.createElement('td');
-		tdName.textContent = '更新备分区';
-		var tdVal = document.createElement('td');
-		tdVal.className = 'about-gpio-ops';
 		var chk = document.createElement('input');
 		chk.type = 'checkbox';
 		chk.id = 'flash-backup-chk';
@@ -414,55 +406,42 @@
 		lbl.htmlFor = 'flash-backup-chk';
 		lbl.style.marginLeft = '0.5rem';
 		lbl.textContent = '检测中...';
+		var tdName = document.createElement('td');
+		tdName.textContent = '更新备分区';
+		var tdVal = document.createElement('td');
+		tdVal.className = 'about-gpio-ops';
 		tdVal.appendChild(chk);
 		tdVal.appendChild(lbl);
+		var tr = document.createElement('tr');
 		tr.appendChild(tdName);
 		tr.appendChild(tdVal);
 		tbody.appendChild(tr);
-
-		function applyState(enabled, text) {
-			chk.disabled = !enabled;
-			lbl.textContent = text;
-		}
-
+		var applyState = function(en, tx) { chk.disabled = !en; lbl.textContent = tx; };
+		var setLs = function(v) { try { localStorage.setItem('flash_backup', v); } catch (e) {} };
+		var stateText = function() { return chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区'; };
 		var storageOk = true;
 		try { chk.checked = localStorage.getItem('flash_backup') === '1'; }
-		catch (e) { storageOk = false; }
-
+		catch (e) { storageOk = false; chk.checked = false; }
 		var done = false;
 		var timer = setTimeout(function() {
 			if (done) return;
 			done = true;
 			applyState(false, '检测失败');
 			chk.checked = false;
-			try { localStorage.setItem('flash_backup', '0'); } catch (e) {}
+			setLs('0');
 		}, 10000);
-
 		xhrGet('/partitions', function(data) {
 			if (done) return;
 			done = true;
 			clearTimeout(timer);
 			var hasBackup = (data && data.parts || []).some(function(p) { return isBackupPartition(p.name); });
-			if (!storageOk) {
-				applyState(false, '不可用');
-				chk.checked = false;
-			} else if (!hasBackup) {
-				applyState(false, '无备分区');
-				chk.checked = false;
-				try { localStorage.setItem('flash_backup', '0'); } catch (e) {}
-			} else {
-				applyState(true, chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区');
-			}
+			var enabled = storageOk && hasBackup;
+			applyState(enabled, !storageOk ? '不可用' : !hasBackup ? '无备分区' : stateText());
+			if (!enabled) { chk.checked = false; if (storageOk && !hasBackup) setLs('0'); }
 		});
-
 		chk.onchange = function() {
-			try {
-				localStorage.setItem('flash_backup', chk.checked ? '1' : '0');
-				applyState(true, chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区');
-			} catch (e) {
-				chk.checked = false;
-				applyState(false, '不可用');
-			}
+			try { localStorage.setItem('flash_backup', chk.checked ? '1' : '0'); applyState(true, stateText()); }
+			catch (e) { chk.checked = false; applyState(false, '不可用'); }
 		};
 	}
 
