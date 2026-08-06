@@ -741,6 +741,12 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 									break;
 								}
 							}
+#ifdef CONFIG_QPIC_SERIAL
+							extern struct qpic_serial_nand_params *serial_params;
+							if (serial_params && serial_params->name)
+								pos += sprintf(about_json_buf + pos, " %s", serial_params->name);
+							else
+#endif
 							if (dev_name)
 								pos += sprintf(about_json_buf + pos, " %s", dev_name);
 							else if (mfr_name)
