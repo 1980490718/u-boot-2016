@@ -1175,7 +1175,7 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 			if (smem_getpart_by_index(i, name, sizeof(name), &start, &size) == 0) {
 				const char *pflash = "nor";
 #ifdef CONFIG_CMD_NAND
-				if (get_which_flash_param(name))
+				if (flash_type == SMEM_BOOT_NAND_FLASH || flash_type == SMEM_BOOT_QSPI_NAND_FLASH || get_which_flash_param(name))
 					pflash = "nand";
 #endif
 				pos += sprintf(part_json_buf + pos,
