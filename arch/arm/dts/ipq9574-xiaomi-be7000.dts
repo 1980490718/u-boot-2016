@@ -1,0 +1,122 @@
+/*
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "ipq9574-al02-c1.dts"
+/ {
+	model ="QCA, IPQ9574-AL02-C6";
+	machid = <0x8050001>;
+	config_name = "config@al02-c1", "config-al02-c1", "config@rdp418", "config-rdp418";
+
+	aliases {
+		power_led = "/tlmm-gpio/led_gpio/led_system_white";
+		blink_led = "/tlmm-gpio/led_gpio/led_system_amber";
+		system_led = "/tlmm-gpio/led_gpio/aiot-white";
+	};
+
+	tlmm-gpio {
+		led_gpio {
+			led_system_white {
+				gpio = <40>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+			led_system_amber {
+				gpio = <41>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+			aiot-white {
+				gpio = <8>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+			network-white {
+				gpio = <42>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+			network-amber {
+				gpio = <43>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+		};
+
+		key_gpio {
+			reset {
+				gpio = <44>;
+				func = <0>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_UP>;
+				oe = <GPIO_OE_DISABLE>;
+			};
+		};
+	};
+
+	ess-switch {
+		switch_mac_mode0 = <PORT_WRAPPER_UQXGMII>;
+		switch_mac_mode1 = <PORT_WRAPPER_USXGMII>;
+		switch_mac_mode2 = <PORT_WRAPPER_USXGMII>;
+		qca808x_gpio = <60>;
+		qca808x_gpio_cnt = <1>;
+		aquantia_gpio = <36>;
+		aquantia_gpio_cnt = <1>;
+		aquantia_port = <4 5>;
+		aquantia_port_cnt = <2>;
+		mdc_mdio_gpio = <38 39>;
+		port_phyinfo {
+			port@0 {
+				phy_address = <1>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@1 {
+				phy_address = <2>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@2 {
+				phy_address = <3>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@3 {
+				phy_address = <4>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@4 {
+				phy_address = <8>;
+				phy_type = <AQ_PHY_TYPE>;
+			};
+			port@5 {
+				phy_address = <0>;
+				phy_type = <AQ_PHY_TYPE>;
+			};
+		};
+	};
+};
