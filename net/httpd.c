@@ -74,6 +74,7 @@ static void reset_webfailsafe_state(void) {
 	webfailsafe_is_running = 0;
 	webfailsafe_ready_for_upgrade = 0;
 	webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
+	webfailsafe_backup_avail_enabled = 0;
 }
 
 void HttpdStop(void) {
@@ -201,18 +202,20 @@ static int do_firmware_upgrade(const ulong size) {
 					printf("Failed to flash primary partitions\n");
 					return -1;
 				}
-				u64 hlos_1_size = get_hlos_1_size();
-				u64 rootfs_1_size = get_rootfs_1_size();
-				if(actual_hlos_size <= hlos_1_size && actual_rootfs_size <= rootfs_1_size) {
-					sprintf(buf, "flash 0:HLOS_1 0x%lx 0x%llx && flash rootfs_1 0x%lx 0x%llx",
-					UPLOAD_ADDR, actual_hlos_size,
-					(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size);
-					if(execute_command(buf) != 0) {
-						printf("Warning: Failed to flash backup partitions, skipping\n");
+				if (webfailsafe_backup_avail_enabled) {
+					u64 hlos_1_size = get_hlos_1_size();
+					u64 rootfs_1_size = get_rootfs_1_size();
+					if(actual_hlos_size <= hlos_1_size && actual_rootfs_size <= rootfs_1_size) {
+						sprintf(buf, "flash 0:HLOS_1 0x%lx 0x%llx && flash rootfs_1 0x%lx 0x%llx",
+						UPLOAD_ADDR, actual_hlos_size,
+						(unsigned long)(UPLOAD_ADDR + actual_hlos_size), actual_rootfs_size);
+						if(execute_command(buf) != 0) {
+							printf("Warning: Failed to flash backup partitions, skipping\n");
+						}
+					} else {
+						printf("Warning: Backup partitions too small, skipping (HLOS_1: %llu < %llu, rootfs_1: %llu < %llu)\n",
+							hlos_1_size, actual_hlos_size, rootfs_1_size, actual_rootfs_size);
 					}
-				} else {
-					printf("Warning: Backup partitions too small, skipping (HLOS_1: %llu < %llu, rootfs_1: %llu < %llu)\n",
-						hlos_1_size, actual_hlos_size, rootfs_1_size, actual_rootfs_size);
 				}
 				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_QSDK) {
@@ -237,7 +240,10 @@ static int do_firmware_upgrade(const ulong size) {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_UBI) {
 				print_upgrade_warning("FIRMWARE");
-				sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+				if (webfailsafe_backup_avail_enabled)
+					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+				else
+					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR);
 			} else if (fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
 				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
@@ -267,7 +273,10 @@ static int do_firmware_upgrade(const ulong size) {
 			if (get_which_flash_param("rootfs") > 0) {
 				if (fw_type == FW_TYPE_UBI) {
 					print_upgrade_warning("FIRMWARE");
-					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+					if (webfailsafe_backup_avail_enabled)
+						sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
+					else
+						sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR);
 				} else if (fw_type == FW_TYPE_QSDK) {
 					print_upgrade_warning("FIRMWARE");
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
@@ -309,7 +318,10 @@ static int do_uboot_upgrade(const ulong size) {
 	print_upgrade_warning("U-BOOT");
 	switch (flash_type) {
 		case SMEM_BOOT_MMC_FLASH:
-			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR);
+			if (webfailsafe_backup_avail_enabled)
+				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize && flash 0:APPSBL_1 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR, UPLOAD_ADDR);
+			else
+				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash 0:APPSBL 0x%lx $filesize", UPLOAD_ADDR + size, UPLOAD_ADDR);
 			break;
 		case SMEM_BOOT_NAND_FLASH:
 		case SMEM_BOOT_SPI_FLASH:
@@ -317,7 +329,10 @@ static int do_uboot_upgrade(const ulong size) {
 		case SMEM_BOOT_QSPI_NAND_FLASH:
 		case SMEM_BOOT_NORPLUSEMMC:
 		case SMEM_BOOT_NORPLUSNAND:
-			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
+			if (webfailsafe_backup_avail_enabled)
+				sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR, UBOOT_NAME_1, UPLOAD_ADDR);
+			else
+				sprintf(buf, "flash %s 0x%lx $filesize", UBOOT_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for U-Boot *\n");
@@ -370,7 +385,10 @@ static int do_gpt_upgrade(const ulong size) {
 	switch (flash_type) {
 		case SMEM_BOOT_MMC_FLASH:
 		case SMEM_BOOT_NORPLUSEMMC:
-			sprintf(buf, "flash 0:GPT 0x%lx 0x%lx && flash 0:GPTBACKUP 0x%lx 0x%lx", UPLOAD_ADDR, size, UPLOAD_ADDR, size);
+			if (webfailsafe_backup_avail_enabled)
+				sprintf(buf, "flash 0:GPT 0x%lx 0x%lx && flash 0:GPTBACKUP 0x%lx 0x%lx", UPLOAD_ADDR, size, UPLOAD_ADDR, size);
+			else
+				sprintf(buf, "flash 0:GPT 0x%lx 0x%lx", UPLOAD_ADDR, size);
 			break;
 		case SMEM_BOOT_NAND_FLASH:
 		case SMEM_BOOT_SPI_FLASH:
@@ -442,7 +460,10 @@ static int do_cdt_upgrade(const ulong size) {
 	print_upgrade_warning("CDT");
 	switch (flash_type) {
 		case SMEM_BOOT_MMC_FLASH:
-			sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
+			if (webfailsafe_backup_avail_enabled)
+				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
+			else
+				sprintf(buf, "mw 0x%lx 0x00 0x200 && mmc dev 0 && flash %s 0x%lx $filesize", UPLOAD_ADDR + size, CDT_NAME, UPLOAD_ADDR);
 			break;
 		case SMEM_BOOT_NAND_FLASH:
 		case SMEM_BOOT_SPI_FLASH:
@@ -450,7 +471,10 @@ static int do_cdt_upgrade(const ulong size) {
 		case SMEM_BOOT_QSPI_NAND_FLASH:
 		case SMEM_BOOT_NORPLUSEMMC:
 		case SMEM_BOOT_NORPLUSNAND:
-			sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
+			if (webfailsafe_backup_avail_enabled)
+				sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR, CDT_NAME_1, UPLOAD_ADDR);
+			else
+				sprintf(buf, "flash %s 0x%lx $filesize", CDT_NAME, UPLOAD_ADDR);
 			break;
 		default:
 			printf("\n* Unsupported flash type for CDT *\n");

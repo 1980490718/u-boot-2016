@@ -540,6 +540,7 @@ extern u32	net_boot_file_expected_size_in_blocks;
 extern int webfailsafe_is_running;
 extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;
+extern int webfailsafe_backup_avail_enabled;
 extern unsigned char *webfailsafe_data_pointer;
 extern struct in_addr net_httpd_ip; /* the ip address to ping */
 #endif

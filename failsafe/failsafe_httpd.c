@@ -276,6 +276,7 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 					strstr(start, "img_emmc") ? IMG_FLASH_EMMC :
 					strstr(start, "img_nor") ? IMG_FLASH_NOR : 0;
 			}
+			webfailsafe_backup_avail_enabled = strstr(start, "flash_backup") ? 1 : 0;
 			break;
 		}
 	}
