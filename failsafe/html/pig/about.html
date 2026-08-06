@@ -18,6 +18,7 @@
 			<div class="tab-item" data-tab="gpio">GPIO信息</div>
 			<div class="tab-item" data-tab="smem">SMEM信息</div>
 			<div class="tab-item" data-tab="mac">MAC管理</div>
+			<div class="tab-item" data-tab="updset">更新设置</div>
 		</div>
 
 		<div class="tab-container">
@@ -56,6 +57,15 @@
 					<table class="about-table" id="mac-table">
 						<thead><tr><th>接口</th><th>MAC地址</th><th>ART偏移</th><th>校验偏移</th><th>XOR16值</th><th>校验状态</th><th>操作</th></tr></thead>
 						<tbody id="mac-tbody"></tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- 第5页：更新设置 -->
+			<div class="tab-content" id="tab-updset">
+				<div class="about-section">
+					<table class="about-table" id="updset-table">
+						<tbody id="updset-tbody"></tbody>
 					</table>
 				</div>
 			</div>
@@ -381,12 +391,87 @@
 		});
 	}
 
+	function isBackupPartition(name) {
+		if (!name) return false;
+		var u = name.toUpperCase();
+		return u.indexOf('_1') === u.length - 2 ||
+		       u.indexOf('BACKUP') !== -1 ||
+		       u === 'BOOTCONFIG1';
+	}
+
+	function loadUpdsetTable() {
+		var tbody = document.getElementById('updset-tbody');
+		tbody.innerHTML = '';
+		var tr = document.createElement('tr');
+		var tdName = document.createElement('td');
+		tdName.textContent = '更新备分区';
+		var tdVal = document.createElement('td');
+		tdVal.className = 'about-gpio-ops';
+		var chk = document.createElement('input');
+		chk.type = 'checkbox';
+		chk.id = 'flash-backup-chk';
+		var lbl = document.createElement('label');
+		lbl.htmlFor = 'flash-backup-chk';
+		lbl.style.marginLeft = '0.5rem';
+		lbl.textContent = '检测中...';
+		tdVal.appendChild(chk);
+		tdVal.appendChild(lbl);
+		tr.appendChild(tdName);
+		tr.appendChild(tdVal);
+		tbody.appendChild(tr);
+
+		function applyState(enabled, text) {
+			chk.disabled = !enabled;
+			lbl.textContent = text;
+		}
+
+		var storageOk = true;
+		try { chk.checked = localStorage.getItem('flash_backup') === '1'; }
+		catch (e) { storageOk = false; }
+
+		var done = false;
+		var timer = setTimeout(function() {
+			if (done) return;
+			done = true;
+			applyState(false, '检测失败');
+			chk.checked = false;
+			try { localStorage.setItem('flash_backup', '0'); } catch (e) {}
+		}, 10000);
+
+		xhrGet('/partitions', function(data) {
+			if (done) return;
+			done = true;
+			clearTimeout(timer);
+			var hasBackup = (data && data.parts || []).some(function(p) { return isBackupPartition(p.name); });
+			if (!storageOk) {
+				applyState(false, '不可用');
+				chk.checked = false;
+			} else if (!hasBackup) {
+				applyState(false, '无备分区');
+				chk.checked = false;
+				try { localStorage.setItem('flash_backup', '0'); } catch (e) {}
+			} else {
+				applyState(true, chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区');
+			}
+		});
+
+		chk.onchange = function() {
+			try {
+				localStorage.setItem('flash_backup', chk.checked ? '1' : '0');
+				applyState(true, chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区');
+			} catch (e) {
+				chk.checked = false;
+				applyState(false, '不可用');
+			}
+		};
+	}
+
 	// ===== 标签页切换逻辑 =====
 	var indicator = document.getElementById('tab-indicator');
 	var titleEl = document.getElementById('about-title');
-	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息', mac: 'MAC管理' };
+	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息', mac: 'MAC管理', updset: '更新设置' };
 
-	var macLoaded = false, smemLoaded = false;
+	var macLoaded = false, smemLoaded = false, updsetLoaded = false;
 	function switchTab(tabName) {
 		var tabs = document.querySelectorAll('.tab-item');
 		var contents = document.querySelectorAll('.tab-content');
@@ -409,6 +494,10 @@
 		if (tabName === 'smem' && !smemLoaded) {
 			smemLoaded = true;
 			loadSmemTable();
+		}
+		if (tabName === 'updset' && !updsetLoaded) {
+			updsetLoaded = true;
+			loadUpdsetTable();
 		}
 
 		updateTabIndicator(indicator);

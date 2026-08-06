@@ -37,12 +37,30 @@ function calcSHA256(input) {
 	reader.readAsArrayBuffer(input.files[0]);
 }
 
+function getFlashBackupPref() {
+	try {
+		return localStorage.getItem('flash_backup') === '1' ? '1' : '';
+	} catch (e) {
+		return '';
+	}
+}
+
 function handleSubmit(e) {
 	e.preventDefault();
 	var form = e.target;
 	var btn = form.querySelector('button[type=submit]');
 	btn.disabled = true;
 	btn.textContent = '上传中...';
+
+	var fbInput = document.getElementById('flash-backup-input');
+	if (fbInput) {
+		if (getFlashBackupPref() === '1') {
+			fbInput.value = '1';
+			fbInput.disabled = false;
+		} else {
+			fbInput.disabled = true;
+		}
+	}
 
 	fetch('/', {
 		method: 'POST',
