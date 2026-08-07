@@ -125,6 +125,43 @@ static struct qpic_serial_nand_params qpic_serial_nand_tbl[] = {
 		.check_quad_config = true,
 		.name = "GD5F4GQ6REYIHR",
 	},
+	/* Supports 1.8V (1.7V~2.0V) models with ID 0xC8,0x45:
+	 * GD5F4GQ6REYIG, GD5F4GQ6REBIG, GD5F4GQ6REZIG,
+	 * GD5F4GQ6REYFG, GD5F4GQ6REBFG, GD5F4GQ6REZFG,
+	 * GD5F4GQ6REYJG, GD5F4GQ6REBJG, GD5F4GQ6REZJG
+	 */
+	{
+		.id = { 0xc8, 0x45 },
+		.page_size = 2048,
+		.erase_blk_size = 0x00020000,
+		.pgs_per_blk = 64,
+		.no_of_blocks = 4096,
+		.spare_size = 128,
+		.density = 0x20000000,
+		.otp_region = 0x2000,
+		.no_of_addr_cycle = 0x3,
+		.num_bits_ecc_correctability = 4,
+		.timing_mode_support = 0,
+		.quad_mode = true,
+		.check_quad_config = true,
+		.name = "GD5F4GQ6RExxG",
+	},
+	{
+		.id = { 0xc8, 0xa4 },
+		.page_size = 4096,
+		.erase_blk_size = 0x00040000,
+		.pgs_per_blk = 64,
+		.no_of_blocks = 2048,
+		.spare_size = 256,
+		.density = 0x20000000,
+		.otp_region = 0x4400,
+		.no_of_addr_cycle = 0x3,
+		.num_bits_ecc_correctability = 8,
+		.timing_mode_support = 0,
+		.quad_mode = true,
+		.check_quad_config = true,
+		.name = "GD5F4GQ4RxxYIG", //GD5F4GQ4RCYIG,GD5F4GQ4RBYIGR,GD5F4GQ4RBYIGY
+	},
 	{
 		.id = { 0x2c, 0x15 },
 		.page_size = 2048,
