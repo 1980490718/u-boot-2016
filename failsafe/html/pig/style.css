@@ -763,12 +763,15 @@ body.iframe-content:has(.about-card) {
 .about-sm-btn {
 	font-size: .75rem;
 	height: 1.6rem;
-	line-height: 1.6rem;
-	padding: 0 .5rem
+	line-height: 1;
+	padding: 0 .5rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center
 }
 
 .about-btn-pressed {
-	color: #e74c3c
+	background: #e74c3c
 }
 
 .about-table tbody tr.about-row-changed {

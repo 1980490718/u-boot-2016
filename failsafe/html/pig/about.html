@@ -35,7 +35,7 @@
 			<div class="tab-content" id="tab-gpio">
 				<div class="about-section">
 					<table class="about-table" id="gpio-table">
-						<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th>操作</th></tr></thead>
+						<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th><span class="about-gpio-ops">操作 <button class="about-sm-btn" id="gpio-detect-btn">探测按键</button></span></th></tr></thead>
 						<tbody id="gpio-tbody"></tbody>
 					</table>
 				</div>
@@ -121,12 +121,14 @@
 				if (act === 'blink') {
 					startBlink(name);
 					this.style.display = 'none';
-					this.parentElement.querySelector('[data-act="stop"][data-led="' + name + '"]').style.display = '';
+					var stopBtn = this.parentElement.querySelector('[data-act="stop"][data-led="' + name + '"]');
+					stopBtn.style.display = '';
+					stopBtn.classList.add('about-btn-pressed');
 				} else {
 					stopBlink(name);
 					var stopBtn = this.parentElement.querySelector('[data-act="stop"][data-led="' + name + '"]'),
 					    blinkBtn = this.parentElement.querySelector('[data-act="blink"][data-led="' + name + '"]');
-					if (stopBtn) stopBtn.style.display = 'none';
+					if (stopBtn) { stopBtn.style.display = 'none'; stopBtn.classList.remove('about-btn-pressed'); }
 					if (blinkBtn) blinkBtn.style.display = '';
 					ledControl(name, act);
 				}
@@ -138,6 +140,7 @@
 				var name = this.getAttribute('data-led');
 				stopBlink(name);
 				this.style.display = 'none';
+				this.classList.remove('about-btn-pressed');
 				var blinkBtn = this.parentElement.querySelector('[data-act="blink"][data-led="' + name + '"]');
 				if (blinkBtn) blinkBtn.style.display = '';
 				ledControl(name, 'off');
@@ -200,6 +203,7 @@
 
 			var gpioTbody = document.getElementById('gpio-tbody');
 			gpioTbody.innerHTML = '';
+			stopDetect();
 			var stickyIdx = 0;
 			(data.gpios || []).forEach(function(g) {
 				var tr = document.createElement('tr'), isLed = g.parent === 'led_gpio',
@@ -215,7 +219,6 @@
 					addBtn(opsTd, '恢复', {'data-override': g.override});
 				} else if (!isLed && g.parent === 'key_gpio') {
 					addBtn(opsTd, '修改', {'data-modify': 'reset_key'});
-					addBtn(opsTd, '探测', {'data-detect': 'reset_key'});
 				}
 				if (!opsTd.hasChildNodes()) opsTd.textContent = '-';
 				tr.innerHTML = [g.name||'-', g.alias||'', g.gpio, g.dir||'-',
@@ -245,29 +248,17 @@
 						xhrPost('/env_set', encodeURIComponent(key) + '=' + encodeURIComponent(val), function() { loadAbout(); });
 				};
 			});
-			gpioTbody.querySelectorAll('[data-detect]').forEach(function(btn) {
-				btn.onclick = function() {
-					if (detectTimer) {
-						clearInterval(detectTimer);
-						detectTimer = null;
-						this.textContent = '探测';
-						this.classList.remove('about-btn-pressed');
-						gpioTbody.querySelectorAll('.about-row-changed').forEach(function(row) {
-							row.classList.remove('about-row-changed');
-						});
-						Object.keys(detectExtraRows).forEach(function(gpio) {
-							if (detectExtraRows[gpio].parentNode)
-								detectExtraRows[gpio].parentNode.removeChild(detectExtraRows[gpio]);
-						});
-						detectExtraRows = {};
-					} else {
-						pollDetect();
-						detectTimer = setInterval(pollDetect, 200);
-						this.textContent = '停止';
-						this.classList.add('about-btn-pressed');
-					}
-				};
-			});
+			var detectBtn = document.getElementById('gpio-detect-btn');
+			detectBtn.onclick = function() {
+				if (detectTimer) {
+					stopDetect();
+				} else {
+					pollDetect();
+					detectTimer = setInterval(pollDetect, 200);
+					this.textContent = '停止探测';
+					this.classList.add('about-btn-pressed');
+				}
+			};
 
 			xhrGet('/mac_info', function(md) {
 				var wifiTd = infoTbody.querySelector('[data-key="wifi_mac"]');
@@ -340,6 +331,28 @@
 	var detectTimer = null;
 	var detectExtraRows = {};
 	var detectPrev = {};
+
+	function stopDetect() {
+		if (detectTimer) {
+			clearInterval(detectTimer);
+			detectTimer = null;
+		}
+		Object.keys(detectExtraRows).forEach(function(gpio) {
+			if (detectExtraRows[gpio].parentNode)
+				detectExtraRows[gpio].parentNode.removeChild(detectExtraRows[gpio]);
+		});
+		detectExtraRows = {};
+		detectPrev = {};
+		var gpioTbody = document.getElementById('gpio-tbody');
+		if (gpioTbody) gpioTbody.querySelectorAll('.about-row-changed').forEach(function(row) {
+			row.classList.remove('about-row-changed');
+		});
+		var btn = document.getElementById('gpio-detect-btn');
+		if (btn) {
+			btn.textContent = '探测按键';
+			btn.classList.remove('about-btn-pressed');
+		}
+	}
 
 	function pollDetect() {
 		xhrGet('/btn_detect', function(data) {
