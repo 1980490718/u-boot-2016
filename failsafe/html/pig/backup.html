@@ -88,6 +88,8 @@ function loadPartitions(){
 sel.onchange=updateSize;
 
 var restoreTimer=0;
+var bkModel='';
+xhrGet('/about',function(d){if(d&&d.model) bkModel=d.model.replace(/\([^)]*\)/g,'').replace(/[\s\/\\]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');});
 dlBtn.onclick=function(){
 	var idx=sel.selectedIndex;
 	if(idx<0||idx>=partsData.length)return;
@@ -135,7 +137,8 @@ dlBtn.onclick=function(){
 			var url=URL.createObjectURL(blob);
 			var a=document.createElement('a');
 			a.href=url;
-			a.download=name+(raw?'_oob':'')+'.bin';
+			var d=new Date(),pad=function(n){return n<10?'0'+n:n;};
+			a.download=name+(raw?'_oob':'')+(bkModel?'_'+bkModel:'')+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'.bin';
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
