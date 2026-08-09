@@ -77,9 +77,9 @@ function handleSubmit(e) {
 }
 
 var ST=['上传','验证','刷写','重启','访问'];
-function showStep(cur, desc) {
+function showStep(cur, desc, from) {
 	var h='';
-	for(var i=0;i<5;i++) h+=(i<cur?ST[i]+'ok ':i===cur?ST[i]+'<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg> ':'- '+ST[i]+' ');
+	for(var i=from||0;i<5;i++) h+=(i<cur?ST[i]+'ok ':i===cur?ST[i]+'<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg> ':'- '+ST[i]+' ');
 	document.querySelector('.card').innerHTML='<h2>'+ST[cur]+'</h2><p>'+h+'</p><p>'+desc+'</p>';
 }
 function showFail(isTypeMismatch) {
@@ -100,15 +100,15 @@ function pollUpgradeStatus() {
 	showStep(1, '校验中...');
 	setTimeout(check, 500);
 }
-function pingDevice() {
+function pingDevice(from) {
 	var p = window.location.origin.match(/^(https?:\/\/)/)[1];
 	var ips = [window.location.origin, p+'192.168.1.1', p+'192.168.0.1', p+'192.168.10.1', p+'192.168.20.1', p+'192.168.30.1', p+'6.6.6.6', p+'6.7.8.9'];
 	var ph = [[20,20,'设备重启中...'],[40,100,'系统加载中...'],[20,10,'尝试连接中...']];
 	var pi = 0;
 	function run() {
-		if (pi >= ph.length) return showStep(4, '请手动访问设备ip地址');
+		if (pi >= ph.length) return showStep(4, '请手动访问设备ip地址', from);
 		var c = ph[pi++];
-		showStep(3, c[2]);
+		showStep(3, c[2], from);
 		setTimeout(function() {
 			var r = 0;
 			function go() {
@@ -132,3 +132,7 @@ document.querySelector('form').addEventListener('submit', handleSubmit);
 document.querySelector('input[type=file]').addEventListener('change', function () {
 	calcSHA256(this);
 });
+
+function checkReboot(){if(location.hash==='#reboot'){showStep(3,'设备重启中...',3);pingDevice(3);}}
+checkReboot();
+window.addEventListener('hashchange',checkReboot);

@@ -103,7 +103,7 @@
 	abortBtn.addEventListener('click', abortCommand);
 
 	document.getElementById('rebootDev').addEventListener('click', function () {
-		if (confirm('确认重启？')) { postCommand('reset'); restartPollFast(); }
+		if (confirm('确认重启？')) { postCommand('reset'); }
 	});
 
 	var expandBtn = document.getElementById('expandBtn');
