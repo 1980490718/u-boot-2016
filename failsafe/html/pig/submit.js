@@ -101,8 +101,8 @@ function pollUpgradeStatus() {
 	setTimeout(check, 500);
 }
 function pingDevice(from) {
-	var p = window.location.origin.match(/^(https?:\/\/)/)[1];
-	var ips = [window.location.origin, p+'192.168.1.1', p+'192.168.0.1', p+'192.168.10.1', p+'192.168.20.1', p+'192.168.30.1', p+'6.6.6.6', p+'6.7.8.9'];
+	var p = window.location.origin.match(/^(https?:\/\/)/)[1],q=p+'192.168.';
+	var ips = [window.location.origin, q+'1.1', q+'0.1', q+'10.1', q+'20.1', q+'30.1', q+'66.1', q+'68.1', q+'88.1', p+'6.6.6.6', p+'6.7.8.9'];
 	var ph = [[20,20,'设备重启中...'],[40,100,'系统加载中...'],[20,10,'尝试连接中...']];
 	var pi = 0;
 	function run() {
