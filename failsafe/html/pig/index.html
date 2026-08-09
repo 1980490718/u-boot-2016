@@ -88,7 +88,10 @@
 				themeSw.textContent = '暗☾';
 
 			document.getElementById('rebootBtn').addEventListener('click', function () {
-				if (confirm('确认重启？')) fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
+				if (confirm('确认重启？')) {
+					fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
+					frame.src = 'update.html#reboot';
+				}
 			});
 
 			xhrGet('/about', function(data) {
