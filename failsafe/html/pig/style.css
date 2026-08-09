@@ -221,12 +221,6 @@ p,
 	margin-bottom: 1rem
 }
 
-#sha256-display {
-	font-size: .75rem;
-	color: var(--c-text-light);
-	word-break: break-all
-}
-
 html,
 body.iframe-content,
 .content-frame {
