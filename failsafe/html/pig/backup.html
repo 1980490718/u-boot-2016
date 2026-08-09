@@ -24,9 +24,10 @@
 		<div class="button-container"><button id="backup-btn" disabled>确认</button></div>
 		<div class="tips">
 			<ul>
-				<li>rootfs分区可能读取及下载时间较长；</li>
-				<li>因内存限制，部分分区可能无法完成；</li>
-				<li>备份过程中请勿操作其他功能、刷新页面或断开连接。</li>
+				<li class="backup-tip">rootfs分区可能读取及下载时间较长；</li>
+				<li class="backup-tip">因内存限制，部分分区可能无法完成；</li>
+				<li class="backup-tip">备份过程中请勿操作其他功能、刷新页面或断开连接。</li>
+				<li id="backup-progress" style="display:none;list-style:none"></li>
 			</ul>
 		</div>
 	</div>
@@ -86,6 +87,7 @@ function loadPartitions(){
 
 sel.onchange=updateSize;
 
+var restoreTimer=0;
 dlBtn.onclick=function(){
 	var idx=sel.selectedIndex;
 	if(idx<0||idx>=partsData.length)return;
@@ -97,15 +99,38 @@ dlBtn.onclick=function(){
 	var raw=!!p.raw;
 	var totalSize=p.size+(p.oob||0);
 	dlBtn.disabled=true;
+	clearTimeout(restoreTimer);
+	var progEl=document.getElementById('backup-progress');
+	var tips=document.querySelectorAll('.backup-tip');
+	tips.forEach(function(t){t.style.display='none';});
+	progEl.style.display='';
+	var spin='<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg>';
+	var startTime=Date.now(),readTime=0;
+	var tickTimer=setInterval(function(){progEl.innerHTML='读取耗时：'+((Date.now()-startTime)/1000).toFixed(0)+'s';},1000);
+	dlBtn.innerHTML='读取中'+spin;
+	var restoreTips=function(){tips.forEach(function(t){t.style.display='';});progEl.style.display='none';};
 	var xhr=new XMLHttpRequest();
 	xhr.open('GET','/backup?part='+encodeURIComponent(name)+(raw?'&raw=1':'')+'&size='+totalSize,true);
 	xhr.responseType='blob';
 	xhr.timeout=300000;
 	xhr.onprogress=function(e){
+		if(!e.loaded) return;
+		if(!readTime){
+			readTime=Date.now();
+			clearInterval(tickTimer);
+			dlBtn.innerHTML='接收中'+spin;
+		}
+		var info=formatSize(e.loaded)+(e.total?' / '+formatSize(e.total)+' ('+Math.round(e.loaded/e.total*100)+'%)':'');
+		progEl.innerHTML='读取耗时：'+((readTime-startTime)/1000).toFixed(1)+'s<br>接收信息：'+info+'，耗时 '+((Date.now()-readTime)/1000).toFixed(0)+'s';
 	};
+	var resetBtn=function(){dlBtn.textContent='确认';clearInterval(tickTimer);dlBtn.disabled=false;};
+	var onFail=function(msg){resetBtn();progEl.innerHTML=msg;restoreTimer=setTimeout(restoreTips,60000);};
 	xhr.onload=function(){
-		dlBtn.disabled=false;
+		resetBtn();
 		if(xhr.status===200){
+			var now=Date.now();
+			readTime=readTime||now;
+			progEl.innerHTML='读取耗时：'+((readTime-startTime)/1000).toFixed(1)+'s<br>接收信息：'+formatSize(xhr.response.size||0)+'，耗时 '+((now-readTime)/1000).toFixed(1)+'s<br>接收完成，总耗时 '+((now-startTime)/1000).toFixed(1)+'s。';
 			var blob=new Blob([xhr.response]);
 			var url=URL.createObjectURL(blob);
 			var a=document.createElement('a');
@@ -115,14 +140,13 @@ dlBtn.onclick=function(){
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
+		} else {
+			progEl.innerHTML='下载失败。';
 		}
+		restoreTimer=setTimeout(restoreTips,60000);
 	};
-	xhr.ontimeout=function(){
-		dlBtn.disabled=false;
-	};
-	xhr.onerror=function(){
-		dlBtn.disabled=false;
-	};
+	xhr.ontimeout=function(){onFail('下载超时。');};
+	xhr.onerror=function(){onFail('下载出错。');};
 	xhr.send();
 };
 
