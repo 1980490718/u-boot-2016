@@ -29,18 +29,19 @@
 		</div>
 			<div class="button-container"><button type="submit" id="submit-btn" disabled>确认</button></div>
 		</form>
-		<p id="sha256-display"></p>
 		<div class="tips tips-danger">
 			<ul>
-				<li>请确认所选的IMG文件是正确的；</li>
-				<li>编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
-				<li>更新完成后将自动重启。</li>
+				<li class="file-tip">请确认所选的IMG文件是正确的；</li>
+				<li class="file-tip">编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
+				<li class="file-tip">更新完成后将自动重启。</li>
+				<li id="sha256-display" style="display:none;list-style:none"></li>
 			</ul>
 		</div>
 	</div>
 	<script src="submit.js?v=f"></script>
 	<script>
 	(function() {
+		window.bkType='IMG';
 		var sel = document.getElementById('flash-select');
 		var sizeEl = document.getElementById('size-display');
 		var submitBtn = document.getElementById('submit-btn');

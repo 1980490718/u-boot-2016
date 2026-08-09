@@ -29,8 +29,9 @@
 			</div>
 			<div class="button-container"><button type="submit" id="update-btn">确认</button></div>
 		</form>
-		<p id="sha256-display"></p>
-		<div class="tips" id="update-tips"></div>
+		<div class="tips" id="update-tips">
+			<ul id="update-tips-list"></ul>
+		</div>
 	</div>
 	<script src="submit.js?v=f"></script>
 	<script>
@@ -107,7 +108,7 @@
 			file: document.getElementById('update-file'),
 			label: document.getElementById('update-label'),
 			tips: document.getElementById('update-tips'),
-			sha256: document.getElementById('sha256-display'),
+			tipsList: document.getElementById('update-tips-list'),
 			indicator: document.getElementById('tab-indicator')
 		};
 
@@ -121,6 +122,8 @@
 
 			var title = d.title || ('更新' + d.name);
 			el.title.textContent = title;
+			document.title = title;
+			window.bkType = d.name;
 			el.icon.setAttribute('href', 'icons.svg?v=f#' + d.icon);
 			el.desc.innerHTML = buildDesc(d);
 			el.form.name = tabName;
@@ -128,10 +131,8 @@
 			el.file.accept = buildAccept(d);
 			el.file.value = '';
 			el.label.innerHTML = d.label || ('请选择<b>' + d.name + '文件</b>');
-			el.tips.innerHTML = '<ul><li>' + buildTips(d).join('</li><li>') + '</li></ul>';
+			el.tipsList.innerHTML = '<li class="file-tip">' + buildTips(d).join('</li><li class="file-tip">') + '</li><li id="sha256-display" style="display:none;list-style:none"></li>';
 			el.tips.classList.toggle('tips-danger', !!d.danger);
-			el.sha256.textContent = '';
-			document.title = title;
 
 			updateTabIndicator(el.indicator);
 		}

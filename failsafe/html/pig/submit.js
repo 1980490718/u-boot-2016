@@ -29,12 +29,16 @@ var sha256 = (function () {
 
 function calcSHA256(input) {
 	var display = document.getElementById('sha256-display');
-	display.textContent = '计算中...';
+	document.querySelectorAll('.file-tip').forEach(function(t){t.style.display='none';});
+	display.style.display='';
+	var file = input.files[0];
+	var info='分区：'+(window.bkType||'')+'<br>大小：'+formatSize(file.size)+'<br>校验中...';
+	display.innerHTML = info;
 	var reader = new FileReader();
 	reader.onload = function () {
-		display.textContent = 'SHA256: ' + sha256(reader.result);
+		display.innerHTML = info.replace('校验中...','SHA256: '+sha256(reader.result));
 	};
-	reader.readAsArrayBuffer(input.files[0]);
+	reader.readAsArrayBuffer(file);
 }
 
 function getFlashBackupPref() {
