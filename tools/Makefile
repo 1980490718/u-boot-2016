@@ -67,11 +67,22 @@ RSA_OBJS-$(CONFIG_FIT_SIGNATURE) := $(addprefix lib/rsa/, \
 					rsa-sign.o rsa-verify.o rsa-checksum.o \
 					rsa-mod-exp.o)
 
-ROCKCHIP_OBS = lib/rc4.o rkcommon.o rkimage.o rksd.o rkspi.o
+AIS_OBJS-$(CONFIG_ARCH_DAVINCI) := aisimage.o
+ATMEL_OBJS-$(CONFIG_ARCH_AT91) := atmelimage.o
+IMX_OBJS-$(CONFIG_MX23)$(CONFIG_MX28)$(CONFIG_ARCH_MX5)$(CONFIG_ARCH_MX6)$(CONFIG_ARCH_MX7)$(CONFIG_ARCH_VF610) := imximage.o
+KWB_OBJS-$(CONFIG_KIRKWOOD)$(CONFIG_ARMADA_XP) := kwbimage.o
+LPC32XX_OBJS-$(CONFIG_LPC32XX) := lpc32xximage.o
+MXS_OBJS-$(CONFIG_MX23)$(CONFIG_MX28) := mxsimage.o
+OMAP_OBJS-$(CONFIG_OMAP34XX)$(CONFIG_OMAP44XX) := omapimage.o
+SOCFPGA_OBJS-$(CONFIG_ARCH_SOCFPGA) := socfpgaimage.o
+UBL_OBJS-$(CONFIG_ARCH_DAVINCI) := ublimage.o
+ZYNQ_OBJS-$(CONFIG_ARCH_ZYNQ) := zynqimage.o
+GP_OBJS-$(CONFIG_ARCH_KEYSTONE) := gpimage.o gpimage-common.o
+RK_OBJS-$(CONFIG_ARCH_ROCKCHIP) := rkcommon.o rkimage.o rksd.o rkspi.o lib/rc4.o
 
 # common objs for dumpimage and mkimage
-dumpimage-mkimage-objs := aisimage.o \
-			atmelimage.o \
+dumpimage-mkimage-objs := $(AIS_OBJS-y) \
+			$(ATMEL_OBJS-y) \
 			$(FIT_SIG_OBJS-y) \
 			common/bootm.o \
 			lib/crc32.o \
@@ -80,29 +91,28 @@ dumpimage-mkimage-objs := aisimage.o \
 			lib/fdtdec.o \
 			fit_common.o \
 			fit_image.o \
-			gpimage.o \
-			gpimage-common.o \
+			$(GP_OBJS-y) \
 			common/image-fit.o \
 			image-host.o \
 			common/image.o \
 			imagetool.o \
-			imximage.o \
-			kwbimage.o \
+			$(IMX_OBJS-y) \
+			$(KWB_OBJS-y) \
 			lib/md5.o \
-			lpc32xximage.o \
-			mxsimage.o \
-			omapimage.o \
+			$(LPC32XX_OBJS-y) \
+			$(MXS_OBJS-y) \
+			$(OMAP_OBJS-y) \
 			os_support.o \
 			pblimage.o \
 			pbl_crc32.o \
-			$(ROCKCHIP_OBS) \
-			socfpgaimage.o \
+			$(RK_OBJS-y) \
+			$(SOCFPGA_OBJS-y) \
 			sysupgrade.o \
 			lib/sha1.o \
 			lib/sha256.o \
 			common/hash.o \
-			ublimage.o \
-			zynqimage.o \
+			$(UBL_OBJS-y) \
+			$(ZYNQ_OBJS-y) \
 			$(LIBFDT_OBJS) \
 			$(RSA_OBJS-y)
 
@@ -114,8 +124,6 @@ fit_check_sign-objs   := $(dumpimage-mkimage-objs) fit_check_sign.o
 # TODO(sjg@chromium.org): Is this correct on Mac OS?
 
 ifneq ($(CONFIG_MX23)$(CONFIG_MX28),)
-# Add CONFIG_MXS into host CFLAGS, so we can check whether or not register
-# the mxsimage support within tools/mxsimage.c .
 HOSTCFLAGS_mxsimage.o += -DCONFIG_MXS
 endif
 
@@ -129,7 +137,7 @@ ifdef CONFIG_SYS_U_BOOT_OFFS
 HOSTCFLAGS_kwbimage.o += -DCONFIG_SYS_U_BOOT_OFFS=$(CONFIG_SYS_U_BOOT_OFFS)
 endif
 
-# MXSImage needs LibSSL
+# MXSImage and FIT_SIGNATURE need LibSSL
 ifneq ($(CONFIG_MX23)$(CONFIG_MX28)$(CONFIG_FIT_SIGNATURE),)
 HOSTLOADLIBES_mkimage += \
 	$(shell pkg-config --libs libssl libcrypto 2> /dev/null || echo "-lssl -lcrypto")
