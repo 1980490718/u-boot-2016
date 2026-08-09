@@ -17,6 +17,10 @@
 #endif
 #include <ipq_api.h>
 #include <asm/arch-qca-common/smem.h>
+#ifdef CONFIG_SPI_FLASH
+#include <spi.h>
+#include <spi_flash.h>
+#endif
 #ifdef CONFIG_IPQ40XX
 #include <../board/qca/arm/common/fdt_info.h>
 #endif
@@ -483,6 +487,46 @@ static int do_cdt_upgrade(const ulong size) {
 	return execute_command(buf);
 }
 
+#ifdef CONFIG_IPQ_MIBIB_RELOAD
+static int do_mibib_reload_partition(uint32_t flash_type) {
+	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+	char buf[256];
+	uint32_t page_size = 0;
+	int is_nand = (flash_type == SMEM_BOOT_NAND_FLASH ||
+		       flash_type == SMEM_BOOT_QSPI_NAND_FLASH);
+
+	if (is_nand) {
+#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_IPQ40XX
+		int nand_dev = is_spi_nand_available();
+#else
+		int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
+		if (nand_dev >= 0)
+			page_size = nand_info[nand_dev].writesize;
+#endif
+	} else if (flash_type == SMEM_BOOT_SPI_FLASH ||
+		   flash_type == SMEM_BOOT_NOR_FLASH ||
+		   flash_type == SMEM_BOOT_NORPLUSEMMC ||
+		   flash_type == SMEM_BOOT_NORPLUSNAND) {
+#ifdef CONFIG_SPI_FLASH
+		struct spi_flash *sf = spi_flash_probe(
+			CONFIG_SF_DEFAULT_BUS, CONFIG_SF_DEFAULT_CS,
+			CONFIG_SF_DEFAULT_SPEED, CONFIG_SF_DEFAULT_MODE);
+		if (sf)
+			page_size = sf->page_size;
+#endif
+	}
+
+	if (!page_size)
+		return -1;
+
+	sprintf(buf, "mibib_reload 0x%x 0x%x 0x%x 0x%x",
+		!is_nand, page_size, sfi->flash_block_size, sfi->flash_density);
+	return execute_command(buf) ? -1 : 0;
+}
+#endif
+
 static int do_mibib_upgrade(const ulong size) {
 	char buf[576];
 	uint32_t flash_type;
@@ -506,7 +550,15 @@ static int do_mibib_upgrade(const ulong size) {
 			printf("\n* Unsupported flash type for MIBIB *\n");
 			return -1;
 	}
-	return execute_command(buf);
+
+	if (execute_command(buf) != 0) {
+#ifdef CONFIG_IPQ_MIBIB_RELOAD
+		if (do_mibib_reload_partition(flash_type) != 0 || execute_command(buf) != 0)
+#endif
+			return -1;
+	}
+
+	return 0;
 }
 
 static int do_ptable_upgrade(const ulong size) {
