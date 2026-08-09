@@ -54,9 +54,8 @@
 #define CONFIG_ENV_SIZE_MAX			(256 << 10) /* 256 KB */
 
 /*
- * Enable MIBIB reload
+ * Enable XTRACT_N_FLASH
  */
-#define CONFIG_IPQ_MIBIB_RELOAD
 #define CONFIG_IPQ_XTRACT_N_FLASH
 
 /*
