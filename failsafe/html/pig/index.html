@@ -90,7 +90,7 @@
 			document.getElementById('rebootBtn').addEventListener('click', function () {
 				if (confirm('确认重启？')) {
 					fetch('/webterm/cmd', {method:'POST',headers:{'Content-Type':'text/plain'},body:'reset'});
-					frame.src = 'update.html#reboot';
+					try{frame.contentWindow.showStep(3,'设备重启中...',3);frame.contentWindow.pingDevice(3)}catch(e){frame.src='update.html#reboot'}
 				}
 			});
 
