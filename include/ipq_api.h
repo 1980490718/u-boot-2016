@@ -164,6 +164,7 @@ u64 get_firmware_size(void);
 u64 get_firmware_upgrade_max_size(void);
 u64 get_cdt_size(void);
 u64 get_mibib_size(void);
+u64 get_initramfs_max_size(void);
 u64 get_hlos_offset(void);
 u64 get_hlos_1_offset(void);
 u64 get_rootfs_offset(void);

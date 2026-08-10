@@ -587,6 +587,10 @@ DEFINE_GET_SIZE_FUNC(get_cdt_size, "0:CDT")
 DEFINE_GET_SIZE_FUNC(get_mibib_size, "0:MIBIB")
 DEFINE_GET_SIZE_FUNC(get_bootconfig_size, "0:BOOTCONFIG")
 
+u64 get_initramfs_max_size(void) {
+	return CONFIG_SYS_BOOTM_LEN;
+}
+
 u64 get_firmware_upgrade_max_size(void) {
 	uint32_t flash_type;
 	if (get_current_flash_type(&flash_type) != 0)

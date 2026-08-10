@@ -111,6 +111,7 @@ extern u64 get_uboot_size(void);
 extern u64 get_art_size(void);
 extern u64 get_cdt_size(void);
 extern u64 get_mibib_size(void);
+extern u64 get_initramfs_max_size(void);
 
 static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
@@ -252,7 +253,7 @@ static const struct { const char *name; int type; const char *label; get_max_siz
 	{"name=\"cdt\"",		WEBFAILSAFE_UPGRADE_TYPE_CDT,		"CDT",		get_cdt_size},
 	{"name=\"mibib\"",		WEBFAILSAFE_UPGRADE_TYPE_MIBIB,		"MIBIB",	get_mibib_size},
 	{"name=\"ptable\"",		WEBFAILSAFE_UPGRADE_TYPE_PTABLE,	"PTABLE",	NULL},
-	{"name=\"initramfs\"",	WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS,	"INITRAMFS",NULL},
+	{"name=\"initramfs\"",	WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS,	"INITRAMFS",get_initramfs_max_size},
 };
 
 static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *data, int data_len) {
