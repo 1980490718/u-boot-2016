@@ -64,3 +64,40 @@ function updateTabIndicator(indicatorEl) {
 	indicatorEl.style.left = (activeRect.left - h2Rect.left) + 'px';
 	indicatorEl.style.width = activeRect.width + 'px';
 }
+
+var ST = ['上传', '验证', '刷写', '重启', '访问'];
+function showStep(cur, desc, from) {
+	var h = '';
+	for (var i = from || 0; i < 5; i++)
+		h += (i < cur ? ST[i] + 'ok ' : i === cur ? ST[i] + '<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg> ' : '- ' + ST[i] + ' ');
+	var el = document.querySelector('.card');
+	if (!el) { el = document.createElement('div'); el.className = 'card'; (document.querySelector('main') || document.body).appendChild(el); }
+	el.innerHTML = '<h2>' + ST[cur] + '</h2><p>' + h + '</p><p>' + desc + '</p>';
+}
+function pingDevice(from) {
+	var p = window.location.origin.match(/^(https?:\/\/)/)[1], q = p + '192.168.';
+	var ips = [window.location.origin, q+'1.1', q+'0.1', q+'10.1', q+'20.1', q+'30.1', q+'66.1', q+'68.1', q+'88.1', p+'6.6.6.6', p+'6.7.8.9'];
+	var ph = [[20,20,'设备重启中...'], [40,100,'系统加载中...'], [20,10,'尝试连接中...']];
+	var pi = 0;
+	function run() {
+		if (pi >= ph.length) return showStep(4, '请手动访问设备ip地址', from);
+		var c = ph[pi++];
+		showStep(3, c[2], from);
+		setTimeout(function() {
+			var r = 0;
+			function go() {
+				if (r++ >= c[1]) return run();
+				var hit = 0, fail = 0;
+				ips.forEach(function(ip) {
+					fetch(ip, {mode:'no-cors', cache:'no-cache'}).then(function() {
+						!hit++ && (window.top.location.href = ip);
+					}).catch(function() {
+						++fail >= ips.length && setTimeout(go, 500);
+					});
+				});
+			}
+			go();
+		}, c[0] * 1000);
+	}
+	run();
+}
