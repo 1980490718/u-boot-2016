@@ -690,7 +690,7 @@ int do_http_progress(const int state) {
 #endif
 			led_on("blink_led");
 			led_off("system_led");
-			printf("HTTP server is ready!\n");
+			printf("HTTP server is ready!\nRun 'httpd s' to stop\n");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPLOAD_READY:
 			led_on("blink_led");
