@@ -16,6 +16,7 @@
 #include <nand.h>
 #endif
 #include <ipq_api.h>
+#include <sysupgrade_parser.h>
 #include <asm/arch-qca-common/smem.h>
 #ifdef CONFIG_SPI_FLASH
 #include <spi.h>
@@ -125,6 +126,7 @@ static const char *fw_type_to_string(int fw_type) {
 		case FW_TYPE_CDT: return "CDT";
 		case FW_TYPE_ELF: return "ELF";
 		case FW_TYPE_MIBIB: return "MIBIB";
+		case FW_TYPE_SYSUPGRADE: return "SYSUPGRADE";
 		default: return "UNKNOWN";
 	}
 }
@@ -185,16 +187,13 @@ static int do_firmware_upgrade(const ulong size) {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
 			if (fw_type == FW_TYPE_FIT) {
 				print_upgrade_warning("FIRMWARE");
-				/* Call extended check_fw_type to get both type and HLOS size */
 				struct fw_info info = check_fw_type_ex((void*)UPLOAD_ADDR);
 				u64 actual_hlos_size = info.hlos_size;
 				u64 hlos_size = get_hlos_size();
 				u64 rootfs_size = get_rootfs_size();
 				u64 actual_rootfs_size = (size > actual_hlos_size) ? (size - actual_hlos_size) : 0;
-				/* Limit actual sizes to partition capacities */
-				if(actual_hlos_size > hlos_size) actual_hlos_size = hlos_size;
-				if(actual_rootfs_size > rootfs_size) actual_rootfs_size = rootfs_size;
-				/* Verify partition sizes are not zero */
+				if(actual_hlos_size > hlos_size && hlos_size > 0) actual_hlos_size = hlos_size;
+				if(actual_rootfs_size > rootfs_size && rootfs_size > 0) actual_rootfs_size = rootfs_size;
 				if(actual_hlos_size == 0 && actual_rootfs_size == 0) {
 					printf("Error: Both HLOS and rootfs partition sizes are zero\n");
 					return -1;
@@ -217,10 +216,66 @@ static int do_firmware_upgrade(const ulong size) {
 							printf("Warning: Failed to flash backup partitions, skipping\n");
 						}
 					} else {
-						printf("Warning: Backup partitions too small, skipping (HLOS_1: %llu < %llu, rootfs_1: %llu < %llu)\n",
-							hlos_1_size, actual_hlos_size, rootfs_1_size, actual_rootfs_size);
+					printf("backup too small, skip\n");
 					}
 				}
+				return update_bootconfig();
+			} else if (fw_type == FW_TYPE_SYSUPGRADE) {
+				print_upgrade_warning("FIRMWARE");
+				sysupgrade_fw_parts parts = parse_sysupgrade_firmware((void *)UPLOAD_ADDR);
+				if (!sysupgrade_parts_valid(&parts)) {
+					printf("parse failed\n");
+					return -1;
+				}
+				u64 hlos_size = get_hlos_size();
+				u64 rootfs_size = get_rootfs_size();
+				u64 actual_kernel_size = parts.kernel_size;
+				u64 actual_rootfs_size = parts.rootfs_size;
+				if (hlos_size > 0 && actual_kernel_size > hlos_size)
+					actual_kernel_size = hlos_size;
+				if (rootfs_size > 0 && actual_rootfs_size > rootfs_size)
+					actual_rootfs_size = rootfs_size;
+				if (actual_kernel_size == 0 && actual_rootfs_size == 0) {
+					printf("HLOS and rootfs both zero\n");
+					return -1;
+				}
+				if (parts.kernel_data && actual_kernel_size > 0) {
+					sprintf(buf, "flash 0:HLOS 0x%lx 0x%llx",
+						(unsigned long)parts.kernel_data, actual_kernel_size);
+					if (execute_command(buf) != 0) {
+						printf("HLOS flash failed\n");
+						return -1;
+					}
+				}
+				if (parts.rootfs_data && actual_rootfs_size > 0) {
+					sprintf(buf, "flash rootfs 0x%lx 0x%llx",
+						(unsigned long)parts.rootfs_data, actual_rootfs_size);
+					if (execute_command(buf) != 0) {
+						printf("rootfs flash failed\n");
+						return -1;
+					}
+				}
+				if (webfailsafe_backup_avail_enabled) {
+					u64 hlos_1_size = get_hlos_1_size();
+					u64 rootfs_1_size = get_rootfs_1_size();
+					if (actual_kernel_size <= hlos_1_size && actual_rootfs_size <= rootfs_1_size) {
+						if (parts.kernel_data && actual_kernel_size > 0) {
+							sprintf(buf, "flash 0:HLOS_1 0x%lx 0x%llx",
+								(unsigned long)parts.kernel_data, actual_kernel_size);
+							if (execute_command(buf) != 0)
+								printf("HLOS_1 skip\n");
+						}
+						if (parts.rootfs_data && actual_rootfs_size > 0) {
+							sprintf(buf, "flash rootfs_1 0x%lx 0x%llx",
+								(unsigned long)parts.rootfs_data, actual_rootfs_size);
+							if (execute_command(buf) != 0)
+								printf("rootfs_1 skip\n");
+						}
+					} else {
+					printf("backup too small, skip\n");
+					}
+				}
+				execute_command("flasherase rootfs_data");
 				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
@@ -248,26 +303,44 @@ static int do_firmware_upgrade(const ulong size) {
 					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
 				else
 					sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR);
+			} else if (fw_type == FW_TYPE_FIT) {
+				print_upgrade_warning("FIRMWARE");
+				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
+			} else if (fw_type == FW_TYPE_SYSUPGRADE) {
+				print_upgrade_warning("FIRMWARE");
+				sysupgrade_fw_parts parts = parse_sysupgrade_firmware((void *)UPLOAD_ADDR);
+				if (!sysupgrade_parts_valid(&parts)) {
+					printf("parse failed\n");
+					return -1;
+				}
+#ifdef CONFIG_CMD_UBI
+				if (sysupgrade_write_ubi_volumes(&parts, webfailsafe_backup_avail_enabled) != 0)
+					return -1;
+				return 0;
+#else
+				printf("SYSUPGRADE requires UBI\n");
+				return -1;
+#endif
 			} else if (fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
 				sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 			} else {
-				printf("\n* NAND flash only supports UBI/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+				printf("\n* NAND flash only supports UBI/FIT/SYSUPGRADE/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 				return -1;
 			}
 			break;
 		}
 		case SMEM_BOOT_NOR_FLASH: {
 			int fw_type = check_fw_type((void *)UPLOAD_ADDR);
-			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
+			if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_SYSUPGRADE || fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
-				if (fw_type == FW_TYPE_FIT) {
+				if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_SYSUPGRADE) {
 					sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", (unsigned long)NOR_FIRMWARE_START, (unsigned long)NOR_FIRMWARE_SIZE, UPLOAD_ADDR, (unsigned long)NOR_FIRMWARE_START, size);
 				} else {
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 				}
 			} else {
-				printf("\n* NOR flash only supports FIT/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+				printf("\n* NOR flash only supports FIT/SYSUPGRADE/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 				return -1;
 			}
 			break;
@@ -281,23 +354,38 @@ static int do_firmware_upgrade(const ulong size) {
 						sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR, ROOTFS_NAME_1, UPLOAD_ADDR);
 					else
 						sprintf(buf, "flash %s 0x%lx $filesize && flash %s 0x%lx $filesize && flash %s 0x%lx $filesize", ROOTFS_NAME0, UPLOAD_ADDR, ROOTFS_NAME1, UPLOAD_ADDR, ROOTFS_NAME2, UPLOAD_ADDR);
+				} else if (fw_type == FW_TYPE_SYSUPGRADE) {
+					print_upgrade_warning("FIRMWARE");
+					sysupgrade_fw_parts parts = parse_sysupgrade_firmware((void *)UPLOAD_ADDR);
+					if (!sysupgrade_parts_valid(&parts)) {
+						printf("parse failed\n");
+						return -1;
+					}
+#ifdef CONFIG_CMD_UBI
+					if (sysupgrade_write_ubi_volumes(&parts, webfailsafe_backup_avail_enabled) != 0)
+						return -1;
+					return 0;
+#else
+					printf("SYSUPGRADE requires UBI\n");
+					return -1;
+#endif
 				} else if (fw_type == FW_TYPE_QSDK) {
 					print_upgrade_warning("FIRMWARE");
 					sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 				} else {
-					printf("\n* SPI+NAND flash only supports UBI/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+					printf("\n* SPI+NAND flash only supports UBI/SYSUPGRADE/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 					return -1;
 				}
 			} else {
-				if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_QSDK) {
+				if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_SYSUPGRADE || fw_type == FW_TYPE_QSDK) {
 					print_upgrade_warning("FIRMWARE");
-					if (fw_type == FW_TYPE_FIT) {
+					if (fw_type == FW_TYPE_FIT || fw_type == FW_TYPE_SYSUPGRADE) {
 						sprintf(buf, "sf probe && sf erase 0x%lx 0x%lx && sf write 0x%lx 0x%lx 0x%lx", (unsigned long)NOR_FIRMWARE_START, (unsigned long)NOR_FIRMWARE_SIZE, UPLOAD_ADDR, (unsigned long)NOR_FIRMWARE_START, size);
 					} else {
 						sprintf(buf, "sf probe; imgaddr=0x%lx && source $imgaddr:script", UPLOAD_ADDR);
 					}
 				} else {
-					printf("\n* NOR flash only supports FIT/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
+					printf("\n* NOR flash only supports FIT/SYSUPGRADE/QSDK firmware, got: %s *\n", fw_type_to_string(fw_type));
 					return -1;
 				}
 			}

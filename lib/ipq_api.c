@@ -528,7 +528,10 @@ struct fw_info check_fw_type_ex(void *address) {
 	else if ((*ptr_gpt == 0xaa55) || (*ptr_gpt_backup == 0x20494645)) info.type = FW_TYPE_GPT;  /* GPT: Primary(MBR) or Backup("EFI ") */
 	else if (*ptr_cdt == 0x00544443) info.type		= FW_TYPE_CDT;
 	else if (*ptr_elf == 0x464c457f) info.type		= FW_TYPE_ELF;
-	else if (*ptr_mibib == 0xfe569fac) info.type	= FW_TYPE_MIBIB;
+	else if (*ptr_mibib == 0xfe569fac) info.type		= FW_TYPE_MIBIB;
+	else if (memcmp(address, "sysupgrade", 10) == 0) {
+		info.type = FW_TYPE_SYSUPGRADE;
+	}
 	else info.type = -1;
 
 	return info;
