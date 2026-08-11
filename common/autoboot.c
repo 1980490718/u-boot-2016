@@ -430,6 +430,15 @@ void autoboot_command(const char *s)
 		disable_ctrlc(prev);	/* restore Control C checking */
 #endif
 	}
+#ifdef CONFIG_LWIP_HTTPD
+	else if (stored_bootdelay != -1) {
+#ifndef CONFIG_IPQ40XX
+		eth_initialize();
+#endif
+		run_command("httpd", 0);
+		return;
+	}
+#endif
 
 #ifdef CONFIG_MENUKEY
 	if (menukey == CONFIG_MENUKEY) {
