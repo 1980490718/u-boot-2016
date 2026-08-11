@@ -167,7 +167,7 @@ cd u-boot-2016
 | 传输层 | TCP |
 | 端口 | 80 |
 | 上传地址 | UPLOAD_ADDR (RAM) |
-| 固件类型校验 | FIT / QSDK / UBI / ELF / CDT / GPT / MIBIB |
+| 固件类型校验 | FIT / SYSUPGRADE / QSDK / UBI / ELF / CDT / GPT / MIBIB |
 | 上传进度 | TTL串口实时显示进度条、百分比和速度（Web页面支持在计划中） |
 | LED指示 | 上传/刷写/完成/失败各阶段LED状态切换 |
 | POST处理 | multipart/form-data解析，boundary分割，流式写入RAM |
@@ -179,7 +179,7 @@ cd u-boot-2016
 
 | 类型 | 说明 |
 | :--- | :--- |
-| firmware | 完整固件，支持FIT/QSDK/UBI，自动识别闪存类型 |
+| firmware | 完整固件，支持FIT/SYSUPGRADE/QSDK/UBI，自动识别闪存类型 |
 | uboot | U-Boot自身，ELF格式校验，主备分区同时写入 |
 | art | ART无线校准数据，禁止非ART类型误刷 |
 | cdt | CDT配置数据表，主备分区同时写入 |
@@ -204,13 +204,10 @@ cd u-boot-2016
 
 </details>
 
-<details>
-<summary>许可与声明</summary>
+## 许可与声明
 
 - 本项目使用 GPLv2 开源，详见 LICENSE 文件
 - 任何借鉴、复刻、二次开发须注明出处并以 GPLv2 开源，保留原始版权声明
 - 本项目未经充分测试，使用风险自负
 - 作者不承担因使用本代码而产生的任何损失或损害责任
 - 仅供学习和研究使用，禁止用于侵犯他人利益的用途
-
-</details>
