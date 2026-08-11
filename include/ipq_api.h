@@ -71,6 +71,7 @@ enum firmware_type_enum {
 	FW_TYPE_CDT		= 4,
 	FW_TYPE_ELF		= 5,
 	FW_TYPE_MIBIB	= 6,
+	FW_TYPE_SYSUPGRADE	= 7,
 };
 
 /* flash type: use SMEM_BOOT_* enum from asm/arch-qca-common/smem.h */
