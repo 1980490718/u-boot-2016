@@ -1538,6 +1538,7 @@ static int qpic_nand_read_id_serial(struct mtd_info *mtd)
 	uint32_t serial_dev_id[2] = {0x0};
 	int i;
 	int is_idfound;
+	struct nand_chip *chip = MTD_NAND_CHIP(mtd);
 	struct qpic_nand_dev *dev = MTD_QPIC_NAND_DEV(mtd);
 
 	nand_ret = qpic_nand_fetch_id(mtd);
@@ -1563,6 +1564,8 @@ static int qpic_nand_read_id_serial(struct mtd_info *mtd)
 			if (is_idfound) {
 				printf("Serial Nand Device Found With ID : 0x%02x 0x%02x\n",
 						serial_dev_id[0],serial_dev_id[1]);
+
+				chip->chip_name = serial_params->name;
 
 				/* Upadate device paramter as per device table */
 				qpic_serial_update_dev_params(mtd);
@@ -2673,6 +2676,7 @@ static int qpic_nand_get_info(struct mtd_info *mtd, uint32_t flash_id)
 	uint8_t cfg_id;
 	const struct nand_manufacturers *flash_man;
 	const struct nand_flash_dev *flash_dev;
+	struct nand_chip *chip = MTD_NAND_CHIP(mtd);
 	struct qpic_nand_dev *dev = MTD_QPIC_NAND_DEV(mtd);
 	uint32_t min_oobsize_8bit_ecc;
 
@@ -2694,6 +2698,7 @@ static int qpic_nand_get_info(struct mtd_info *mtd, uint32_t flash_id)
 	}
 
 	mtd->size = MB_TO_BYTES(flash_dev->chipsize);
+	chip->chip_name = flash_dev->name;
 	/*
 	* For older NAND flash, we obtained the flash information
 	* from the flash_dev table. For newer flashes the information
@@ -4922,6 +4927,10 @@ void qpic_nand_init(qpic_nand_cfg_t *qpic_nand_cfg)
 	}
 #endif
 	dev = MTD_QPIC_NAND_DEV(mtd);
+	chip->id_data[0] = dev->id;
+	chip->id_data[1] = dev->id >> 8;
+	chip->id_data[2] = dev->id >> 16;
+	chip->id_data[3] = dev->id >> 24;
 	qpic_nand_mtd_params(mtd);
 
 #ifdef CONFIG_PAGE_SCOPE_MULTI_PAGE_READ

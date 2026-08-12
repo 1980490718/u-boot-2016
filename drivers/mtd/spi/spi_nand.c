@@ -1189,6 +1189,8 @@ int spi_nand_init(void)
 	info->mtd = mtd;
 	info->chip = chip;
 	chip->priv = info;
+	memcpy(chip->id_data, params->id, 4);
+	chip->chip_name = params->name;
 
 	printf("%s page=%d+%d blk=%dpg total=%lldMiB\n",
 		params->name, mtd->writesize, mtd->oobsize,

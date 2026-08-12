@@ -297,6 +297,33 @@ static void nand_print_and_set_info(int idx)
 	printf("  subpagesize %8d b\n", chip->subpagesize);
 	printf("  options     0x%8x\n", chip->options);
 	printf("  bbt options 0x%8x\n", chip->bbt_options);
+	if (nand->oobsize != 0) {
+#ifdef CONFIG_SYS_NAND_ONFI_DETECTION
+		if (chip->onfi_version) {
+			printf("  ONFI version       %d.%d\n",
+			       chip->onfi_version / 10, chip->onfi_version % 10);
+		}
+#endif
+		printf("  ID            ");
+		{
+			int i, id_len;
+			id_len = 4;
+			for (i = 4; i < 8; i++) {
+				if (chip->id_data[i] != 0)
+					id_len = i + 1;
+			}
+			for (i = 0; i < id_len; i++)
+				printf("%02x", chip->id_data[i]);
+		}
+		printf("\n");
+#ifdef CONFIG_SYS_NAND_ONFI_DETECTION
+		if (chip->onfi_version)
+			printf("  Chip name  %s\n", chip->onfi_params.model);
+		else
+#endif
+		if (chip->chip_name)
+			printf("  Chip name  %s\n", chip->chip_name);
+	}
 
 	/* Set geometry info */
 	setenv_hex("nand_writesize", nand->writesize);

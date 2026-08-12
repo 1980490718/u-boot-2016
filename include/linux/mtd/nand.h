@@ -713,11 +713,13 @@ struct nand_chip {
 
 	int onfi_version;
 	int jedec_version;
+	uint8_t id_data[8];
+	const char *chip_name;
 #ifdef CONFIG_SYS_NAND_ONFI_DETECTION
 	struct nand_onfi_params	onfi_params;
 #endif
 	struct nand_jedec_params jedec_params;
- 
+
 	int read_retries;
 
 	flstate_t state;
