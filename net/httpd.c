@@ -219,7 +219,6 @@ static int do_firmware_upgrade(const ulong size) {
 					printf("backup too small, skip\n");
 					}
 				}
-				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_SYSUPGRADE) {
 				print_upgrade_warning("FIRMWARE");
 				sysupgrade_fw_parts parts = parse_sysupgrade_firmware((void *)UPLOAD_ADDR);
@@ -275,21 +274,20 @@ static int do_firmware_upgrade(const ulong size) {
 					printf("backup too small, skip\n");
 					}
 				}
-				execute_command("flasherase rootfs_data");
-				return update_bootconfig();
 			} else if (fw_type == FW_TYPE_QSDK) {
 				print_upgrade_warning("FIRMWARE");
-				sprintf(buf, "imxtract 0x%lx %s && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx %s && flash rootfs $fileaddr $filesize && imxtract 0x%lx %s && flash 0:WIFIFW $fileaddr $filesize && flasherase rootfs_data",
+				sprintf(buf, "imxtract 0x%lx %s && flash 0:HLOS $fileaddr $filesize && imxtract 0x%lx %s && flash rootfs $fileaddr $filesize && imxtract 0x%lx %s && flash 0:WIFIFW $fileaddr $filesize",
 					UPLOAD_ADDR, HLOS_NAME, UPLOAD_ADDR, ROOTFS_NAME, UPLOAD_ADDR, WIFIFW_NAME);
 				if (execute_command(buf) != 0) {
 					printf("Failed to execute flash command\n");
 					return -1;
 				}
-				return update_bootconfig();
 			} else {
 				printf("\n* Unsupported FIRMWARE type *\n");
 				return -1;
 			}
+			execute_command("flasherase rootfs_data");
+			return update_bootconfig();
 			break;
 		}
 #endif
