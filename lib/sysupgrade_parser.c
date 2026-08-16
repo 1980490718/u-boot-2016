@@ -20,31 +20,25 @@ static unsigned long tar_parse_size(const char *s, int len) {
 
 static int tar_is_kernel_name(const char *name) {
 	return strstr(name, "kernel") != NULL ||
-	       strstr(name, "hlos") != NULL ||
-	       strstr(name, "fit") != NULL;
+		strstr(name, "hlos") != NULL ||
+		strstr(name, "fit") != NULL;
 }
 
 static int tar_is_rootfs_name(const char *name) {
 	return strstr(name, "root") != NULL ||
-	       strstr(name, "squashfs") != NULL;
+		strstr(name, "squashfs") != NULL;
 }
 
 static sysupgrade_fw_parts parse_sysupgrade(void *address) {
 	sysupgrade_fw_parts parts;
-	uintptr_t base = (uintptr_t)address;
-	uintptr_t pos;
-	uintptr_t data;
+	uintptr_t base = (uintptr_t)address, pos, data;
 	int header_off = (memcmp((void *)(base + 257), "ustar", 5) == 0) ? 0 : 10;
-	int max_entries = 32;
-	int entry;
+	int max_entries = 32, entry, i, j;
 	char *hdr;
-	unsigned long fsize;
-	unsigned long padded;
+	unsigned long fsize, padded;
 	const uint32_t MAGIC_HSQS = 0x73717368;
-	int i;
 	uint8_t *sb;
 	u64 bytes_used;
-	int j;
 
 	memset(&parts, 0, sizeof(parts));
 
@@ -94,7 +88,7 @@ static sysupgrade_fw_parts parse_sysupgrade(void *address) {
 
 	sysupgrade_parts_valid(&parts) ?
 		printf("kernel %lu, rootfs %lu\n",
-		       (unsigned long)parts.kernel_size, (unsigned long)parts.rootfs_size) :
+				(unsigned long)parts.kernel_size, (unsigned long)parts.rootfs_size) :
 		printf("parse failed\n");
 
 	return parts;
@@ -113,9 +107,9 @@ int sysupgrade_ubi_init(void) {
 
 #ifdef IPQ_UBI_VOL_WRITE_SUPPORT
 	if (sfi->flash_type == SMEM_BOOT_NAND_FLASH ||
-	    sfi->flash_type == SMEM_BOOT_QSPI_NAND_FLASH ||
-	    (sfi->flash_type == SMEM_BOOT_SPI_FLASH &&
-	     get_which_flash_param("rootfs") > 0)) {
+		sfi->flash_type == SMEM_BOOT_QSPI_NAND_FLASH ||
+		(sfi->flash_type == SMEM_BOOT_SPI_FLASH &&
+			get_which_flash_param("rootfs") > 0)) {
 		if (ubi_set_rootfs_part() == 0)
 			return 0;
 	}
@@ -129,13 +123,13 @@ int sysupgrade_ubi_init(void) {
 #endif
 
 	char cmd[256];
+	char *msmparts = getenv("msmparts");
 	snprintf(cmd, sizeof(cmd),
 		 "nand device %d && "
 		 "setenv mtdids nand%d=nand%d && "
-		 "setenv mtdparts mtdparts=nand%d:0x%llx@0x%llx(fs),${msmparts} && "
-		 "ubi part fs",
-		 nand_dev, nand_dev, nand_dev, nand_dev,
-		 sfi->rootfs.size, sfi->rootfs.offset);
+		 "setenv mtdparts mtdparts=nand%d:0x%llx@0x%llx(fs)%s%s",
+		 nand_dev, nand_dev, nand_dev, nand_dev, sfi->rootfs.size,
+		 sfi->rootfs.offset, msmparts ? "," : "", msmparts ? msmparts : "");
 
 	return run_command(cmd, 0);
 }
@@ -168,6 +162,7 @@ int sysupgrade_write_ubi_volumes(sysupgrade_fw_parts *parts, int backup_enabled)
 		return -1;
 	}
 
+	run_command("ubi part fs", 0);
 	run_command("ubi remove rootfs_data", 0);
 
 	if (parts->kernel_data && parts->kernel_size > 0 &&
