@@ -23,6 +23,9 @@
 #include <ubi_uboot.h>
 #include <asm/errno.h>
 #include <jffs2/load_kernel.h>
+#ifdef CONFIG_LWIP_HTTPD
+#include <sysupgrade_parser.h>
+#endif
 
 #undef ubi_msg
 #define ubi_msg(fmt, ...) printf("UBI: " fmt "\n", ##__VA_ARGS__)
@@ -461,6 +464,11 @@ int ubi_part(char *part_name, const char *vid_header_offset)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 pnum;
+
+#ifdef CONFIG_LWIP_HTTPD
+	if (!getenv("mtdids"))
+		sysupgrade_ubi_init();
+#endif
 
 	if (mtdparts_init() != 0) {
 		printf("Error initializing mtdparts!\n");
