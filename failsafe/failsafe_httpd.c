@@ -532,12 +532,16 @@ static const char *phy_lookup(u32 id, const struct phy_id_name *tbl, int cnt)
 	return NULL;
 }
 
-static int phy_emit(int pos, int *first, const char *name, int addr, u16 id1, u16 id2)
+static int phy_emit(int pos, int *first, const char *name, int addr, u16 id1, u16 id2, int link, int speed)
 {
 	if (!*first)
 		pos += sprintf(about_json_buf + pos, ", ");
-	pos += sprintf(about_json_buf + pos,
-		"%s@%d (ID %04x:%04x)", name, addr, id1, id2);
+	if (speed > 0)
+		pos += sprintf(about_json_buf + pos,
+			"%s@%d (ID %04x:%04x) %dMbps [%s]", name, addr, id1, id2, speed, link ? "UP" : "DOWN");
+	else
+		pos += sprintf(about_json_buf + pos,
+			"%s@%d (ID %04x:%04x) [%s]", name, addr, id1, id2, link ? "UP" : "DOWN");
 	*first = 0;
 	return pos;
 }
@@ -820,8 +824,19 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 						continue;
 					name = phy_lookup(phy_id, phy_c22_qca,
 						ARRAY_SIZE(phy_c22_qca));
-					if (name)
-						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+					if (name) {
+						u16 bmsr = (u16)bus->read(bus, phy_addr,
+							MDIO_DEVAD_NONE, 1);
+						int link = (bmsr >> 2) & 1;
+						int spd = 0;
+						if (link) {
+							u16 ssr = (u16)bus->read(bus, phy_addr,
+								MDIO_DEVAD_NONE, 17);
+							int i = (ssr >> 14) & 3;
+							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+						}
+						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
+					}
 				}
 			}
 		}
@@ -847,11 +862,26 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 					continue;
 				name = phy_lookup(phy_id, phy_c22_qca,
 					ARRAY_SIZE(phy_c22_qca));
-				if (!name)
+				int is_ext = 0;
+				if (!name) {
 					name = phy_lookup(phy_id, phy_c22_ext,
 						ARRAY_SIZE(phy_c22_ext));
+					is_ext = 1;
+				}
 				if (name) {
-					pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+					u16 bmsr = (u16)ipq_mdio_read(phy_addr, 1, NULL);
+					int link = (bmsr >> 2) & 1;
+					int spd = 0;
+					if (link) {
+						u16 ssr = (u16)ipq_mdio_read(phy_addr, 17, NULL);
+						if (is_ext)
+							spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
+						else {
+							int i = (ssr >> 14) & 3;
+							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+						}
+					}
+					pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
 					continue;
 				}
 				{
@@ -866,8 +896,19 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 						continue;
 					name = phy_lookup(c45_phy_id, phy_c45_aq,
 						ARRAY_SIZE(phy_c45_aq));
-					if (name)
-						pos = phy_emit(pos, &ps_first, name, phy_addr, c45_id1, c45_id2);
+					if (name) {
+						u16 c45_bmsr = (u16)ipq_mdio_read(phy_addr,
+							(1 << 30) | (1 << 16) | 1, NULL);
+						int link = (c45_bmsr >> 2) & 1;
+						int spd = 0;
+						if (link) {
+							u16 c45_spd = (u16)ipq_mdio_read(phy_addr,
+								(1 << 30) | (0x1e << 16) | 0xc800, NULL);
+							int i = (c45_spd >> 1) & 7;
+							spd = i == 3 ? 10000 : i == 5 ? 5000 : i == 4 ? 2500 : i == 2 ? 1000 : i == 1 ? 100 : 10;
+						}
+						pos = phy_emit(pos, &ps_first, name, phy_addr, c45_id1, c45_id2, link, spd);
+					}
 				}
 			}
 		}
@@ -896,8 +937,19 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 						continue;
 					name = phy_lookup(phy_id, phy_c22_qca,
 						ARRAY_SIZE(phy_c22_qca));
-					if (name)
-						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2);
+					if (name) {
+						u16 bmsr = (u16)bus->read(bus, phy_addr,
+							MDIO_DEVAD_NONE, 1);
+						int link = (bmsr >> 2) & 1;
+						int spd = 0;
+						if (link) {
+							u16 ssr = (u16)bus->read(bus, phy_addr,
+								MDIO_DEVAD_NONE, 17);
+							int i = (ssr >> 14) & 3;
+							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+						}
+						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
+					}
 				}
 			}
 		}

@@ -187,6 +187,8 @@
 				if (key === 'flash_chips' && val !== '-')
 					val = val.replace(/(\d+)MiB/g, function(m, n) { var g = parseInt(n) / 1024; return g >= 1 ? g.toFixed(2) + 'GiB' : m; });
 				td.textContent = val;
+				if (key === 'phy_switch_info' && val !== '-')
+					td.innerHTML = val.replace(/([^,]+) \[UP\]/g, '<span style="color:#27ae60">$1</span>').replace(/ \[DOWN\]/g, '');
 				if (key === 'config_name' && data.config_name_source) {
 					td.className = 'about-gpio-ops';
 					if (data.config_name_source === 'env') {
