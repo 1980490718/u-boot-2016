@@ -546,6 +546,81 @@ static int phy_emit(int pos, int *first, const char *name, int addr, u16 id1, u1
 	return pos;
 }
 
+#if defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
+typedef int (*mdio_read_fn)(int, int, ushort *);
+static int phy_scan_mdio(int pos, int *first, mdio_read_fn mdio_read) {
+	int phy_addr;
+	for (phy_addr = 0; phy_addr <= 31; phy_addr++) {
+		int ret;
+		u16 id1, id2;
+		u32 phy_id;
+		const char *name;
+		ret = mdio_read(phy_addr, 2, NULL);
+		if (ret < 0)
+			continue;
+		id1 = (u16)ret;
+		ret = mdio_read(phy_addr, 3, NULL);
+		if (ret < 0)
+			continue;
+		id2 = (u16)ret;
+		phy_id = ((u32)id1 << 16) | id2;
+		if (!phy_id || phy_id == 0xFFFFFFFF)
+			continue;
+		name = phy_lookup(phy_id, phy_c22_qca,
+			ARRAY_SIZE(phy_c22_qca));
+		int is_ext = 0;
+		if (!name) {
+			name = phy_lookup(phy_id, phy_c22_ext,
+				ARRAY_SIZE(phy_c22_ext));
+			is_ext = 1;
+		}
+		if (name) {
+			u16 bmsr = (u16)mdio_read(phy_addr, 1, NULL);
+			int link = (bmsr >> 2) & 1;
+			int spd = 0;
+			if (link) {
+				u16 ssr = (u16)mdio_read(phy_addr, 17, NULL);
+				if (is_ext)
+					spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
+				else {
+					int i = (ssr >> 14) & 3;
+					spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+				}
+			}
+			pos = phy_emit(pos, first, name, phy_addr, id1, id2, link, spd);
+			continue;
+		}
+		{
+			u16 c45_id1, c45_id2;
+			u32 c45_phy_id;
+			c45_id1 = mdio_read(phy_addr,
+				(1 << 30) | (1 << 16) | 2, NULL);
+			c45_id2 = mdio_read(phy_addr,
+				(1 << 30) | (1 << 16) | 3, NULL);
+			c45_phy_id = ((u32)c45_id1 << 16) | c45_id2;
+			if (!c45_phy_id || c45_phy_id == 0xFFFFFFFF)
+				continue;
+			name = phy_lookup(c45_phy_id, phy_c45_aq,
+				ARRAY_SIZE(phy_c45_aq));
+			if (name) {
+				u16 c45_bmsr = (u16)mdio_read(phy_addr,
+					(1 << 30) | (1 << 16) | 1, NULL);
+				int link = (c45_bmsr >> 2) & 1;
+				int spd = 0;
+				if (link) {
+					u16 c45_spd = (u16)mdio_read(phy_addr,
+						(1 << 30) | (0x1e << 16) | 0xc800, NULL);
+					int i = (c45_spd >> 1) & 7;
+					spd = i == 3 ? 10000 : i == 5 ? 5000 : i == 4 ? 2500 : i == 2 ? 1000 : i == 1 ? 100 : 10;
+				}
+				pos = phy_emit(pos, first, name, phy_addr, c45_id1, c45_id2, link, spd);
+			}
+		}
+	}
+	return pos;
+}
+#endif
+
 struct about_gpio_ctx {
 	char *buf;
 	int *pos;
@@ -842,75 +917,12 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 		}
 #elif defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
 		{
+#ifdef CONFIG_IPQ5018
+			extern int ipq5018_mdio_read(int mii_id, int regnum, ushort *data);
+			pos = phy_scan_mdio(pos, &ps_first, ipq5018_mdio_read);
+#endif
 			extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);
-			int phy_addr;
-			for (phy_addr = 0; phy_addr <= 31; phy_addr++) {
-				int ret;
-				u16 id1, id2;
-				u32 phy_id;
-				const char *name;
-				ret = ipq_mdio_read(phy_addr, 2, NULL);
-				if (ret < 0)
-					continue;
-				id1 = (u16)ret;
-				ret = ipq_mdio_read(phy_addr, 3, NULL);
-				if (ret < 0)
-					continue;
-				id2 = (u16)ret;
-				phy_id = ((u32)id1 << 16) | id2;
-				if (!phy_id || phy_id == 0xFFFFFFFF)
-					continue;
-				name = phy_lookup(phy_id, phy_c22_qca,
-					ARRAY_SIZE(phy_c22_qca));
-				int is_ext = 0;
-				if (!name) {
-					name = phy_lookup(phy_id, phy_c22_ext,
-						ARRAY_SIZE(phy_c22_ext));
-					is_ext = 1;
-				}
-				if (name) {
-					u16 bmsr = (u16)ipq_mdio_read(phy_addr, 1, NULL);
-					int link = (bmsr >> 2) & 1;
-					int spd = 0;
-					if (link) {
-						u16 ssr = (u16)ipq_mdio_read(phy_addr, 17, NULL);
-						if (is_ext)
-							spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
-						else {
-							int i = (ssr >> 14) & 3;
-							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
-						}
-					}
-					pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
-					continue;
-				}
-				{
-					u16 c45_id1, c45_id2;
-					u32 c45_phy_id;
-					c45_id1 = ipq_mdio_read(phy_addr,
-						(1 << 30) | (1 << 16) | 2, NULL);
-					c45_id2 = ipq_mdio_read(phy_addr,
-						(1 << 30) | (1 << 16) | 3, NULL);
-					c45_phy_id = ((u32)c45_id1 << 16) | c45_id2;
-					if (!c45_phy_id || c45_phy_id == 0xFFFFFFFF)
-						continue;
-					name = phy_lookup(c45_phy_id, phy_c45_aq,
-						ARRAY_SIZE(phy_c45_aq));
-					if (name) {
-						u16 c45_bmsr = (u16)ipq_mdio_read(phy_addr,
-							(1 << 30) | (1 << 16) | 1, NULL);
-						int link = (c45_bmsr >> 2) & 1;
-						int spd = 0;
-						if (link) {
-							u16 c45_spd = (u16)ipq_mdio_read(phy_addr,
-								(1 << 30) | (0x1e << 16) | 0xc800, NULL);
-							int i = (c45_spd >> 1) & 7;
-							spd = i == 3 ? 10000 : i == 5 ? 5000 : i == 4 ? 2500 : i == 2 ? 1000 : i == 1 ? 100 : 10;
-						}
-						pos = phy_emit(pos, &ps_first, name, phy_addr, c45_id1, c45_id2, link, spd);
-					}
-				}
-			}
+			pos = phy_scan_mdio(pos, &ps_first, ipq_mdio_read);
 		}
 #elif defined(CONFIG_IPQ806X)
 		{
