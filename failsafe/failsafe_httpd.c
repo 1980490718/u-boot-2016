@@ -621,6 +621,42 @@ static int phy_scan_mdio(int pos, int *first, mdio_read_fn mdio_read) {
 }
 #endif
 
+#if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)
+static int phy_scan_mii_bus(int pos, int *first, struct mii_dev *bus, int max_addr) {
+	int phy_addr;
+	for (phy_addr = 0; phy_addr <= max_addr; phy_addr++) {
+		int ret;
+		u16 id1, id2;
+		u32 phy_id;
+		const char *name;
+		ret = bus->read(bus, phy_addr, MDIO_DEVAD_NONE, 2);
+		if (ret < 0)
+			continue;
+		id1 = (u16)ret;
+		ret = bus->read(bus, phy_addr, MDIO_DEVAD_NONE, 3);
+		if (ret < 0)
+			continue;
+		id2 = (u16)ret;
+		phy_id = ((u32)id1 << 16) | id2;
+		if (!phy_id || phy_id == 0xFFFFFFFF)
+			continue;
+		name = phy_lookup(phy_id, phy_c22_qca, ARRAY_SIZE(phy_c22_qca));
+		if (name) {
+			u16 bmsr = (u16)bus->read(bus, phy_addr, MDIO_DEVAD_NONE, 1);
+			int link = (bmsr >> 2) & 1;
+			int spd = 0;
+			if (link) {
+				u16 ssr = (u16)bus->read(bus, phy_addr, MDIO_DEVAD_NONE, 17);
+				int i = (ssr >> 14) & 3;
+				spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+			}
+			pos = phy_emit(pos, first, name, phy_addr, id1, id2, link, spd);
+		}
+	}
+	return pos;
+}
+#endif
+
 struct about_gpio_ctx {
 	char *buf;
 	int *pos;
@@ -877,43 +913,8 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 #if defined(CONFIG_IPQ40XX)
 		{
 			struct mii_dev *bus = mdio_get_current_dev();
-			if (bus) {
-				int phy_addr;
-				for (phy_addr = 0; phy_addr <= 6; phy_addr++) {
-					int ret;
-					u16 id1, id2;
-					u32 phy_id;
-					const char *name;
-					ret = bus->read(bus, phy_addr,
-						MDIO_DEVAD_NONE, 2);
-					if (ret < 0)
-						continue;
-					id1 = (u16)ret;
-					ret = bus->read(bus, phy_addr,
-						MDIO_DEVAD_NONE, 3);
-					if (ret < 0)
-						continue;
-					id2 = (u16)ret;
-					phy_id = ((u32)id1 << 16) | id2;
-					if (!phy_id || phy_id == 0xFFFFFFFF)
-						continue;
-					name = phy_lookup(phy_id, phy_c22_qca,
-						ARRAY_SIZE(phy_c22_qca));
-					if (name) {
-						u16 bmsr = (u16)bus->read(bus, phy_addr,
-							MDIO_DEVAD_NONE, 1);
-						int link = (bmsr >> 2) & 1;
-						int spd = 0;
-						if (link) {
-							u16 ssr = (u16)bus->read(bus, phy_addr,
-								MDIO_DEVAD_NONE, 17);
-							int i = (ssr >> 14) & 3;
-							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
-						}
-						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
-					}
-				}
-			}
+			if (bus)
+				pos = phy_scan_mii_bus(pos, &ps_first, bus, 6);
 		}
 #elif defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
 		{
@@ -927,43 +928,8 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 #elif defined(CONFIG_IPQ806X)
 		{
 			struct mii_dev *bus = mdio_get_current_dev();
-			if (bus) {
-				int phy_addr;
-				for (phy_addr = 0; phy_addr <= 4; phy_addr++) {
-					int ret;
-					u16 id1, id2;
-					u32 phy_id;
-					const char *name;
-					ret = bus->read(bus, phy_addr,
-						MDIO_DEVAD_NONE, 2);
-					if (ret < 0)
-						continue;
-					id1 = (u16)ret;
-					ret = bus->read(bus, phy_addr,
-						MDIO_DEVAD_NONE, 3);
-					if (ret < 0)
-						continue;
-					id2 = (u16)ret;
-					phy_id = ((u32)id1 << 16) | id2;
-					if (!phy_id || phy_id == 0xFFFFFFFF)
-						continue;
-					name = phy_lookup(phy_id, phy_c22_qca,
-						ARRAY_SIZE(phy_c22_qca));
-					if (name) {
-						u16 bmsr = (u16)bus->read(bus, phy_addr,
-							MDIO_DEVAD_NONE, 1);
-						int link = (bmsr >> 2) & 1;
-						int spd = 0;
-						if (link) {
-							u16 ssr = (u16)bus->read(bus, phy_addr,
-								MDIO_DEVAD_NONE, 17);
-							int i = (ssr >> 14) & 3;
-							spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
-						}
-						pos = phy_emit(pos, &ps_first, name, phy_addr, id1, id2, link, spd);
-					}
-				}
-			}
+			if (bus)
+				pos = phy_scan_mii_bus(pos, &ps_first, bus, 4);
 		}
 #endif
 		pos += sprintf(about_json_buf + pos, "\",");
