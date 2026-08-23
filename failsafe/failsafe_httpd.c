@@ -474,14 +474,18 @@ static void url_decode(char *s) {
 	*dst = '\0';
 }
 
+static void httpd_send_static(struct failsafe_httpd_state *hs, const char *data, int len) {
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)data;
+	hs->upload = len;
+	httpd_send_data(hs);
+}
+
 static void httpd_handle_upgrade_status(struct failsafe_httpd_state *hs) {
 	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting"};
 	static char resp[128];
 	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)resp;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, resp, len);
 }
 
 #define ABOUT_BUF_SIZE 4096
@@ -999,10 +1003,7 @@ static void httpd_handle_led(struct failsafe_httpd_state *hs, char *data) {
 		else if (strcmp(action, "toggle") == 0) led_toggle(name);
 	}
 	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nok");
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)resp;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, resp, len);
 }
 
 static void httpd_handle_btn_detect(struct failsafe_httpd_state *hs) {
@@ -1036,10 +1037,7 @@ static void httpd_handle_btn_detect(struct failsafe_httpd_state *hs) {
 	memmove(resp + hdr_len, resp, pos);
 	memcpy(resp, hdr, hdr_len);
 
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)resp;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, resp, len);
 }
 
 static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, int data_len) {
@@ -1068,10 +1066,7 @@ static void httpd_handle_env_set(struct failsafe_httpd_state *hs, char *data, in
 		}
 	}
 	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", ok ? "ok" : "error");
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)resp;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, resp, len);
 }
 
 static int mac_fmt(char *buf, const uchar *m, int first) {
@@ -1126,10 +1121,7 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	memmove(buf + hdr_len, buf, pos);
 	memcpy(buf, hdr, hdr_len);
 
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)buf;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, buf, len);
 }
 
 static void httpd_handle_mac_set(struct failsafe_httpd_state *hs, char *data, int data_len) {
@@ -1150,10 +1142,7 @@ static void httpd_handle_mac_set(struct failsafe_httpd_state *hs, char *data, in
 		}
 	}
 	len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", ok ? "ok" : "error");
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)resp;
-	hs->upload = len;
-	httpd_send_data(hs);
+	httpd_send_static(hs, resp, len);
 }
 
 #ifdef CONFIG_QCA_MMC
@@ -1280,10 +1269,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 
 	if (!query || strncmp(query + 1, "part=", 5) != 0) {
 		static const char *err = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\nMissing partition";
-		hs->state = STATE_FILE_REQUEST;
-		hs->dataptr = (u8_t *)err;
-		hs->upload = strlen(err);
-		httpd_send_data(hs);
+		httpd_send_static(hs, err, strlen(err));
 		return;
 	}
 
@@ -1309,10 +1295,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 
 	if (total_size == 0) {
 		static const char *err = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\nMissing size";
-		hs->state = STATE_FILE_REQUEST;
-		hs->dataptr = (u8_t *)err;
-		hs->upload = strlen(err);
-		httpd_send_data(hs);
+		httpd_send_static(hs, err, strlen(err));
 		return;
 	}
 
@@ -1332,10 +1315,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 		char chunk_detail[32] = "";
 		if (flashread_partition_chunk(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, ram_avail, raw, NULL, &size, chunk_detail) != CMD_RET_SUCCESS) {
 			static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)err;
-			hs->upload = strlen(err);
-			httpd_send_data(hs);
+			httpd_send_static(hs, err, strlen(err));
 			return;
 		}
 		backup.data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
@@ -1352,10 +1332,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 	} else {
 		if (flashread_partition(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, raw, &offset, &size) != CMD_RET_SUCCESS) {
 			static const char *err = "HTTP/1.0 500 Internal Server Error\r\nConnection: close\r\n\r\nRead failed";
-			hs->state = STATE_FILE_REQUEST;
-			hs->dataptr = (u8_t *)err;
-			hs->upload = strlen(err);
-			httpd_send_data(hs);
+			httpd_send_static(hs, err, strlen(err));
 			return;
 		}
 		backup.data_addr = (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
@@ -1387,10 +1364,7 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 	u32_t i;
 
 	if (memcmp((const void *)&data[4], "/cgi-bin/", 9) == 0) {
-		hs->state = STATE_FILE_REQUEST;
-		hs->dataptr = (u8_t *)"HTTP/1.0 302 Found\r\nLocation: /index.html\r\n\r\n";
-		hs->upload = 44;
-		httpd_send_data(hs);
+		httpd_send_static(hs, "HTTP/1.0 302 Found\r\nLocation: /index.html\r\n\r\n", 44);
 		return;
 	}
 
@@ -1434,10 +1408,7 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 					int len = sprintf(redirect_buf,
 						"HTTP/1.0 302 Found\r\nLocation: /update.html#%s\r\n\r\n",
 						redirects[i].hash);
-					hs->state = STATE_FILE_REQUEST;
-					hs->dataptr = (u8_t *)redirect_buf;
-					hs->upload = len;
-					httpd_send_data(hs);
+					httpd_send_static(hs, redirect_buf, len);
 					return;
 				}
 			}
@@ -1449,11 +1420,7 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 		}
 	}
 
-	hs->state = STATE_FILE_REQUEST;
-	hs->dataptr = (u8_t *)fsfile.data;
-	hs->upload = fsfile.len;
-
-	httpd_send_data(hs);
+	httpd_send_static(hs, fsfile.data, fsfile.len);
 }
 
 void httpd_send_data(struct failsafe_httpd_state *hs) {
