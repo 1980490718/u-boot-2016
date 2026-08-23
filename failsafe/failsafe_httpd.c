@@ -1190,16 +1190,43 @@ static void httpd_handle_mac_set(struct failsafe_httpd_state *hs, char *data, in
 	httpd_send_data(hs);
 }
 
+#ifdef CONFIG_QCA_MMC
+static int append_emmc_gpt_json(int pos, int *count, block_dev_desc_t *blk_dev) {
+	int gpt_count, i;
+	disk_partition_t disk_info;
+
+	pos += sprintf(part_json_buf + pos,
+		"%s{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":0,\"blk_size\":34,\"blksz\":%lu}",
+		(*count > 0 ? "," : ""), (u64)34 * (u64)blk_dev->blksz, (ulong)blk_dev->blksz);
+	(*count)++;
+
+	gpt_count = get_partition_count_efi(blk_dev);
+	for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 120; i++) {
+		if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
+			pos += sprintf(part_json_buf + pos,
+				",{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":%llu,\"blksz\":%lu}",
+				disk_info.name, (u64)disk_info.start * (u64)blk_dev->blksz, (u64)disk_info.size * (u64)blk_dev->blksz,
+				(u64)disk_info.start, (u64)disk_info.size, (ulong)blk_dev->blksz);
+			(*count)++;
+		}
+	}
+
+	pos += sprintf(part_json_buf + pos,
+		",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":33,\"blksz\":%lu}",
+		(u64)(blk_dev->lba - 33) * (u64)blk_dev->blksz, (u64)33 * (u64)blk_dev->blksz, (u64)(blk_dev->lba - 33), (ulong)blk_dev->blksz);
+	(*count)++;
+
+	return pos;
+}
+#endif
+
 static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	int i, pos = 0, hdr_len, count = 0, smem_count;
 	char name[SMEM_PTN_NAME_MAX], hdr[128];
-	uint32_t start, size, flash_type;
-	uint32_t bsize;
+	uint32_t start, size, flash_type, bsize;
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
 #ifdef CONFIG_QCA_MMC
-	int gpt_count;
 	block_dev_desc_t *blk_dev = NULL;
-	disk_partition_t disk_info;
 #endif
 
 	get_current_flash_type(&flash_type);
@@ -1210,34 +1237,8 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 #ifdef CONFIG_QCA_MMC
 	if (flash_type == SMEM_BOOT_MMC_FLASH) {
 		blk_dev = mmc_get_dev(mmc_host.dev_num);
-		if (blk_dev != NULL) {
-			pos += sprintf(part_json_buf + pos,
-				"{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":0,\"blk_size\":34,\"blksz\":%lu}",
-				(unsigned long long)34 * (unsigned long long)blk_dev->blksz,
-				(unsigned long)blk_dev->blksz);
-			count++;
-			gpt_count = get_partition_count_efi(blk_dev);
-			for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 120; i++) {
-				if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
-					pos += sprintf(part_json_buf + pos,
-						",{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":%llu,\"blksz\":%lu}",
-						disk_info.name,
-						(unsigned long long)disk_info.start * (unsigned long long)blk_dev->blksz,
-						(unsigned long long)disk_info.size * (unsigned long long)blk_dev->blksz,
-						(unsigned long long)disk_info.start,
-						(unsigned long long)disk_info.size,
-						(unsigned long)blk_dev->blksz);
-					count++;
-				}
-			}
-			pos += sprintf(part_json_buf + pos,
-				",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":33,\"blksz\":%lu}",
-				(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
-				(unsigned long long)33 * (unsigned long long)blk_dev->blksz,
-				(unsigned long long)(blk_dev->lba - 33),
-				(unsigned long)blk_dev->blksz);
-			count++;
-		}
+		if (blk_dev != NULL)
+			pos = append_emmc_gpt_json(pos, &count, blk_dev);
 	} else
 #endif
 	{
@@ -1251,9 +1252,7 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 #endif
 				pos += sprintf(part_json_buf + pos,
 					"%s{\"name\":\"%s\",\"start\":%lu,\"size\":%lu,\"flash\":\"%s\"}",
-					(count > 0 ? "," : ""), name,
-					(unsigned long)start * (unsigned long)bsize,
-					(unsigned long)size, pflash);
+					(count > 0 ? "," : ""), name, (ulong)start * (ulong)bsize, (ulong)size, pflash);
 				count++;
 			}
 		}
@@ -1262,56 +1261,29 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 			(sfi->flash_secondary_type == SMEM_BOOT_MMC_FLASH ||
 			 sfi->rootfs.offset == 0xBAD0FF5E || flash_type == SMEM_BOOT_NORPLUSEMMC)) {
 			blk_dev = mmc_get_dev(mmc_host.dev_num);
-			if (blk_dev != NULL) {
-				pos += sprintf(part_json_buf + pos,
-					"%s{\"name\":\"0:GPT\",\"start\":0,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":0,\"blk_size\":34,\"blksz\":%lu}",
-					(count > 0 ? "," : ""),
-					(unsigned long long)34 * (unsigned long long)blk_dev->blksz,
-					(unsigned long)blk_dev->blksz);
-				count++;
-				gpt_count = get_partition_count_efi(blk_dev);
-				for (i = 1; i <= gpt_count && pos < PART_JSON_BUF_SIZE - 120; i++) {
-					if (get_partition_info_efi(blk_dev, i, &disk_info) == 0) {
-						pos += sprintf(part_json_buf + pos,
-						",{\"name\":\"%s\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":%llu,\"blksz\":%lu}",
-						disk_info.name,
-						(unsigned long long)disk_info.start * (unsigned long long)blk_dev->blksz,
-						(unsigned long long)disk_info.size * (unsigned long long)blk_dev->blksz,
-						(unsigned long long)disk_info.start,
-						(unsigned long long)disk_info.size,
-						(unsigned long)blk_dev->blksz);
-					count++;
-					}
-				}
-				pos += sprintf(part_json_buf + pos,
-					",{\"name\":\"0:GPTBACKUP\",\"start\":%llu,\"size\":%llu,\"flash\":\"emmc\",\"blk_start\":%llu,\"blk_size\":33,\"blksz\":%lu}",
-					(unsigned long long)(blk_dev->lba - 33) * (unsigned long long)blk_dev->blksz,
-					(unsigned long long)33 * (unsigned long long)blk_dev->blksz,
-					(unsigned long long)(blk_dev->lba - 33),
-					(unsigned long)blk_dev->blksz);
-				count++;
-			}
+			if (blk_dev != NULL)
+				pos = append_emmc_gpt_json(pos, &count, blk_dev);
 		}
 #endif
 	}
 
 	pos += sprintf(part_json_buf + pos, "],\"has_spi\":%s,\"spi_size\":%lu,\"has_nand\":%s,\"nand_size\":%lu,\"nand_raw_size\":%lu,\"ram_available\":%lu,\"has_emmc\":%s,\"emmc_size\":%llu,\"nand_type\":\"%s\"}",
 		(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? "true" : "false")
-		,(unsigned long)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
+		,(ulong)(sfi->flash_type == SMEM_BOOT_SPI_FLASH ? get_spi_flash_size() : 0)
 #ifdef CONFIG_CMD_NAND
 		,(nand_info[0].size > 0 || (CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0) ? "true" : "false")
-		,(unsigned long)(nand_info[0].size > 0 ? nand_info[0].size : (CONFIG_SYS_MAX_NAND_DEVICE > 1 ? nand_info[1].size : 0))
-		,(unsigned long)(nand_info[0].size > 0 && nand_info[0].writesize > 0 ?
+		,(ulong)(nand_info[0].size > 0 ? nand_info[0].size : (CONFIG_SYS_MAX_NAND_DEVICE > 1 ? nand_info[1].size : 0))
+		,(ulong)(nand_info[0].size > 0 && nand_info[0].writesize > 0 ?
 			(nand_info[0].size / nand_info[0].writesize * (nand_info[0].writesize + nand_info[0].oobsize)) :
 			(CONFIG_SYS_MAX_NAND_DEVICE > 1 && nand_info[1].size > 0 && nand_info[1].writesize > 0 ?
 				(nand_info[1].size / nand_info[1].writesize * (nand_info[1].writesize + nand_info[1].oobsize)) : 0UL))
 #else
 		,"false",0UL,0UL
 #endif
-		,(unsigned long)(CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS)
+		,(ulong)(CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS)
 #ifdef CONFIG_QCA_MMC
 		,(blk_dev ? "true" : "false")
-		,(unsigned long long)(blk_dev ? (unsigned long long)blk_dev->lba * (unsigned long long)blk_dev->blksz : 0ULL)
+		,(u64)(blk_dev ? (u64)blk_dev->lba * (u64)blk_dev->blksz : 0ULL)
 #else
 		,"false",0ULL
 #endif
