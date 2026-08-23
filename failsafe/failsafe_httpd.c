@@ -1,5 +1,6 @@
 #include <common.h>
 #include <net.h>
+#include "../net/httpd.h"
 #include <malloc.h>
 #include <asm/byteorder.h>
 #ifdef CONFIG_CMD_NAND
@@ -82,36 +83,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define WEBFAILSAFE_PROGRESS_UPGRADE_READY	4
 #define WEBFAILSAFE_PROGRESS_UPGRADE_FAILED	5
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define PART_JSON_BUF_SIZE 4096
-
-extern int webfailsafe_is_running;
-extern int webfailsafe_ready_for_upgrade;
-extern int webfailsafe_upgrade_type;
-extern int webfailsafe_img_flash;
-extern u32 net_boot_file_size;
-extern int do_http_upgrade(ulong size, int upgrade_type);
-extern void do_http_progress(int state);
-extern ulong get_timer(ulong base);
-extern void HttpdDone(void);
-extern void HttpdStop(void);
-extern int eth_rx(void);
-extern int eth_init(void);
-extern void eth_halt(void);
-extern void eth_set_current(void);
-extern uchar *net_tx_packet;
-extern uchar *net_rx_packets[];
-extern struct in_addr net_ip;
-extern struct in_addr net_netmask;
-extern uchar net_ethaddr[6];
-extern const struct fsdata_file file_index_html[];
-extern const struct fsdata_file file_404_html[];
-extern u64 get_firmware_upgrade_max_size(void);
-extern u64 get_uboot_size(void);
-extern u64 get_art_size(void);
-extern u64 get_cdt_size(void);
-extern u64 get_mibib_size(void);
-extern u64 get_initramfs_max_size(void);
 
 static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
@@ -143,7 +115,6 @@ static struct {
 	char part_name[64];
 } backup;
 
-extern u8_t *webfailsafe_data_pointer;
 int upgrade_status = 0;
 static char part_json_buf[PART_JSON_BUF_SIZE];
 static struct failsafe_httpd_state *hs_global;
@@ -153,13 +124,6 @@ static void httpd_poll_wait(int count);
 static void flashread_yield(void) {
 	eth_rx();
 	sys_check_timeouts();
-}
-
-static u64 atoi_local(const char *s) {
-	u64 i = 0;
-	while (is_digit(*s))
-		i = i * 10 + *(s++) - '0';
-	return i;
 }
 
 #define mib_int(b) ((b) / (1024 * 1024))
@@ -333,7 +297,7 @@ static int httpd_parse_content_length(struct failsafe_httpd_state *hs, char *dat
 		start += sizeof("Content-Length:");
 		end = strstr(start, eol);
 		if (end) {
-			hs->upload_total = atoi_local(start);
+			hs->upload_total = simple_strtoull(start, NULL, 10);
 			return 0;
 		}
 	}
@@ -500,8 +464,8 @@ static const struct phy_id_name phy_c22_qca[] = {
 	{ 0x004DD0B0, "QCA8075 V1.0 5P" },
 	{ 0x004DD0B1, "QCA8075 V1.1 5P" },
 	{ 0x004DD0B2, "QCA8075 V1.1 2P" },
-	{ 0x004DD036, "QCA8337"          },
-	{ 0x004DD074, "QCA8033"          },
+	{ 0x004DD036, "QCA8337"         },
+	{ 0x004DD074, "QCA8033"         },
 };
 
 #if defined(CONFIG_IPQ6018) || defined(CONFIG_IPQ807X) || defined(CONFIG_IPQ9574) || defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ5018)
@@ -1286,7 +1250,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 
 	size_param = strstr(query, "size=");
 	if (size_param)
-		total_size = atoi_local(size_param + 5);
+		total_size = simple_strtoull(size_param + 5, NULL, 10);
 
 	printf("Backup request: %s%s size [%llu.%02llu MiB | %llu bytes]\n",
 		part_name, raw ? " (raw)" : "",
