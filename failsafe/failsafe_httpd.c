@@ -666,7 +666,7 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 	char hdr[128];
 	pos += sprintf(about_json_buf + pos, "{\"version\":\"%s\",", version_string);
 	pos += sprintf(about_json_buf + pos, "\"machid\":\"0x%lx\",", gd->bd->bi_arch_number);
-	pos += sprintf(about_json_buf + pos, "\"ram_size\":%lu,", (unsigned long)gd->ram_size);
+	pos += sprintf(about_json_buf + pos, "\"ram_size\":%lu,", (ulong)gd->ram_size);
 
 	{
 		const char *fdt_model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
@@ -733,7 +733,7 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 						if (!fc_first)
 							pos += sprintf(about_json_buf + pos, ", ");
 						pos += sprintf(about_json_buf + pos, "%s %luMiB",
-							sf->name, (unsigned long)(sf->size >> 20));
+							sf->name, (ulong)(sf->size >> 20));
 						if (sf->jedec)
 							pos += sprintf(about_json_buf + pos,
 								" [ID %02x:%02x:%02x",
@@ -765,7 +765,7 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 					struct nand_chip *chip = mtd->priv;
 					if (!fc_first)
 						pos += sprintf(about_json_buf + pos, ", ");
-					pos += sprintf(about_json_buf + pos, "%s %luMiB", mtd->name ? mtd->name : "nand", (unsigned long)(mtd->size >> 20));
+					pos += sprintf(about_json_buf + pos, "%s %luMiB", mtd->name ? mtd->name : "nand", (ulong)(mtd->size >> 20));
 					if (chip && chip->onfi_version) {
 						int ml = 20;
 						while (ml > 0 && chip->onfi_params.model[ml-1] == ' ')
@@ -862,7 +862,7 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 						m->block_dev.revision[0] ? " rev" : "",
 						m->block_dev.revision[0] ? m->block_dev.revision : "",
 						m->block_dev.vendor[0] ? m->block_dev.vendor : "",
-						(unsigned long)(m->capacity >> 20));
+						(ulong)(m->capacity >> 20));
 					fc_first = 0;
 				}
 			}
