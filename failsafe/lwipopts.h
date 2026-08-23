@@ -31,16 +31,16 @@
 #define TCP_SND_QUEUELEN                  (4 * TCP_SND_BUF / TCP_MSS)
 #define TCP_SNDLOWAT                      LWIP_MAX(TCP_SND_BUF / 4, (2 * TCP_MSS) + 1)
 #define TCP_WND                           (TCP_MSS * 45)
-#define TCP_QUEUE_OOSEQ                   0
-#define LWIP_TCP_SACK_OUT                 0
+#define TCP_QUEUE_OOSEQ                   1
+#define LWIP_TCP_SACK_OUT                 1
 #define LWIP_TCP_MAX_SACK_NUM             4
-#define LWIP_WND_SCALE                    0
-#define TCP_RCV_SCALE                     0
-#define LWIP_TCP_TIMESTAMPS               0
+#define LWIP_WND_SCALE                    1
+#define TCP_RCV_SCALE                     2
+#define LWIP_TCP_TIMESTAMPS               1
 #define TCP_CALCULATE_EFF_SEND_MSS        1
 #define TCP_MAXRTX                        12
 #define TCP_SYNMAXRTX                     6
-#define TCP_OOSEQ_MAX_PBUFS               0
+#define TCP_OOSEQ_MAX_PBUFS               32
 #define TCP_OOSEQ_MAX_BYTES               0
 #define MEMP_NUM_TCP_SEG                  512
 #define MEMP_NUM_TCP_PCB_LISTEN           2
@@ -48,7 +48,7 @@
 #define MEMP_NUM_REASSDATA                0
 #define MEMP_NUM_ARP_QUEUE                8
 
-#define LWIP_NETIF_TX_SINGLE_PBUF         1
+#define LWIP_NETIF_TX_SINGLE_PBUF         0
 #define TCP_OVERSIZE                      TCP_MSS
 
 #define MEM_SIZE                          (512 * 1024)

@@ -20,6 +20,11 @@ static err_t ethernetif_linkoutput(struct netif *netif, struct pbuf *p)
 	u16_t offset = 0;
 	struct pbuf *q;
 
+	if (p->next == NULL && p->len <= PKTSIZE) {
+		eth_send((uchar *)p->payload, p->len);
+		return ERR_OK;
+	}
+
 	for (q = p; q != NULL; q = q->next) {
 		if (offset + q->len > PKTSIZE) {
 			return ERR_BUF;

@@ -1519,30 +1519,33 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 }
 
 void httpd_send_data(struct failsafe_httpd_state *hs) {
-	u16_t snd_buf = tcp_sndbuf(hs->pcb);
-	if (snd_buf == 0 || hs->upload == 0)
-		return;
+	while (hs->upload > 0) {
+		u16_t snd_buf = tcp_sndbuf(hs->pcb);
+		if (snd_buf == 0)
+			break;
 
-	u16_t send_len = (hs->upload > snd_buf) ? snd_buf : hs->upload;
-	err_t wr_err = tcp_write(hs->pcb, hs->dataptr, send_len, TCP_WRITE_FLAG_COPY);
-	if (wr_err == ERR_OK) {
-		tcp_output(hs->pcb);
-		hs->dataptr += send_len;
-		hs->upload -= send_len;
-		return;
-	}
-
-	if (send_len > TCP_MSS) {
-		send_len = TCP_MSS;
-		if (hs->upload < send_len)
-			send_len = (u16_t)hs->upload;
-		wr_err = tcp_write(hs->pcb, hs->dataptr, send_len, TCP_WRITE_FLAG_COPY);
+		u16_t send_len = (hs->upload > snd_buf) ? snd_buf : (u16_t)hs->upload;
+		err_t wr_err = tcp_write(hs->pcb, hs->dataptr, send_len, TCP_WRITE_FLAG_COPY);
 		if (wr_err == ERR_OK) {
-			tcp_output(hs->pcb);
 			hs->dataptr += send_len;
 			hs->upload -= send_len;
+			continue;
 		}
+
+		if (send_len > TCP_MSS) {
+			send_len = TCP_MSS;
+			if (hs->upload < send_len)
+				send_len = (u16_t)hs->upload;
+			wr_err = tcp_write(hs->pcb, hs->dataptr, send_len, TCP_WRITE_FLAG_COPY);
+			if (wr_err == ERR_OK) {
+				hs->dataptr += send_len;
+				hs->upload -= send_len;
+				continue;
+			}
+		}
+		break;
 	}
+	tcp_output(hs->pcb);
 }
 
 static void backup_chunk_next(void) {
@@ -1586,7 +1589,7 @@ static void backup_chunk_next(void) {
 static void httpd_poll_wait(int count) {
 	int i;
 	for (i = 0; i < count; i++) {
-		mdelay(100);
+		mdelay(1);
 		eth_rx();
 		sys_check_timeouts();
 	}
@@ -1810,7 +1813,7 @@ static err_t httpd_accept(void *arg, struct tcp_pcb *pcb, err_t err) {
 	tcp_recv(pcb, httpd_recv);
 	tcp_sent(pcb, httpd_sent);
 	tcp_err(pcb, httpd_err);
-	tcp_poll(pcb, httpd_poll_cb, 4);
+	tcp_poll(pcb, httpd_poll_cb, 1);
 	tcp_setprio(pcb, TCP_PRIO_MIN);
 
 	return ERR_OK;
