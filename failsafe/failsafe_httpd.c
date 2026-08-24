@@ -1750,9 +1750,7 @@ void failsafe_httpd_stop(void) {
 
 static int lwip_initialized = 0;
 
-#if defined(CONFIG_IPQ5332) || defined(CONFIG_IPQ9574)
-static void ppe_arp_kickstart(void);
-#endif
+
 
 void failsafe_lwip_init(struct ip4_addr *ipaddr, struct ip4_addr *netmask, struct ip4_addr *gw) {
 	if (!lwip_initialized) {
@@ -1876,7 +1874,7 @@ struct ppe_arp_hdr {
 	u16_t dipaddr[2];
 };
 
-static void ppe_arp_kickstart(void) {
+void ppe_arp_kickstart(void) {
 	uchar pkt[60];
 	struct ppe_arp_hdr *arp = (struct ppe_arp_hdr *)pkt;
 	u16_t *hostaddr = (u16_t *)netif_ip4_addr(&failsafe_netif);
