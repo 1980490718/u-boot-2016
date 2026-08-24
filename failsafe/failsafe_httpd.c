@@ -1363,6 +1363,8 @@ static void httpd_handle_file_request(struct failsafe_httpd_state *hs, char *dat
 				{"/cdt.html", "cdt"},
 				{"/ptable.html", "ptable"},
 				{"/initramfs.html", "initramfs"},
+				{"/mibib.html", "ptable"},
+				{"/gpt.html", "ptable"},
 			};
 			static char redirect_buf[128];
 			int i;
