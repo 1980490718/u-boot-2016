@@ -76,6 +76,9 @@ extern void ipq5332_qca8075_phy_interface_set_mode(uint32_t phy_id,
 							uint32_t mode);
 extern int ipq_qca8033_phy_init(struct phy_ops **ops, u32 phy_id);
 extern int ipq_qca8081_phy_init(struct phy_ops **ops, u32 phy_id);
+#ifdef CONFIG_RTL8221_PHY
+extern int ipq_rtl8221_phy_init(struct phy_ops **ops, u32 phy_id);
+#endif
 extern int ipq_qca_aquantia_phy_init(struct phy_ops **ops, u32 phy_id);
 extern int ipq_board_fw_download(unsigned int phy_addr);
 extern int ipq_qca8084_hw_init(phy_info_t * phy_info[]);
@@ -1067,6 +1070,9 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			clk[2] = 0x418;
 			clk[3] = 9;
 			if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+				(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 				(phy_info->phy_type == QCA8033_PHY_TYPE)) {
 				clk[1] = 3;
 				clk[3] = 3;
@@ -1084,6 +1090,9 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			clk[2] = 0x418;
 			clk[3] = 1;
 			if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+				(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 				(phy_info->phy_type == QCA8084_PHY_TYPE) ||
 				(phy_info->phy_type == QCA8033_PHY_TYPE)) {
 				clk[0] = 0x309;
@@ -1099,6 +1108,9 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			clk[2] = 0x404;
 			clk[3] = 0x0;
 			if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+				(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 				(phy_info->phy_type == QCA8084_PHY_TYPE) ||
 				(phy_info->phy_type == QCA8033_PHY_TYPE) ||
 				(sfp_mode == EPORT_WRAPPER_SGMII_FIBER)) {
@@ -1114,12 +1126,18 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			clk[3] = 0x0;
 			if ((phy_info->phy_type == SFP_PHY_TYPE) ||
 				(phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+				(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 				(phy_info->phy_type == QCA8084_PHY_TYPE)) {
 				clk[0] = 0x301;
 				clk[2] = 0x401;
 			}
 
 			if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+				(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 				(phy_info->phy_type == QCA8084_PHY_TYPE)) {
 				sgmii_mode = EPORT_WRAPPER_SGMII_PLUS;
 			}
@@ -1152,6 +1170,9 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 		}
 
 		if ((phy_info->phy_type == QCA8081_PHY_TYPE) ||
+#ifdef CONFIG_RTL8221_PHY
+			(phy_info->phy_type == RTL8221_PHY_TYPE) ||
+#endif
 			(phy_info->phy_type == QCA8033_PHY_TYPE) ||
 			(phy_info->phy_type == QCA8084_PHY_TYPE)) {
 			ppe_port_bridge_txmac_set(i, 1);
@@ -2040,6 +2061,10 @@ int ipq5332_edma_init(void *edma_board_cfg)
 				phy_chip_id = (phy_chip_id1 << 16) |
 							phy_chip_id2;
 			} else {
+#ifdef CONFIG_RTL8221_PHY
+			if (phy_info->phy_type == RTL8221_PHY_TYPE)
+				mdelay(250);
+#endif
 				phy_chip_id1 = ipq_mdio_read(phy_addr,
 							QCA_PHY_ID1, NULL);
 				phy_chip_id2 = ipq_mdio_read(phy_addr,
@@ -2088,6 +2113,13 @@ int ipq5332_edma_init(void *edma_board_cfg)
 			case QCA8081_PHY:
 			case QCA8081_1_1_PHY:
 				ipq_qca8081_phy_init(
+					&ipq5332_edma_dev[i]->ops[phy_id],
+					phy_addr);
+			break;
+#endif
+#ifdef CONFIG_RTL8221_PHY
+			case RTL8221_PHY:
+				ipq_rtl8221_phy_init(
 					&ipq5332_edma_dev[i]->ops[phy_id],
 					phy_addr);
 			break;

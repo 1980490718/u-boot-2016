@@ -48,6 +48,7 @@
 #define SFP_PHY_TYPE			0x5
 #define QCA8084_PHY_TYPE		0x6
 #define ATHRS17C_SWITCH_TYPE		0x7
+#define RTL8221_PHY_TYPE		0x8
 #define UNUSED_PHY_TYPE 		0xFF
 #endif
 
