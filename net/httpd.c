@@ -85,7 +85,6 @@ static void reset_webfailsafe_state(void) {
 void HttpdStop(void) {
 	failsafe_httpd_stop();
 	reset_webfailsafe_state();
-	do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
 }
 
 void HttpdDone(void) {
@@ -702,7 +701,7 @@ int do_http_progress(const int state) {
 			led_toggle("blink_led");
 #endif
 			break;
-	case WEBFAILSAFE_PROGRESS_UPGRADING:
+		case WEBFAILSAFE_PROGRESS_UPGRADING:
 			led_toggle("blink_led");
 			break;
 		case WEBFAILSAFE_PROGRESS_UPGRADE_READY:
