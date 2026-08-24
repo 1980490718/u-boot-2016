@@ -368,7 +368,7 @@ static void httpd_upload_complete(struct failsafe_httpd_state *hs) {
 	}
 	led_on("blink_led");
 	upload.done = 1;
-	upgrade_status = 0;
+	upgrade_status = 1;
 	net_boot_file_size = (ulong)hs->upload_total;
 }
 
@@ -1790,20 +1790,20 @@ void failsafe_httpd_poll(void) {
 		setenv_hex("fileaddr", load_addr);
 		do_http_progress(WEBFAILSAFE_PROGRESS_UPLOAD_READY);
 
-		httpd_poll_wait(20);
+		httpd_poll_wait(1000);
 
 		upgrade_status = 2;
-		httpd_poll_wait(20);
+		httpd_poll_wait(1500);
 
 		if (do_http_upgrade(net_boot_file_size, webfailsafe_upgrade_type) < 0) {
 			do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADE_FAILED);
 			upgrade_status = 3;
-			httpd_poll_wait(20);
+			httpd_poll_wait(2000);
 			return;
 		}
 		upgrade_status = 4;
 
-		httpd_poll_wait(35);
+		httpd_poll_wait(3000);
 		HttpdDone();
 		do_reset(NULL, 0, 0, NULL);
 		printf("reboot fail\n");
