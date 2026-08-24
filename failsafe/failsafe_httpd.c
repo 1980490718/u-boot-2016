@@ -1742,6 +1742,7 @@ void failsafe_httpd_stop(void) {
 	}
 	abort_port_pcb(&tcp_active_pcbs);
 	abort_port_pcb(&tcp_tw_pcbs);
+	abort_port_pcb(&tcp_bound_pcbs);
 	hs_global = NULL;
 	netif_remove(&failsafe_netif);
 	httpd_progress_start_done = 0;

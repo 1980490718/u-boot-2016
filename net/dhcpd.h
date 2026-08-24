@@ -115,6 +115,7 @@ int dhcpd_request(void);
 int dhcpd_request_nonblocking(void);
 int dhcpd_poll_server(void);
 void dhcpd_stop_server(void);
+void dhcpd_deinit_server(void);
 int do_dhcpd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
 void dhcpd_ip_settings(void);
 

@@ -762,6 +762,7 @@ void dhcpd_deinit_server(void) {
 		original_udp_handler = NULL;
 	}
 
+	dhcpd_state = DHCPD_STATE_STOPPED;
 	net_set_state(NETLOOP_SUCCESS);
 
 	printf("DHCP server stopped\n");

@@ -84,6 +84,9 @@ static void reset_webfailsafe_state(void) {
 
 void HttpdStop(void) {
 	failsafe_httpd_stop();
+#ifdef CONFIG_DHCPD
+	dhcpd_deinit_server();
+#endif
 	reset_webfailsafe_state();
 }
 
