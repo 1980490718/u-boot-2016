@@ -85,8 +85,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define PART_JSON_BUF_SIZE 4096
 
-static char eol[3] = { 0x0d, 0x0a, 0x00 };
-static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
 static char *boundary_value;
 static struct {
 	u32_t ram_end;
@@ -251,7 +249,7 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 		return 0;
 	}
 
-	end = strstr(strstr(start, upload_types[i].name), eol2);
+	end = strstr(strstr(start, upload_types[i].name), "\r\n\r\n");
 	if (!end) {
 		print_error("couldn't find start of data!");
 		return 0;
@@ -295,7 +293,7 @@ static int httpd_parse_content_length(struct failsafe_httpd_state *hs, char *dat
 	char *start = strstr(data, "Content-Length:"), *end;
 	if (start) {
 		start += sizeof("Content-Length:");
-		end = strstr(start, eol);
+		end = strstr(start, "\r\n");
 		if (end) {
 			hs->upload_total = simple_strtoull(start, NULL, 10);
 			return 0;
@@ -309,7 +307,7 @@ static int httpd_parse_boundary(char *data) {
 	char *start = strstr(data, "boundary="), *end;
 	if (start) {
 		start += 9;
-		end = strstr(start, eol);
+		end = strstr(start, "\r\n");
 		if (end) {
 			boundary_value = malloc(end - start + 3);
 			if (boundary_value) {
