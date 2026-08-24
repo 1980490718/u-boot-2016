@@ -118,6 +118,7 @@ static char part_json_buf[PART_JSON_BUF_SIZE];
 static struct failsafe_httpd_state *hs_global;
 
 static void httpd_poll_wait(int count);
+static int mac_fmt(char *buf, const uchar *m, int first);
 
 static void flashread_yield(void) {
 	eth_rx();
@@ -906,7 +907,7 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 		int i, r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
 		pos += sprintf(about_json_buf + pos, "\"mac_addr\":\"");
 		for (i = 0; r >= 0 && i < CONFIG_IPQ_NO_MACS; i++)
-			pos += sprintf(about_json_buf + pos, "%s%02X:%02X:%02X:%02X:%02X:%02X", i ? ", " : "", mb[i*6], mb[i*6+1], mb[i*6+2], mb[i*6+3], mb[i*6+4], mb[i*6+5]);
+			pos += mac_fmt(about_json_buf + pos, &mb[i*6], i == 0);
 		pos += sprintf(about_json_buf + pos, "\",");
 	}
 
