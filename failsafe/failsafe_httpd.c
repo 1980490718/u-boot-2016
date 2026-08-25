@@ -472,6 +472,7 @@ static const struct phy_id_name phy_c22_ext[] = {
 	{ 0x004DD0C0, "GEPHY"        },
 	{ 0x004DD100, "QCA8081 V1.0" },
 	{ 0x004DD101, "QCA8081 V1.1" },
+	{ 0x001CC849, "RTL8221"      },
 	{ 0x004DD180, "QCA8084"      },
 };
 
@@ -533,6 +534,8 @@ static int phy_scan_mdio(int pos, int *first, mdio_read_fn mdio_read) {
 		phy_id = ((u32)id1 << 16) | id2;
 		if (!phy_id || phy_id == 0xFFFFFFFF)
 			continue;
+		if (phy_id == 0x001CC849 && phy_addr == 0)
+			continue;
 		name = phy_lookup(phy_id, phy_c22_qca,
 			ARRAY_SIZE(phy_c22_qca));
 		int is_ext = 0;
@@ -546,12 +549,19 @@ static int phy_scan_mdio(int pos, int *first, mdio_read_fn mdio_read) {
 			int link = (bmsr >> 2) & 1;
 			int spd = 0;
 			if (link) {
-				u16 ssr = (u16)mdio_read(phy_addr, 17, NULL);
-				if (is_ext)
-					spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
-				else {
-					int i = (ssr >> 14) & 3;
-					spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+				if (phy_id == 0x001CC849) {
+					u16 s = (u16)mdio_read(phy_addr,
+						(1 << 30) | (31 << 16) | 0xA434, NULL);
+					int i = ((s >> 9) & 3) * 4 + ((s >> 4) & 3);
+					spd = i == 0 ? 10 : i == 1 ? 100 : i == 2 ? 1000 : i == 5 ? 2500 : i == 7 ? 1000 : 0;
+				} else {
+					u16 ssr = (u16)mdio_read(phy_addr, 17, NULL);
+					if (is_ext)
+						spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
+					else {
+						int i = (ssr >> 14) & 3;
+						spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
+					}
 				}
 			}
 			pos = phy_emit(pos, first, name, phy_addr, id1, id2, link, spd);
