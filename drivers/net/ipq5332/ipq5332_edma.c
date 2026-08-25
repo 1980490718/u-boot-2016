@@ -96,6 +96,11 @@ extern int ipq_qca8337_link_update(ipq_s17c_swt_cfg_t *s17c_swt_cfg);
 extern void ipq_s17c_switch_reset(int gpio);
 ipq_s17c_swt_cfg_t s17c_swt_cfg[IPQ5332_PHY_MAX];
 #endif
+#ifdef CONFIG_RTL8372N_SWITCH
+#include "rtl8372n_switch.h"
+extern void ppe_uniphy_set_forceMode(uint32_t uniphy_index);
+ipq_rtl8372n_swt_cfg_t rtl8372n_swt_cfg[IPQ5332_PHY_MAX];
+#endif
 
 static int tftp_acl_our_port;
 
@@ -648,6 +653,10 @@ static int ipq5332_eth_recv(struct eth_device *dev)
 		ipq5332_edma_rx_complete(c_info);
 	}
 
+#ifdef CONFIG_RTL8372N_SWITCH
+	ipq_rtl8372n_link_poll();
+#endif
+
 	return 0;
 }
 
@@ -996,6 +1005,26 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			}
 		}
 #endif
+#ifdef CONFIG_RTL8372N_SWITCH
+		else if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
+			if (rtl8372n_swt_cfg[i].chip_detect) {
+				status = ipq_rtl8372n_link_update(
+						&rtl8372n_swt_cfg[i]);
+				if (!status) {
+					linkup++;
+					duplex = FAL_FULL_DUPLEX;
+					if (port_info[i]->mode ==
+							EPORT_WRAPPER_USXGMII)
+						curr_speed[i] = FAL_SPEED_10000;
+					else if (port_info[i]->mode ==
+							EPORT_WRAPPER_SGMII_PLUS)
+						curr_speed[i] = FAL_SPEED_2500;
+					else
+						curr_speed[i] = FAL_SPEED_1000;
+				}
+			}
+		}
+#endif
 		else if (phy_info->phy_type == SFP_PHY_TYPE) {
 			status = phy_status_get_from_ppe(i);
 			duplex = FAL_FULL_DUPLEX;
@@ -1181,6 +1210,16 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 			ppe_port_mux_mac_type_set(i + 1, sgmii_mode);
 		}
 
+#ifdef CONFIG_RTL8372N_SWITCH
+		if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
+			ppe_port_bridge_txmac_set(i, 1);
+			ppe_uniphy_mode_set(port_info[i]->uniphy_id,
+						port_info[i]->mode);
+			ppe_port_mux_mac_type_set(i + 1,
+						port_info[i]->mode);
+		}
+#endif
+
 		if (phy_info->phy_type == SFP_PHY_TYPE) {
 			if (sfp_mode == EPORT_WRAPPER_SGMII_FIBER) {
 				/* SGMII Fiber mode */
@@ -1217,6 +1256,27 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 
 		ipq5332_port_mac_clock_reset(i);
 
+#ifdef CONFIG_RTL8372N_SWITCH
+		if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
+			int rtk_mode = port_info[i]->mode;
+			if (rtk_mode == EPORT_WRAPPER_USXGMII) {
+				ipq5332_uxsgmii_speed_set(i, mac_speed,
+							duplex, status);
+			} else if (rtk_mode == EPORT_WRAPPER_SGMII_PLUS) {
+				ipq5332_xgmac_sgmiiplus_speed_set(i,
+							mac_speed, status);
+			} else {
+				ipq5332_pqsgmii_speed_set(i,
+							mac_speed, status);
+			}
+			if (status == 0) {
+				writel(0x73, (void *)(0x3a000000 +
+					0x001000 + (0x200 * i)));
+				writel(0x1, (void *)(0x3a000000 +
+					0x001034 + (0x200 * i)));
+			}
+		} else
+#endif
 		if (phy_info->phy_type == AQ_PHY_TYPE){
 			ipq5332_uxsgmii_speed_set(i, mac_speed, duplex, status);
 		} else if ((phy_info->phy_type == SFP_PHY_TYPE) &&
@@ -1862,6 +1922,47 @@ void ipq5332_prepare_qca8337_info(int phy_node, int max_phy_ports)
 }
 #endif
 
+#ifdef CONFIG_RTL8372N_SWITCH
+void ipq5332_prepare_rtl8372n_info(int phy_node, int max_phy_ports)
+{
+	int i, rtl8372n_rst_gpio;
+	int first_node;
+
+	first_node = phy_node;
+
+	rtl8372n_rst_gpio = 0;
+	for (i = 0, phy_node = fdt_first_subnode(gd->fdt_blob, first_node);
+		phy_node > 0 && i < 1; ++i,
+		phy_node = fdt_next_subnode(gd->fdt_blob, phy_node)) {
+		rtl8372n_rst_gpio = fdtdec_get_uint(gd->fdt_blob, phy_node,
+			"rtl8372n_rst_gpio", 0);
+	}
+
+	if (rtl8372n_rst_gpio)
+		ipq_rtl8372n_switch_reset(rtl8372n_rst_gpio);
+
+	for (i = 0, phy_node = fdt_first_subnode(gd->fdt_blob, first_node);
+		phy_node > 0 && i < max_phy_ports; ++i,
+		phy_node = fdt_next_subnode(gd->fdt_blob, phy_node)) {
+
+		rtl8372n_swt_cfg[i].chip_detect = 0;
+
+		rtl8372n_swt_cfg[i].mdio_addr = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "mdio_addr", 0);
+		rtl8372n_swt_cfg[i].port_count = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "port_count", 0);
+		rtl8372n_swt_cfg[i].sds0_mode = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "sds0_mode", 0);
+		rtl8372n_swt_cfg[i].sds1_mode = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "sds1_mode", 0);
+		rtl8372n_swt_cfg[i].cpu_port = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "cpu_port", 0);
+		rtl8372n_swt_cfg[i].port_mask = fdtdec_get_uint(gd->fdt_blob,
+				phy_node, "port_mask", 0);
+	}
+}
+#endif
+
 int ipq5332_edma_init(void *edma_board_cfg)
 {
 	struct eth_device *dev[IPQ5332_EDMA_DEV];
@@ -1886,6 +1987,9 @@ int ipq5332_edma_init(void *edma_board_cfg)
 #endif
 #ifdef CONFIG_ATHRS17C_SWITCH
 	int s17c_swt_enb = 0;
+#endif
+#ifdef CONFIG_RTL8372N_SWITCH
+	int rtl8372n_swt_enb = 0;
 #endif
 	int node, phy_addr, mode, phy_node = -1;
 	/*
@@ -1919,6 +2023,16 @@ int ipq5332_edma_init(void *edma_board_cfg)
 				"/ess-switch/qca8337_swt_info");
 
 		ipq5332_prepare_qca8337_info(phy_node, IPQ5332_PHY_MAX);
+	}
+#endif
+#ifdef CONFIG_RTL8372N_SWITCH
+	rtl8372n_swt_enb = fdtdec_get_uint(gd->fdt_blob, node,
+			"rtl8372n_switch_enable", 0);
+	if (rtl8372n_swt_enb) {
+		phy_node = fdt_path_offset(gd->fdt_blob,
+				"/ess-switch/rtl8372n_swt_info");
+
+		ipq5332_prepare_rtl8372n_info(phy_node, IPQ5332_PHY_MAX);
 	}
 #endif
 	phy_node = fdt_path_offset(gd->fdt_blob, "/ess-switch/port_phyinfo");
@@ -2051,6 +2165,11 @@ int ipq5332_edma_init(void *edma_board_cfg)
 				mdelay(100);
 			}
 #endif
+#ifdef CONFIG_RTL8372N_SWITCH
+			if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
+				phy_chip_id = RTL8372N_PHY;
+			} else
+#endif
 			if (phy_info->phy_type == AQ_PHY_TYPE) {
 				phy_chip_id1 = ipq_mdio_read(phy_addr,
 							(1<<30) |(1<<16) |
@@ -2161,6 +2280,38 @@ int ipq5332_edma_init(void *edma_board_cfg)
 					if (ret < 0) {
 						printf("qca8337 init failed"
 							"_%d\n", phy_id);
+					}
+				}
+			break;
+#endif
+#ifdef CONFIG_RTL8372N_SWITCH
+			case RTL8372N_PHY:
+				if (rtl8372n_swt_enb) {
+					ppe_uniphy_set_forceMode(
+						port_info[phy_id]->uniphy_id);
+					ppe_uniphy_refclk_set_25M(
+						port_info[phy_id]->uniphy_id);
+					++rtl8372n_swt_cfg[phy_id].chip_detect;
+					ipq5332_port_mac_clock_reset(phy_id);
+					if (port_info[phy_id]->mode ==
+							EPORT_WRAPPER_USXGMII) {
+						ipq5332_uxsgmii_speed_set(
+							phy_id, 0x3, 1, 0);
+					} else {
+						ipq5332_xgmac_sgmiiplus_speed_set(
+							phy_id, 0x4, 0);
+					}
+					writel(0x73, (void *)(0x3a000000 +
+						0x001000 + (0x200 * phy_id)));
+					writel(0x1, (void *)(0x3a000000 +
+						0x001034 + (0x200 * phy_id)));
+					ipq5332_speed_clock_set(phy_id, clk);
+					ret = ipq_rtl8372n_switch_init(
+							&rtl8372n_swt_cfg[phy_id]);
+					if (ret < 0) {
+						printf("rtl8372n init failed"
+							"_%d\n", phy_id);
+						rtl8372n_swt_cfg[phy_id].chip_detect = 0;
 					}
 				}
 			break;

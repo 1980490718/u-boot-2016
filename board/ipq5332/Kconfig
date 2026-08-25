@@ -68,6 +68,9 @@ config QCA8081_PHY
 config RTL8221_PHY
 	bool "Enable RTL8221 PHY support"
 
+config RTL8372N_SWITCH
+	bool "Enable RTL8372N Switch support"
+
 config DPR_EXECUTE
 	bool "Enable DPR support"
 
