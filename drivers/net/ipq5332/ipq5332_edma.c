@@ -1925,40 +1925,35 @@ void ipq5332_prepare_qca8337_info(int phy_node, int max_phy_ports)
 #ifdef CONFIG_RTL8372N_SWITCH
 void ipq5332_prepare_rtl8372n_info(int phy_node, int max_phy_ports)
 {
-	int i, rtl8372n_rst_gpio;
-	int first_node;
+	int i, rtl8372n_rst_gpio = 0, first_node;
 
 	first_node = phy_node;
 
-	rtl8372n_rst_gpio = 0;
-	for (i = 0, phy_node = fdt_first_subnode(gd->fdt_blob, first_node);
-		phy_node > 0 && i < 1; ++i,
-		phy_node = fdt_next_subnode(gd->fdt_blob, phy_node)) {
-		rtl8372n_rst_gpio = fdtdec_get_uint(gd->fdt_blob, phy_node,
-			"rtl8372n_rst_gpio", 0);
+	phy_node = fdt_first_subnode(gd->fdt_blob, first_node);
+	if (phy_node > 0) {
+		rtl8372n_rst_gpio = fdtdec_get_uint(gd->fdt_blob, phy_node, "rtl8372n_rst_gpio", 0);
+		if (rtl8372n_rst_gpio)
+			ipq_rtl8372n_switch_reset(rtl8372n_rst_gpio);
 	}
-
-	if (rtl8372n_rst_gpio)
-		ipq_rtl8372n_switch_reset(rtl8372n_rst_gpio);
 
 	for (i = 0, phy_node = fdt_first_subnode(gd->fdt_blob, first_node);
 		phy_node > 0 && i < max_phy_ports; ++i,
 		phy_node = fdt_next_subnode(gd->fdt_blob, phy_node)) {
 
 		rtl8372n_swt_cfg[i].chip_detect = 0;
+		rtl8372n_swt_cfg[i].last_link = 0;
 
 		rtl8372n_swt_cfg[i].mdio_addr = fdtdec_get_uint(gd->fdt_blob,
 				phy_node, "mdio_addr", 0);
-		rtl8372n_swt_cfg[i].port_count = fdtdec_get_uint(gd->fdt_blob,
-				phy_node, "port_count", 0);
-		rtl8372n_swt_cfg[i].sds0_mode = fdtdec_get_uint(gd->fdt_blob,
-				phy_node, "sds0_mode", 0);
-		rtl8372n_swt_cfg[i].sds1_mode = fdtdec_get_uint(gd->fdt_blob,
-				phy_node, "sds1_mode", 0);
 		rtl8372n_swt_cfg[i].cpu_port = fdtdec_get_uint(gd->fdt_blob,
-				phy_node, "cpu_port", 0);
+				phy_node, "cpu_port", 8);
+		rtl8372n_swt_cfg[i].sds0_mode = RTL8372N_SDS_MODE_HSGMII;
+		rtl8372n_swt_cfg[i].sds1_mode = rtl8372n_swt_cfg[i].cpu_port == 8 ?
+				RTL8372N_SDS_MODE_10GQXG : RTL8372N_SDS_MODE_OFF;
 		rtl8372n_swt_cfg[i].port_mask = fdtdec_get_uint(gd->fdt_blob,
 				phy_node, "port_mask", 0);
+		if (!rtl8372n_swt_cfg[i].port_mask)
+			rtl8372n_swt_cfg[i].port_mask = 0xF0 | (1 << rtl8372n_swt_cfg[i].cpu_port);
 	}
 }
 #endif
