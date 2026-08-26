@@ -71,6 +71,11 @@ config RTL8221_PHY
 config RTL8372N_SWITCH
 	bool "Enable RTL8372N Switch support"
 
+config RTL8372N_DEBUG
+	bool "Enable RTL8372N debug prints"
+	depends on RTL8372N_SWITCH
+	default n
+
 config DPR_EXECUTE
 	bool "Enable DPR support"
 

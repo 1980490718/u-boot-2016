@@ -423,7 +423,9 @@ static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask) {
 		if (fw_ver == 0x008)
 			continue;
 
+#ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: PHY%d fw_ver=0x%04x, applying v008 patch...\n", port_index, fw_ver);
+#endif
 
 		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xB820, 0x10, 1);
 
@@ -495,7 +497,9 @@ static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask) {
 		rtl8372n_phy_write(mdio_addr, 1 << port_index, 31, 0xA5D0, 0);
 		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA428, 0x200, 0);
 
+#ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: PHY%d v008 patch applied\n", port_index);
+#endif
 	}
 
 	return 0;
@@ -813,12 +817,14 @@ static int rtl8372n_port_isolation_setup(u32 mdio_addr, u32 cpu_port, u32 port_m
 		}
 	}
 
+#ifdef CONFIG_RTL8372N_DEBUG
 	printf("RTL8372N: port isolation done (cpu=%d, users=0x%x)\n", cpu_port, user_ports);
+#endif
 	return 0;
 }
 
 static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u32 cpu_port, u32 port_mask) {
-	u32 init_state, reg_val, reg_index, chip, mode, force, tag;
+	u32 init_state, reg_val, reg_index;
 	int port;
 
 	rtl8372n_reg_read(mdio_addr, 0x7F60, &reg_val);
@@ -928,16 +934,18 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_MAC_L2_GLOBAL_CTRL0_ADDR, RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_INVLD_MAC_CTRL_MASK, 0);
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_MAC_L2_GLOBAL_CTRL0_ADDR, RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_UNKN_OPCODE_MASK, 0);
 
+#ifdef CONFIG_RTL8372N_DEBUG
 	{
+		u32 chip, mode, force, tag;
 		rtl8372n_reg_read(mdio_addr, 0x4, &chip);
 		rtl8372n_reg_read(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, &mode);
 		rtl8372n_reg_read(mdio_addr, RTL8372N_MAC_FORCE_MODE_CTRL0_ADDR(cpu_port), &force);
 		rtl8372n_reg_read(mdio_addr, RTL8372N_CPU_TAG_CTRL_ADDR, &tag);
-
 		printf("RTL8372N: handoff chip=0x%08x sds=0x%08x force=0x%08x tag=0x%08x\n", chip, mode, force, tag);
 	}
 
 	printf("RTL8372N: switch init done (stock handoff)\n");
+#endif
 	return 0;
 }
 
@@ -960,7 +968,9 @@ int ipq_rtl8372n_switch_init(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	for (retry = 0; retry < RTL8372N_CHIP_PROBE_RETRY; retry++) {
 		if (rtl8372n_chip_probe(swt_cfg->mdio_addr) == 0)
 			break;
+#ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: probe retry %d/%d\n", retry + 1, RTL8372N_CHIP_PROBE_RETRY);
+#endif
 		mdelay(100);
 	}
 
@@ -972,7 +982,9 @@ int ipq_rtl8372n_switch_init(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 
 	swt_cfg->chip_detect = 1;
 
+#ifdef CONFIG_RTL8372N_DEBUG
 	printf("RTL8372N: chip detected\n");
+#endif
 
 	if (_rtl8372n_switch_init(swt_cfg->mdio_addr, swt_cfg->sds0_mode, swt_cfg->sds1_mode, swt_cfg->cpu_port, swt_cfg->port_mask) < 0) {
 		printf("RTL8372N: switch init failed\n");
@@ -1019,7 +1031,9 @@ int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	if (rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_DUP_STS_ADDR, &dup_sts) < 0)
 		return 1;
 
+#ifdef CONFIG_RTL8372N_DEBUG
 	printf("RTL8372N: mac_sts=0x%x phy_link=0x%x last=0x%x changed=0x%x\n", mac_link_sts, phy_link, swt_cfg->last_link, changed);
+#endif
 
 	for (port = 0; port <= 9; port++) {
 		if (!(changed & BIT(port)))
