@@ -996,15 +996,15 @@ int ipq_rtl8372n_switch_init(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	return 0;
 }
 
-static const char *rtl8372n_speed_str(u32 speed) {
+static u32 rtl8372n_speed_mbps(u32 speed) {
 	switch (speed) {
-	case RTL8372N_PORT_SPEED_10M:	return "10M";
-	case RTL8372N_PORT_SPEED_100M:	return "100M";
-	case RTL8372N_PORT_SPEED_1000M:	return "1G";
-	case RTL8372N_PORT_SPEED_2500M:	return "2.5G";
-	case RTL8372N_PORT_SPEED_5G:	return "5G";
-	case RTL8372N_PORT_SPEED_10G:	return "10G";
-	default:						return "???";
+	case RTL8372N_PORT_SPEED_10M:	return 10;
+	case RTL8372N_PORT_SPEED_100M:	return 100;
+	case RTL8372N_PORT_SPEED_1000M:	return 1000;
+	case RTL8372N_PORT_SPEED_2500M:	return 2500;
+	case RTL8372N_PORT_SPEED_5G:	return 5000;
+	case RTL8372N_PORT_SPEED_10G:	return 10000;
+	default:						return 0;
 	}
 }
 
@@ -1052,10 +1052,11 @@ int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 				speed_val = (spd_sts >> RTL8372N_MAC_LINK_SPD_STS_OFFSET(port)) & (RTL8372N_MAC_LINK_SPD_STS_MASK(port) >>
 					     RTL8372N_MAC_LINK_SPD_STS_OFFSET(port));
 			}
-			printf("RTL8372N: Port%d Link Up - %s %s\n", port, rtl8372n_speed_str(speed_val), (dup_sts & BIT(port)) ? "Full" : "Half");
-		} else {
-			printf("RTL8372N: Port%d Link Down\n", port);
 		}
+		printf("RTL8372N: Port%d %s Speed :%d %s duplex\n", port,
+			(phy_link & BIT(port)) ? "up" : "down",
+			(phy_link & BIT(port)) ? rtl8372n_speed_mbps(speed_val) : 0,
+			(phy_link & BIT(port)) ? ((dup_sts & BIT(port)) ? "Full" : "Half") : "Half");
 	}
 
 	swt_cfg->last_link = phy_link;
