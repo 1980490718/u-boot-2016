@@ -61,11 +61,7 @@
 			switch@0 {
 				rtl8372n_rst_gpio = <25>;
 				mdio_addr = <29>;
-				port_count = <5>;
-				sds0_mode = <0x12>;
-				sds1_mode = <0xD>;
 				cpu_port = <8>;
-				port_mask = <0x1F8>;
 			};
 		};
 	};
