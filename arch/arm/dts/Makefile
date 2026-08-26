@@ -138,6 +138,8 @@ else ifeq ($(CONFIG_IPQ5332_JDCLOUD_BE6500),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-jdcloud-be6500.dtb
 else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE6500),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be6500.dtb
+else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE3600_PRO_WIRED_5PORTS),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi_be3600_pro_wired_5ports.dtb
 else
 ifneq ($(CONFIG_IPQ_TINY),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-emulation.dtb \

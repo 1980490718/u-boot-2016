@@ -118,4 +118,10 @@ config IPQ5332_XIAOMI_BE6500
 	default n
 	help
 		Enable support for IPQ5332_XIAOMI_BE6500 support
+
+config IPQ5332_XIAOMI_BE3600_PRO_WIRED_5PORTS
+	bool "For IPQ5332_XIAOMI_BE3600_PRO_WIRED_5PORTS support"
+	default n
+	help
+		Enable support for IPQ5332_XIAOMI_BE3600_PRO_WIRED_5PORTS (RTL8372N + RTL8221) support
 endif

@@ -55,58 +55,59 @@ cd u-boot-2016
 <details id="platform-list" open>
 <summary>支持的平台以及设备型号</summary>
 
-|  平台   | 配置\_defconfig             | 设备型号(配置)                    |         machid         | 是否测试 | 编译命令                             |
-| :-----: | --------------------------- | :-------------------------------- | :--------------------: | :------: | ---------------------------------------- |
-| IPQ40xx | ipq40xx_aliyun_ap4220       | 阿里云 AP4220                     |       0x9000010        |    ✓     | `./build.sh ipq40xx_aliyun_ap4220`       |
-| IPQ40xx | ipq40xx_standard            | 公版标准                          |       Multi-machid     |    ✓     | `./build.sh ipq40xx_standard`            |
-| IPQ40xx | ipq40xx_p2w_r619ac          | P2W R619AC                        |       0x8010006        |    ✓     | `./build.sh ipq40xx_p2w_r619ac`          |
-| IPQ40xx | ipq40xx_thinkplus_fogpod800 | ThinkPlus FogPod800               |       0x8010100        |    ✓     | `./build.sh ipq40xx_thinkplus_fogpod800` |
-| IPQ40xx | ipq40xx                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq40xx`                     |
-| IPQ5018 | ipq5018_ctcc_ap301_l        | CTCC AP301-L                      |       0x8040002        |    ✓     | `./build.sh ipq5018_ctcc_ap301_l`        |
-| IPQ5018 | ipq5018_cmcc_rax3000q       | CMCC RAX3000Q                     |       0x8040000        |    ×     | `./build.sh ipq5018_cmcc_rax3000q`       |
-| IPQ5018 | ipq5018_cucc_vs010          | CUCC VS010                        |       0x8040000        |    ✓     | `./build.sh ipq5018_cucc_vs010`          |
-| IPQ5018 | ipq5018_gl_b3000            | GLINET GL-B3000                   |       0x8040004        |    ×     | `./build.sh ipq5018_gl_b3000`            |
-| IPQ5018 | ipq5018_jdcloud_ax3000      | JDCloud AX3000(RE-OS-03U)         |       0x8040104        |    ✓     | `./build.sh ipq5018_jdcloud_ax3000`      |
-| IPQ5018 | ipq5018_mr3000d_04          | CMCC MR3000D-04                   |       0x8040702        |    ✓     | `./build.sh ipq5018_mr3000d_04`          |
-| IPQ5018 | ipq5018_mr3000d_ci          | CMCC MR3000D-CI                   |       0x8040802        |    ✓     | `./build.sh ipq5018_mr3000d_ci`          |
-| IPQ5018 | ipq5018_pz_l8               | CMCC PZ-L8                        |       0x8040000        |    ×     | `./build.sh ipq5018_pz_l8`               |
-| IPQ5018 | ipq5018_ruijie_ma3063       | 锐捷 RG-MA3063                    | 0x8040000<br>0x8040004 |    ×     | `./build.sh ipq5018_ruijie_ma3063`       |
-| IPQ5018 | ipq5018_skspruce_ap8330c    | 西加云杉 SKSPRUCE AP8330C         |       0x8040202        |    ✓     | `./build.sh ipq5018_skspruce_ap8330c`    |
-| IPQ5018 | ipq5018_tiny                | 公版简                            |       Multi-machid     |    ✓     | `./build.sh ipq5018_tiny`                |
-| IPQ5018 | ipq5018_tiny_debug          | 公版调试简                        |       Multi-machid     |    ✓     | `./build.sh ipq5018_tiny_debug`          |
-| IPQ5018 | ipq5018                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq5018`                     |
-| IPQ5332 | ipq5332_h3c_ne36pro         | H3C NE36PRO                       |       0x8060007        |    ✓     | `./build.sh ipq5332_h3c_ne36pro`         |
-| IPQ5332 | ipq5332_jdcloud_be6500      | JDCloud BE6500(JDBox RE-CS-06)    |       0x8060000        |    ✓     | `./build.sh ipq5332_jdcloud_be6500`     |
-| IPQ5332 | ipq5332_xiaomi_be306        | 小米 BE306                        |       0x8060007        |    ×     | `./build.sh ipq5332_xiaomi_be306`        |
-| IPQ5332 | ipq5332_xiaomi_be6500       | 小米 BE6500(RN02)                 |       0x8060001        |    ✓     | `./build.sh ipq5332_xiaomi_be6500`       |
-| IPQ5332 | ipq5332_tiny                | 公版简                            |       Multi-machid     |    ✓     | `./build.sh ipq5332_tiny`                |
-| IPQ5332 | ipq5332_tiny_nor            | NOR闪存简                         |       Multi-machid     |    ✓     | `./build.sh ipq5332_tiny_nor`            |
-| IPQ5332 | ipq5332_tiny_debug          | 公版调试简                        |       Multi-machid     |    ✓     | `./build.sh ipq5332_tiny_debug`          |
-| IPQ5332 | ipq5332_tiny2               | 公版简2                           |       Multi-machid     |    ✓     | `./build.sh ipq5332_tiny2`               |
-| IPQ5332 | ipq5332                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq5332`                     |
-| IPQ6018 | ipq6018_360v6               | 奇虎360v6                         |       0x8030200        |    ✓     | `./build.sh ipq6018_360v6`               |
-| IPQ6018 | ipq6018_ax1800pro           | 京东云 AX1800Pro                  |       0x8030200        |    ✓     | `./build.sh ipq6018_ax1800pro`           |
-| IPQ6018 | ipq6018_ax5_jdcloud         | 京东云 AX5                        |       0x8030200        |    ✓     | `./build.sh ipq6018_ax5_jdcloud`         |
-| IPQ6018 | ipq6018_dptech_ap3000_2c    | 迪普 DPtech AP3000-2C             |       0x8030200        |    ✓     | `./build.sh ipq6018_dptech_ap3000_2c`    |
-| IPQ6018 | ipq6018_glinet_axt1800      | GLINET<br>GL-AXT1800<br>GL-AX1800 |       0x8030200        |    ✓     | `./build.sh ipq6018_glinet_axt1800`      |
-| IPQ6018 | ipq6018_philips_ly1800      | 飞利浦 LY1800<br>双渔 Y6010       |       0x8030000        |    ✓     | `./build.sh ipq6018_philips_ly1800`      |
-| IPQ6018 | ipq6018_jdcloud_ax6600      | 京东云 AX6600                     |       0x8030201        |    ✓     | `./build.sh ipq6018_jdcloud_ax6600`      |
-| IPQ6018 | ipq6018_jdcloud_er1         | 京东云 ER1                        |       0x8030203        |    ✓     | `./build.sh ipq6018_jdcloud_er1`         |
-| IPQ6018 | ipq6018_m2                  | 兆能 M2<br>CMIOT AX18             |       0x8030200        |    ✓     | `./build.sh ipq6018_m2`                  |
-| IPQ6018 | ipq6018_nn6000              | Link NN6000                       |       0x8030202        |    ✓     | `./build.sh ipq6018_nn6000`              |
-| IPQ6018 | ipq6018_xiaomi_ax1800       | 小米 AX1800                       |       0x8030200        |    ✓     | `./build.sh ipq6018_xiaomi_ax1800`       |
-| IPQ6018 | ipq6018_tiny                | 公版简                            |       Multi-machid     |    ✓     | `./build.sh ipq6018_tiny`                |
-| IPQ6018 | ipq6018                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq6018`                     |
-| IPQ6018 | ipq6018_zxelink_w212x       | ZXeLink W212X                     |       0x8030200        |    ✓     | `./build.sh ipq6018_zxelink_w212x`       |
-| IPQ806x | ipq806x_standard            | 公版标准                          |       Multi-machid     |    ?     | `./build.sh ipq806x_standard`            |
-| IPQ806x | ipq806x                     | 公版基础                          |       Multi-machid     |    ?     | `./build.sh ipq806x`                     |
-| IPQ807x | ipq807x_aliyun_ap8220       | 阿里云 AP8220                     |       0x0801000A       |    ✓     | `./build.sh ipq807x_aliyun_ap8220`       |
-| IPQ807x | ipq807x_redmi_ax6           | 小米 AX3600<br>红米 AX6           |       0x08010010       |    ✓     | `./build.sh ipq807x_redmi_ax6`           |
-| IPQ807x | ipq807x_tiny                | 公版简                            |       Multi-machid     |    ✓     | `./build.sh ipq807x_tiny`                |
-| IPQ807x | ipq807x_xglink_5gcpe        | XGlink 5GCPE                      |       0x08010008       |    ✓     | `./build.sh ipq807x_xglink_5gcpe`        |
-| IPQ807x | ipq807x                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq807x`                     |
-| IPQ9574 | ipq9574_xiaomi_be7000       | 小米 BE7000                       |       0x8050501        |    ✓     | `./build.sh ipq9574_xiaomi_be7000`       |
-| IPQ9574 | ipq9574                     | 公版基础                          |       Multi-machid     |    ✓     | `./build.sh ipq9574`                     |
+|  平台   | 配置\_defconfig                        | 设备型号(配置)                    |         machid         | 是否测试 | 编译命令                                            |
+| :-----: | ---------------------------            | :-------------------------------- | :--------------------: | :------: | ----------------------------------------            |
+| IPQ40xx | ipq40xx_aliyun_ap4220                  | 阿里云 AP4220                     |       0x9000010        |    ✓     | `./build.sh ipq40xx_aliyun_ap4220`                  |
+| IPQ40xx | ipq40xx_standard                       | 公版标准                          |      Multi-machid      |    ✓     | `./build.sh ipq40xx_standard`                       |
+| IPQ40xx | ipq40xx_p2w_r619ac                     | P2W R619AC                        |       0x8010006        |    ✓     | `./build.sh ipq40xx_p2w_r619ac`                     |
+| IPQ40xx | ipq40xx_thinkplus_fogpod800            | ThinkPlus FogPod800               |       0x8010100        |    ✓     | `./build.sh ipq40xx_thinkplus_fogpod800`            |
+| IPQ40xx | ipq40xx                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq40xx`                                |
+| IPQ5018 | ipq5018_ctcc_ap301_l                   | CTCC AP301-L                      |       0x8040002        |    ✓     | `./build.sh ipq5018_ctcc_ap301_l`                   |
+| IPQ5018 | ipq5018_cmcc_rax3000q                  | CMCC RAX3000Q                     |       0x8040000        |    ×     | `./build.sh ipq5018_cmcc_rax3000q`                  |
+| IPQ5018 | ipq5018_cucc_vs010                     | CUCC VS010                        |       0x8040000        |    ✓     | `./build.sh ipq5018_cucc_vs010`                     |
+| IPQ5018 | ipq5018_gl_b3000                       | GLINET GL-B3000                   |       0x8040004        |    ×     | `./build.sh ipq5018_gl_b3000`                       |
+| IPQ5018 | ipq5018_jdcloud_ax3000                 | JDCloud AX3000(RE-OS-03U)         |       0x8040104        |    ✓     | `./build.sh ipq5018_jdcloud_ax3000`                 |
+| IPQ5018 | ipq5018_mr3000d_04                     | CMCC MR3000D-04                   |       0x8040702        |    ✓     | `./build.sh ipq5018_mr3000d_04`                     |
+| IPQ5018 | ipq5018_mr3000d_ci                     | CMCC MR3000D-CI                   |       0x8040802        |    ✓     | `./build.sh ipq5018_mr3000d_ci`                     |
+| IPQ5018 | ipq5018_pz_l8                          | CMCC PZ-L8                        |       0x8040000        |    ×     | `./build.sh ipq5018_pz_l8`                          |
+| IPQ5018 | ipq5018_ruijie_ma3063                  | 锐捷 RG-MA3063                    | 0x8040000<br>0x8040004 |    ×     | `./build.sh ipq5018_ruijie_ma3063`                  |
+| IPQ5018 | ipq5018_skspruce_ap8330c               | 西加云杉 SKSPRUCE AP8330C         |       0x8040202        |    ✓     | `./build.sh ipq5018_skspruce_ap8330c`               |
+| IPQ5018 | ipq5018_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq5018_tiny`                           |
+| IPQ5018 | ipq5018_tiny_debug                     | 公版调试简                        |      Multi-machid      |    ✓     | `./build.sh ipq5018_tiny_debug`                     |
+| IPQ5018 | ipq5018                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq5018`                                |
+| IPQ5332 | ipq5332_h3c_ne36pro                    | H3C NE36PRO                       |       0x8060007        |    ✓     | `./build.sh ipq5332_h3c_ne36pro`                    |
+| IPQ5332 | ipq5332_jdcloud_be6500                 | JDCloud BE6500(JDBox RE-CS-06)    |       0x8060000        |    ✓     | `./build.sh ipq5332_jdcloud_be6500`                 |
+| IPQ5332 | ipq5332_xiaomi_be306                   | 小米 BE306                        |       0x8060007        |    ×     | `./build.sh ipq5332_xiaomi_be306`                   |
+| IPQ5332 | ipq5332_xiaomi_be6500                  | 小米 BE6500(RN02)                 |       0x8060001        |    ✓     | `./build.sh ipq5332_xiaomi_be6500`                  |
+| IPQ5332 | ipq5332_xiaomi_be3600_pro_wired_5ports | 小米 BE3600 Pro 有线版 5口        |       0x8060007        |    ✓     | `./build.sh ipq5332_xiaomi_be3600_pro_wired_5ports` |
+| IPQ5332 | ipq5332_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny`                           |
+| IPQ5332 | ipq5332_tiny_nor                       | NOR闪存简                         |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny_nor`                       |
+| IPQ5332 | ipq5332_tiny_debug                     | 公版调试简                        |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny_debug`                     |
+| IPQ5332 | ipq5332_tiny2                          | 公版简2                           |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny2`                          |
+| IPQ5332 | ipq5332                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq5332`                                |
+| IPQ6018 | ipq6018_360v6                          | 奇虎360v6                         |       0x8030200        |    ✓     | `./build.sh ipq6018_360v6`                          |
+| IPQ6018 | ipq6018_ax1800pro                      | 京东云 AX1800Pro                  |       0x8030200        |    ✓     | `./build.sh ipq6018_ax1800pro`                      |
+| IPQ6018 | ipq6018_ax5_jdcloud                    | 京东云 AX5                        |       0x8030200        |    ✓     | `./build.sh ipq6018_ax5_jdcloud`                    |
+| IPQ6018 | ipq6018_dptech_ap3000_2c               | 迪普 DPtech AP3000-2C             |       0x8030200        |    ✓     | `./build.sh ipq6018_dptech_ap3000_2c`               |
+| IPQ6018 | ipq6018_glinet_axt1800                 | GLINET<br>GL-AXT1800<br>GL-AX1800 |       0x8030200        |    ✓     | `./build.sh ipq6018_glinet_axt1800`                 |
+| IPQ6018 | ipq6018_philips_ly1800                 | 飞利浦 LY1800<br>双渔 Y6010       |       0x8030000        |    ✓     | `./build.sh ipq6018_philips_ly1800`                 |
+| IPQ6018 | ipq6018_jdcloud_ax6600                 | 京东云 AX6600                     |       0x8030201        |    ✓     | `./build.sh ipq6018_jdcloud_ax6600`                 |
+| IPQ6018 | ipq6018_jdcloud_er1                    | 京东云 ER1                        |       0x8030203        |    ✓     | `./build.sh ipq6018_jdcloud_er1`                    |
+| IPQ6018 | ipq6018_m2                             | 兆能 M2<br>CMIOT AX18             |       0x8030200        |    ✓     | `./build.sh ipq6018_m2`                             |
+| IPQ6018 | ipq6018_nn6000                         | Link NN6000                       |       0x8030202        |    ✓     | `./build.sh ipq6018_nn6000`                         |
+| IPQ6018 | ipq6018_xiaomi_ax1800                  | 小米 AX1800                       |       0x8030200        |    ✓     | `./build.sh ipq6018_xiaomi_ax1800`                  |
+| IPQ6018 | ipq6018_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq6018_tiny`                           |
+| IPQ6018 | ipq6018                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq6018`                                |
+| IPQ6018 | ipq6018_zxelink_w212x                  | ZXeLink W212X                     |       0x8030200        |    ✓     | `./build.sh ipq6018_zxelink_w212x`                  |
+| IPQ806x | ipq806x_standard                       | 公版标准                          |      Multi-machid      |    ?     | `./build.sh ipq806x_standard`                       |
+| IPQ806x | ipq806x                                | 公版基础                          |      Multi-machid      |    ?     | `./build.sh ipq806x`                                |
+| IPQ807x | ipq807x_aliyun_ap8220                  | 阿里云 AP8220                     |       0x0801000A       |    ✓     | `./build.sh ipq807x_aliyun_ap8220`                  |
+| IPQ807x | ipq807x_redmi_ax6                      | 小米 AX3600<br>红米 AX6           |       0x08010010       |    ✓     | `./build.sh ipq807x_redmi_ax6`                      |
+| IPQ807x | ipq807x_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq807x_tiny`                           |
+| IPQ807x | ipq807x_xglink_5gcpe                   | XGlink 5GCPE                      |       0x08010008       |    ✓     | `./build.sh ipq807x_xglink_5gcpe`                   |
+| IPQ807x | ipq807x                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq807x`                                |
+| IPQ9574 | ipq9574_xiaomi_be7000                  | 小米 BE7000                       |       0x8050501        |    ✓     | `./build.sh ipq9574_xiaomi_be7000`                  |
+| IPQ9574 | ipq9574                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq9574`                                |
 
 </details>
 
