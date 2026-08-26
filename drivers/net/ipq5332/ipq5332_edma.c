@@ -2167,7 +2167,7 @@ int ipq5332_edma_init(void *edma_board_cfg)
 #endif
 #ifdef CONFIG_RTL8372N_SWITCH
 			if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
-				phy_chip_id = RTL8372N_PHY;
+				continue;
 			} else
 #endif
 			if (phy_info->phy_type == AQ_PHY_TYPE) {
@@ -2284,38 +2284,6 @@ int ipq5332_edma_init(void *edma_board_cfg)
 				}
 			break;
 #endif
-#ifdef CONFIG_RTL8372N_SWITCH
-			case RTL8372N_PHY:
-				if (rtl8372n_swt_enb) {
-					ppe_uniphy_set_forceMode(
-						port_info[phy_id]->uniphy_id);
-					ppe_uniphy_refclk_set_25M(
-						port_info[phy_id]->uniphy_id);
-					++rtl8372n_swt_cfg[phy_id].chip_detect;
-					ipq5332_port_mac_clock_reset(phy_id);
-					if (port_info[phy_id]->mode ==
-							EPORT_WRAPPER_USXGMII) {
-						ipq5332_uxsgmii_speed_set(
-							phy_id, 0x3, 1, 0);
-					} else {
-						ipq5332_xgmac_sgmiiplus_speed_set(
-							phy_id, 0x4, 0);
-					}
-					writel(0x73, (void *)(0x3a000000 +
-						0x001000 + (0x200 * phy_id)));
-					writel(0x1, (void *)(0x3a000000 +
-						0x001034 + (0x200 * phy_id)));
-					ipq5332_speed_clock_set(phy_id, clk);
-					ret = ipq_rtl8372n_switch_init(
-							&rtl8372n_swt_cfg[phy_id]);
-					if (ret < 0) {
-						printf("rtl8372n init failed"
-							"_%d\n", phy_id);
-						rtl8372n_swt_cfg[phy_id].chip_detect = 0;
-					}
-				}
-			break;
-#endif
 #ifdef CONFIG_IPQ_QCA_AQUANTIA_PHY
 			case AQUANTIA_PHY_107:
 			case AQUANTIA_PHY_109:
@@ -2344,6 +2312,45 @@ int ipq5332_edma_init(void *edma_board_cfg)
 			break;
 			}
 		}
+
+#ifdef CONFIG_RTL8372N_SWITCH
+		for (phy_id = 0; phy_id < IPQ5332_PHY_MAX; phy_id++) {
+			phy_info = port_info[phy_id]->phy_info;
+			if (phy_info->phy_type != RTL8372N_SWITCH_TYPE)
+				continue;
+			if (!rtl8372n_swt_enb)
+				continue;
+
+			ipq_set_mdio_mode(mdio_info[phy_id]->mode,
+						mdio_info[phy_id]->bus_no);
+			ppe_uniphy_set_forceMode(
+					port_info[phy_id]->uniphy_id);
+			ppe_uniphy_refclk_set_25M(
+					port_info[phy_id]->uniphy_id);
+			++rtl8372n_swt_cfg[phy_id].chip_detect;
+			ipq5332_port_mac_clock_reset(phy_id);
+			if (port_info[phy_id]->mode ==
+					EPORT_WRAPPER_USXGMII) {
+				ipq5332_uxsgmii_speed_set(
+					phy_id, 0x3, 1, 0);
+			} else {
+				ipq5332_xgmac_sgmiiplus_speed_set(
+					phy_id, 0x4, 0);
+			}
+			writel(0x73, (void *)(0x3a000000 +
+				0x001000 + (0x200 * phy_id)));
+			writel(0x1, (void *)(0x3a000000 +
+				0x001034 + (0x200 * phy_id)));
+			ipq5332_speed_clock_set(phy_id, clk);
+			ret = ipq_rtl8372n_switch_init(
+					&rtl8372n_swt_cfg[phy_id]);
+			if (ret < 0) {
+				printf("rtl8372n init failed"
+					"_%d\n", phy_id);
+				rtl8372n_swt_cfg[phy_id].chip_detect = 0;
+			}
+		}
+#endif
 
 		for (phy_id = 0; phy_id < qca8084_chip_detect; ++phy_id) {
 
