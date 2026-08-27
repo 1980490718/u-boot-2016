@@ -423,7 +423,11 @@ void autoboot_command(const char *s)
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 #endif
-
+#ifdef CONFIG_IPQ5332
+#ifdef CONFIG_IPQ_ETH_INIT_DEFER
+		eth_initialize();
+#endif
+#endif
 		run_command_list(s, -1, 0);
 
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
@@ -448,9 +452,11 @@ void autoboot_command(const char *s)
 	}
 #endif /* CONFIG_MENUKEY */
 
+#ifndef CONFIG_IPQ5332
 #ifdef CONFIG_IPQ_ETH_INIT_DEFER
 	puts("\nNet:   ");
 	eth_initialize();
+#endif
 #endif
 #ifdef CONFIG_IPQ_PCI_INIT_DEFER
 	pci_init();
