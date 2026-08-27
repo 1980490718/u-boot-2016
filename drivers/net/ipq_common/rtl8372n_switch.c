@@ -84,10 +84,10 @@ static int rtl8372n_reg_set_bits(u32 mdio_addr, u32 reg, u32 mask, u32 val) {
 }
 
 static int rtl8372n_phy_access(u32 mdio_addr, u32 phy_mask_or_id, u32 page, u32 reg, u16 val, int is_write) {
-	u32 ctrl1, cmd_val, fail_val;
+	u32 ctrl1, cmd_val;
 	int i;
 
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_0_ADDR, RTL8372N_SMI_ACCESS_PHY_CTRL_0_PHY_MASK_MASK, phy_mask_or_id);
+	rtl8372n_reg_write(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_0_ADDR, phy_mask_or_id);
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_3_ADDR, RTL8372N_SMI_ACCESS_PHY_CTRL_3_INDATA_MASK, is_write ? val : phy_mask_or_id);
 
 	ctrl1 = (page << RTL8372N_SMI_ACCESS_PHY_CTRL_1_MMD_DEVAD_OFFSET) | (reg << RTL8372N_SMI_ACCESS_PHY_CTRL_1_MMD_REG_OFFSET) |
@@ -96,9 +96,8 @@ static int rtl8372n_phy_access(u32 mdio_addr, u32 phy_mask_or_id, u32 page, u32 
 	rtl8372n_reg_write(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_1_ADDR, ctrl1);
 
 	for (i = 0; i < RTL8372N_SMI_ACCESS_PHY_CTRL_MAX_POLL; i++) {
-		rtl8372n_reg_read(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_1_ADDR, &cmd_val);
-		rtl8372n_reg_read(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_1_ADDR, &fail_val);
-		if (!(cmd_val & (1 << RTL8372N_SMI_ACCESS_PHY_CTRL_1_CMD_OFFSET)) && !(fail_val & RTL8372N_SMI_ACCESS_PHY_CTRL_1_FAIL_MASK))
+		if (rtl8372n_reg_read(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_1_ADDR, &cmd_val) >= 0 &&
+		    !(cmd_val & ((1 << RTL8372N_SMI_ACCESS_PHY_CTRL_1_CMD_OFFSET) | RTL8372N_SMI_ACCESS_PHY_CTRL_1_FAIL_MASK)))
 			return 0;
 		udelay(10);
 	}
@@ -275,9 +274,11 @@ static int rtl8372n_afe_patch_6818C_220607(u32 mdio_addr, u32 port_mask) {
 	return 0;
 }
 
-static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask) {
+static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask, u32 *patched_mask) {
 	int port_index, ret, i;
 	u16 ic_ver, fw_ver, tmp16;
+
+	*patched_mask = 0;
 
 	for (port_index = 0; port_index < 8; port_index++) {
 
@@ -371,6 +372,8 @@ static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask) {
 
 		rtl8372n_phy_write(mdio_addr, 1 << port_index, 31, 0xA5D0, 0);
 		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA428, 0x200, 0);
+
+		*patched_mask |= (1 << port_index);
 
 #ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: PHY%d v008 patch applied\n", port_index);
@@ -632,7 +635,7 @@ static int rtl8372n_port_isolation_setup(u32 mdio_addr, u32 cpu_port, u32 port_m
 }
 
 static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u32 cpu_port, u32 port_mask) {
-	u32 init_state, reg_val, reg_index, user_mask;
+	u32 init_state, reg_val, reg_index, user_mask, patched_mask;
 	int port;
 
 	if ((cpu_port != 3 && cpu_port != 8) ||
@@ -695,13 +698,13 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 
 	user_mask = port_mask & ~BIT(cpu_port);
 
-	if (rtl8372n_patch_phy_v008(mdio_addr, user_mask) < 0) {
+	if (rtl8372n_patch_phy_v008(mdio_addr, user_mask, &patched_mask) < 0) {
 #ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: PHY v008 patch failed (non-fatal)\n");
 #endif
 	}
 
-	rtl8372n_patch_phy_v008_rls_lockmain(mdio_addr, user_mask);
+	rtl8372n_patch_phy_v008_rls_lockmain(mdio_addr, patched_mask);
 	rtl8372n_phy_write(mdio_addr, user_mask, 0x1f, 0xA610, 0x2058);
 
 	rtl8372n_reg_set_bits(mdio_addr, 0x632C, 0x1FF000, port_mask);
