@@ -535,7 +535,7 @@ static int rtl8372n_sds_apply_patch(u32 mdio_addr, const struct rtl8372n_sds_pat
 	size_t i;
 
 	for (i = 0; i < count; i++) {
-		if (rtl8372n_sds_reg_write(mdio_addr, 1, patch[i].reg, patch[i].page, patch[i].val) < 0)
+		if (rtl8372n_sds_reg_write(mdio_addr, 1, patch[i].page, patch[i].reg, patch[i].val) < 0)
 			return -1;
 	}
 
