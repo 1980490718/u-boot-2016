@@ -80,7 +80,7 @@ cd u-boot-2016
 | IPQ5332 | ipq5332_xiaomi_be306                   | 小米 BE306                        |       0x8060007        |    ×     | `./build.sh ipq5332_xiaomi_be306`                   |
 | IPQ5332 | ipq5332_xiaomi_be6500                  | 小米 BE6500(RN02)                 |       0x8060001        |    ✓     | `./build.sh ipq5332_xiaomi_be6500`                  |
 | IPQ5332 | ipq5332_xiaomi_be3600_pro_wired_5ports | 小米 BE3600 Pro 有线版 5口        |       0x8060007        |    ✓     | `./build.sh ipq5332_xiaomi_be3600_pro_wired_5ports` |
-| IPQ5332 | ipq5332_xiaomi_be3600_pro_wired_8ports | 小米 BE3600 Pro 有线版 8口        |       0x8060007        |    ×     | `./build.sh ipq5332_xiaomi_be3600_pro_wired_8ports` |
+| IPQ5332 | ipq5332_xiaomi_be3600_pro_wired_8ports | 小米 BE3600 Pro 有线版 8口        |       0x8060007        |    ✓     | `./build.sh ipq5332_xiaomi_be3600_pro_wired_8ports` |
 | IPQ5332 | ipq5332_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny`                           |
 | IPQ5332 | ipq5332_tiny_nor                       | NOR闪存简                         |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny_nor`                       |
 | IPQ5332 | ipq5332_tiny_debug                     | 公版调试简                        |      Multi-machid      |    ✓     | `./build.sh ipq5332_tiny_debug`                     |
