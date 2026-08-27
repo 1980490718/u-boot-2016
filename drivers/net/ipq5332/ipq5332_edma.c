@@ -97,7 +97,7 @@ extern void ipq_s17c_switch_reset(int gpio);
 ipq_s17c_swt_cfg_t s17c_swt_cfg[IPQ5332_PHY_MAX];
 #endif
 #ifdef CONFIG_RTL8372N_SWITCH
-#include "rtl8372n_switch.h"
+#include "ipq_rtl8372n.h"
 extern void ppe_uniphy_set_forceMode(uint32_t uniphy_index);
 ipq_rtl8372n_swt_cfg_t rtl8372n_swt_cfg[IPQ5332_PHY_MAX];
 #endif

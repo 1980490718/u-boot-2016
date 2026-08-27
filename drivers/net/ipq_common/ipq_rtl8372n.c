@@ -15,7 +15,7 @@
 #include <net.h>
 #include <asm/io.h>
 #include <config.h>
-#include "rtl8372n_switch.h"
+#include "ipq_rtl8372n.h"
 
 extern int ipq_mdio_write(int mii_id, int regnum, u16 value);
 extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);

@@ -11,8 +11,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _RTL8372N_SWITCH_H
-#define _RTL8372N_SWITCH_H
+#ifndef _IPQ_RTL8372N_H
+#define _IPQ_RTL8372N_H
 
 #include <common.h>
 #include <net.h>
@@ -102,8 +102,8 @@
  *
  * Driver Architecture:
  *   ipq5332_edma.c  --> SoC side (PPE/UNIPHY/XGMAC config + MDIO access)
- *   rtl8372n_switch.c --> Switch side (register config via MDIO)
- *   rtl8372n_switch.h --> Register definitions + DTS binding + data structures
+ *   ipq_rtl8372n.c --> Switch side (register config via MDIO)
+ *   ipq_rtl8372n.h --> Register definitions + DTS binding + data structures
  *
  * ==========================================================================
  */
