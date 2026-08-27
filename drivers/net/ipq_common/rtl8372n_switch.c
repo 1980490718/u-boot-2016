@@ -602,9 +602,6 @@ static int rtl8372n_sds_mode_set(u32 mdio_addr, u32 sds_index, u32 sds_mode) {
 	usx_mask = (sds_index == 0) ? RTL8372N_SDS_MODE_SEL_SDS0_USX_SUB_MODE_MASK : RTL8372N_SDS_MODE_SEL_SDS1_USX_SUB_MODE_MASK;
 	mode_mask = (sds_index == 0) ? RTL8372N_SDS_MODE_SEL_SDS0_MODE_SEL_MASK : RTL8372N_SDS_MODE_SEL_SDS1_MODE_SEL_MASK;
 
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, usx_mask, 0);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, mode_mask, 0x1A);
-
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, usx_mask, sds_mode == RTL8372N_SDS_MODE_10GQXG ? 2 : 0);
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, mode_mask, sds_mode == RTL8372N_SDS_MODE_10GQXG ? 0xD : sds_mode);
 
