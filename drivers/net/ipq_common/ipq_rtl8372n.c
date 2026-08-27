@@ -839,7 +839,7 @@ static u32 rtl8372n_speed_mbps(u32 speed) {
 
 int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	u32 mac_link_sts, spd_sts, spd_sts_hi, spd, dup_sts, port, speed_val, changed, phy_link;
-	int status = 0;
+	int status = 1;
 
 	if (!swt_cfg || !swt_cfg->chip_detect ||
 	    rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_STS_ADDR, &mac_link_sts) < 0)
@@ -847,9 +847,12 @@ int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 
 	phy_link = (mac_link_sts & RTL8372N_MAC_LINK_STS_MAC_LINK_MASK) >> RTL8372N_MAC_LINK_STS_MAC_LINK_OFFSET;
 
+	if (phy_link & swt_cfg->port_mask)
+		status = 0;
+
 	changed = phy_link ^ swt_cfg->last_link;
 	if (!changed)
-		return 0;
+		return status;
 
 	if (rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_SPD_STS_ADDR(0), &spd_sts) < 0 ||
 	    rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_DUP_STS_ADDR, &dup_sts) < 0)

@@ -1023,6 +1023,7 @@ static int ipq5332_eth_init(struct eth_device *eth_dev, bd_t *this)
 						curr_speed[i] = FAL_SPEED_1000;
 				}
 			}
+			continue;
 		}
 #endif
 		else if (phy_info->phy_type == SFP_PHY_TYPE) {
