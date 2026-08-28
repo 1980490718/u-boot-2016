@@ -85,6 +85,27 @@ u32 rtl8221_phy_get_speed(u32 dev_id, u32 phy_id, fal_port_speed_t *speed) {
 	return 0;
 }
 
+static int rtl8221_led_init(u32 phy_id) {
+	static const struct {u16 reg; u16 mask; u16 val;} steps[] = {
+		{ 0xd032, 0x0000, 0x0025 },
+		{ 0xd034, 0x0000, 0x0024 },
+		{ 0xd036, 0x0000, 0x0023 },
+		{ 0xd040, 0x0007, 0x0007 },
+		{ 0xd044, 0x0007, 0x0000 },
+	};
+	u16 val;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(steps); i++) {
+		val = steps[i].mask ?
+			(rtl8221_phy_reg_read(0x0, phy_id, QCA808X_REG_C45_ADDRESS(31, steps[i].reg))
+				& ~steps[i].mask) | steps[i].val : steps[i].val;
+		if (rtl8221_phy_reg_write(0x0, phy_id, QCA808X_REG_C45_ADDRESS(31, steps[i].reg), val) < 0)
+			return -1;
+	}
+	return 0;
+}
+
 int ipq_rtl8221_phy_init(struct phy_ops **ops, u32 phy_id) {
 	u16 phy_data;
 	struct phy_ops *rtl8221_ops;
@@ -109,6 +130,8 @@ int ipq_rtl8221_phy_init(struct phy_ops **ops, u32 phy_id) {
 	phy_data = rtl8221_phy_reg_read(0x0, phy_id, QCA808X_REG_C45_ADDRESS(30, 0x697A));
 	phy_data = (phy_data & 0xffc0) | 0;
 	phy_data = rtl8221_phy_reg_write(0x0, phy_id, QCA808X_REG_C45_ADDRESS(30, 0x697A), phy_data);
+
+	rtl8221_led_init(phy_id);
 
 	return phy_data;
 }
