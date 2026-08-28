@@ -656,6 +656,30 @@ static int rtl8372n_port_isolation_setup(u32 mdio_addr, u32 cpu_port, u32 port_m
 	return 0;
 }
 
+static int rtl8372n_led_init(u32 mdio_addr) {
+	static const struct {u16 addr; u32 mask; u32 val;} steps[] = {
+		{ RTL8372N_LED_GLB_MUX_1_ADDR,	0x3fffffff, 0x10144040 },
+		{ RTL8372N_LED_GLB_MUX_2_ADDR,	0x3ffc0fff, 0x10500309 },
+		{ RTL8372N_LED_GLB_MUX_3_ADDR,	0x0003f03f, 0x00005018 },
+		{ RTL8372N_LED_GLB_MUX_4_ADDR,	0x00fc003f, 0x00600015 },
+		{ RTL8372N_LED_GLB_MUX_5_ADDR,	0x3f000fc0, 0x0070001C },
+		{ RTL8372N_LED_GLB_MUX_6_ADDR,	0x0003ffff, 0x0002181D },
+		{ RTL8372N_LED_GLB_ACTIVE_ADDR,	0x00200510, 0x00020051 },
+		{ RTL8372N_LED_GLB_CTRL_ADDR,	0x00001fec, 0x00000109 },
+		{ RTL8372N_LED_GLB_IO_EN_ADDR,	0x7fffffff, 0x70200510 },
+		{ RTL8372N_IO_MUX_SEL_0_ADDR,	0x3fffffff, 0x3fdffaef },
+		{ RTL8372N_LED1_0_SET0_CTRL0_ADDR,	0xffffffff, 0x00140175 },
+	};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(steps); i++) {
+		if (rtl8372n_reg_set_bits(mdio_addr, steps[i].addr, steps[i].mask, steps[i].val) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
 static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u32 cpu_port, u32 port_mask) {
 	u32 init_state, reg_val, reg_index, user_mask, patched_mask;
 	int port;
@@ -797,6 +821,9 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 
 	printf("RTL8372N: switch init done (stock handoff)\n");
 #endif
+
+	rtl8372n_led_init(mdio_addr);
+
 	return 0;
 }
 
