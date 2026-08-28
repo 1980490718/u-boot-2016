@@ -479,7 +479,7 @@ struct fw_info check_fw_type_ex(void *address) {
 
 	struct fw_info info = {
 		.type = -1,
-		.hlos_size = 12 * 1024 * 1024  // Default 12MB
+		.hlos_size = 16 * 1024 * 1024  // Default 16MiB (max, fallback)
 	};
 
 	u32 *ptr_flas		= (u32 *)((uintptr_t)address + 0x5c);
@@ -491,34 +491,17 @@ struct fw_info check_fw_type_ex(void *address) {
 	u32 *ptr_mibib		= (u32 *)address;
 	u32 *ptr_gpt_backup	= (u32 *)((uintptr_t)address + 0x4000);  /* Backup GPT: "EFI " */
 
-	// Detect HLOS size magic number positions
-	u32 *ptr_hlos_4m	= (u32 *)((uintptr_t)address + 0x400000);
-	u32 *ptr_hlos_6m	= (u32 *)((uintptr_t)address + 0x600000);
-	u32 *ptr_hlos_8m	= (u32 *)((uintptr_t)address + 0x800000);
-	u32 *ptr_hlos_12m	= (u32 *)((uintptr_t)address + 0xC00000);
-	u32 *ptr_hlos_14m	= (u32 *)((uintptr_t)address + 0xE00000);
-	u32 *ptr_hlos_16m	= (u32 *)((uintptr_t)address + 0x1000000);
-
 	const u32 MAGIC_HSQS = 0x73717368;  // "hsqs"
+	const int HLOS_SIZE_MIN_KB  = 2048;   // 2MiB
+	const int HLOS_SIZE_MAX_KB  = 16384;  // 16MiB
+	const int HLOS_SIZE_STEP_KB = 512;    // 512KiB step (eMMC partition aligned)
 
-	// Detect actual HLOS size in ascending order
-	if (*ptr_hlos_4m == MAGIC_HSQS) {
-		info.hlos_size = 4 * 1024 * 1024;
-	}
-	else if (*ptr_hlos_6m == MAGIC_HSQS) {
-		info.hlos_size = 6 * 1024 * 1024;
-	}
-	else if (*ptr_hlos_8m == MAGIC_HSQS) {
-		info.hlos_size = 8 * 1024 * 1024;
-	}
-	else if (*ptr_hlos_12m == MAGIC_HSQS) {
-		info.hlos_size = 12 * 1024 * 1024;
-	}
-	else if (*ptr_hlos_14m == MAGIC_HSQS) {
-		info.hlos_size = 14 * 1024 * 1024;
-	}
-	else if (*ptr_hlos_16m == MAGIC_HSQS) {
-		info.hlos_size = 16 * 1024 * 1024;
+	for (int kb = HLOS_SIZE_MIN_KB; kb <= HLOS_SIZE_MAX_KB; kb += HLOS_SIZE_STEP_KB) {
+		u32 *ptr = (u32 *)((uintptr_t)address + (u32)kb * 1024);
+		if (*ptr == MAGIC_HSQS) {
+			info.hlos_size = (unsigned long)kb * 1024;
+			break;
+		}
 	}
 
 	// Detect firmware type
