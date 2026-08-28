@@ -2163,7 +2163,19 @@ int ipq5332_edma_init(void *edma_board_cfg)
 #endif
 #ifdef CONFIG_RTL8372N_SWITCH
 			if (phy_info->phy_type == RTL8372N_SWITCH_TYPE) {
-				continue;
+				int rtl_mdio_addr = rtl8372n_swt_cfg[phy_id].mdio_addr;
+				int ret1 = rtl8372n_c22_read(rtl_mdio_addr,
+							QCA_PHY_ID1, NULL);
+				int ret2 = rtl8372n_c22_read(rtl_mdio_addr,
+							QCA_PHY_ID2, NULL);
+				if (ret1 < 0 || ret2 < 0) {
+					pr_debug("RTL8372N chip id read failed at addr 0x%x\n", rtl_mdio_addr);
+					continue;
+				}
+				phy_chip_id1 = (u16)ret1;
+				phy_chip_id2 = (u16)ret2;
+				phy_chip_id = ((u32)phy_chip_id1 << 16) |
+							phy_chip_id2;
 			} else
 #endif
 			if (phy_info->phy_type == AQ_PHY_TYPE) {
@@ -2256,6 +2268,14 @@ int ipq5332_edma_init(void *edma_board_cfg)
 					if (qca8084_swt_enb)
 						++qca8084_chip_detect;
 				}
+			break;
+#endif
+#ifdef CONFIG_RTL8372N_SWITCH
+			case RTL8372N_PHY:
+				ipq_rtl8372n_phy_init(
+					&ipq5332_edma_dev[i]->ops[phy_id],
+					rtl8372n_swt_cfg[phy_id].mdio_addr,
+					rtl8372n_swt_cfg[phy_id].cpu_port);
 			break;
 #endif
 #ifdef CONFIG_ATHRS17C_SWITCH

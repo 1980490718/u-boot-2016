@@ -12,10 +12,14 @@
  */
 
 #include <common.h>
+#include <malloc.h>
 #include <net.h>
+#include <phy.h>
+#include <asm-generic/errno.h>
 #include <asm/io.h>
 #include <config.h>
 #include "ipq_rtl8372n.h"
+#include "ipq_phy.h"
 
 extern int ipq_mdio_write(int mii_id, int regnum, u16 value);
 extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);
@@ -825,6 +829,25 @@ int ipq_rtl8372n_switch_init(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	return 0;
 }
 
+static int rtl8372n_read_link_mask(int mdio_addr, u32 *link_mask) {
+	u32 val;
+	if (rtl8372n_reg_read(mdio_addr, RTL8372N_MAC_LINK_STS_ADDR, &val) < 0)
+		return -1;
+	*link_mask = (val & RTL8372N_MAC_LINK_STS_MAC_LINK_MASK) >>
+		     RTL8372N_MAC_LINK_STS_MAC_LINK_OFFSET;
+	return 0;
+}
+
+static int rtl8372n_read_speed_val(int mdio_addr, int port, u32 *speed_val) {
+	u32 spd_sts;
+
+	if (rtl8372n_reg_read(mdio_addr, RTL8372N_MAC_LINK_SPD_STS_ADDR(port), &spd_sts) < 0)
+		return -1;
+	*speed_val = (spd_sts >> RTL8372N_MAC_LINK_SPD_STS_OFFSET(port)) &
+		     (RTL8372N_MAC_LINK_SPD_STS_MASK(port) >> RTL8372N_MAC_LINK_SPD_STS_OFFSET(port));
+	return 0;
+}
+
 static u32 rtl8372n_speed_mbps(u32 speed) {
 	switch (speed) {
 	case RTL8372N_PORT_SPEED_10M:	return 10;
@@ -838,14 +861,14 @@ static u32 rtl8372n_speed_mbps(u32 speed) {
 }
 
 int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
-	u32 mac_link_sts, spd_sts, spd_sts_hi, spd, dup_sts, port, speed_val, changed, phy_link;
+	u32 dup_sts, port, speed_val, changed, phy_link;
 	int status = 1;
 
-	if (!swt_cfg || !swt_cfg->chip_detect ||
-	    rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_STS_ADDR, &mac_link_sts) < 0)
+	if (!swt_cfg || !swt_cfg->chip_detect)
 		return 1;
 
-	phy_link = (mac_link_sts & RTL8372N_MAC_LINK_STS_MAC_LINK_MASK) >> RTL8372N_MAC_LINK_STS_MAC_LINK_OFFSET;
+	if (rtl8372n_read_link_mask(swt_cfg->mdio_addr, &phy_link) < 0)
+		return 1;
 
 	if (phy_link & swt_cfg->port_mask)
 		status = 0;
@@ -854,27 +877,21 @@ int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg) {
 	if (!changed)
 		return status;
 
-	if (rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_SPD_STS_ADDR(0), &spd_sts) < 0 ||
-	    rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_DUP_STS_ADDR, &dup_sts) < 0)
+	if (rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_DUP_STS_ADDR, &dup_sts) < 0)
 		return 1;
 
 #ifdef CONFIG_RTL8372N_DEBUG
-	printf("RTL8372N: mac_sts=0x%x phy_link=0x%x last=0x%x changed=0x%x\n", mac_link_sts, phy_link, swt_cfg->last_link, changed);
+	printf("RTL8372N: phy_link=0x%x last=0x%x changed=0x%x\n", phy_link, swt_cfg->last_link, changed);
 #endif
 
 	for (port = 0; port <= 9; port++) {
 		if (!(changed & BIT(port)) || !(swt_cfg->port_mask & BIT(port)))
 			continue;
 
+		speed_val = 0;
 		if (phy_link & BIT(port)) {
-			spd = spd_sts;
-			if (port >= 8) {
-				if (rtl8372n_reg_read(swt_cfg->mdio_addr, RTL8372N_MAC_LINK_SPD_STS_ADDR(8), &spd_sts_hi) < 0)
-					return 1;
-				spd = spd_sts_hi;
-			}
-			speed_val = (spd >> RTL8372N_MAC_LINK_SPD_STS_OFFSET(port)) & (RTL8372N_MAC_LINK_SPD_STS_MASK(port) >>
-				     RTL8372N_MAC_LINK_SPD_STS_OFFSET(port));
+			if (rtl8372n_read_speed_val(swt_cfg->mdio_addr, port, &speed_val) < 0)
+				return 1;
 		}
 		printf("RTL8372N: Port%d %s Speed :%d %s duplex\n", port,
 			(phy_link & BIT(port)) ? "up" : "down",
@@ -904,4 +921,130 @@ void ipq_rtl8372n_link_poll(void) {
 		if (rtl8372n_poll_cfgs[i] && rtl8372n_poll_cfgs[i]->chip_detect)
 			ipq_rtl8372n_link_update(rtl8372n_poll_cfgs[i]);
 	}
+}
+
+static int rtl8372n_cached_mdio_addr = -1;
+static u32 rtl8372n_cached_chip_id_reg = 0;
+static u32 rtl8372n_non_rtl_mask;
+
+#define RTL8372N_DEV_MAX 2
+static struct {
+	u32 mdio_addr;
+	int cpu_port;
+} rtl8372n_dev_map[RTL8372N_DEV_MAX];
+static int rtl8372n_dev_count;
+
+static int rtl8372n_cpu_port_for(u32 mdio_addr) {
+	int i;
+	for (i = 0; i < rtl8372n_dev_count; i++)
+		if (rtl8372n_dev_map[i].mdio_addr == mdio_addr)
+			return rtl8372n_dev_map[i].cpu_port;
+	return 8;
+}
+
+static u16 rtl8372n_speed_ssr(u32 speed) {
+	switch (speed) {
+	case RTL8372N_PORT_SPEED_10M:	return 0x000;
+	case RTL8372N_PORT_SPEED_100M:	return 0x080;
+	case RTL8372N_PORT_SPEED_1000M:	return 0x100;
+	case RTL8372N_PORT_SPEED_2500M:	return 0x200;
+	case RTL8372N_PORT_SPEED_5G:	return 0x800;
+	case RTL8372N_PORT_SPEED_10G:	return 0x400;
+	default:						return 0x000;
+	}
+}
+
+int rtl8372n_c22_read(int mdio_addr, int regnum, ushort *data) {
+	u32 reg_val, link_mask, speed_val;
+	u16 val = 0;
+	int cpu_port;
+
+	if (mdio_addr >= 0 && mdio_addr < 32 &&
+	    (rtl8372n_non_rtl_mask & BIT(mdio_addr)))
+		return ipq_mdio_read(mdio_addr, regnum, data);
+
+	if (mdio_addr == rtl8372n_cached_mdio_addr) {
+		reg_val = rtl8372n_cached_chip_id_reg;
+	} else {
+		if (rtl8372n_reg_read(mdio_addr, 0x4, &reg_val) < 0 ||
+		    (reg_val >> 8) != RTL8372N_CHIP_ID) {
+			if (mdio_addr >= 0 && mdio_addr < 32)
+				rtl8372n_non_rtl_mask |= BIT(mdio_addr);
+			return ipq_mdio_read(mdio_addr, regnum, data);
+		}
+		rtl8372n_cached_mdio_addr = mdio_addr;
+		rtl8372n_cached_chip_id_reg = reg_val;
+	}
+
+	cpu_port = rtl8372n_cpu_port_for(mdio_addr);
+
+	if (regnum == 2 || regnum == 3)
+		val = (reg_val >> (regnum == 2 ? 24 : 8)) & 0xFFFF;
+	else if (regnum == 1 || regnum == 17) {
+		if (rtl8372n_read_link_mask(mdio_addr, &link_mask) < 0)
+			return -1;
+		if (regnum == 1)
+			val = link_mask ? 0x796D : 0x7949;
+		else if (!(link_mask & (1U << cpu_port)))
+			val = 0;
+		else if (rtl8372n_read_speed_val(mdio_addr, cpu_port, &speed_val) < 0)
+			return -1;
+		else
+			val = rtl8372n_speed_ssr(speed_val);
+	} else
+		return ipq_mdio_read(mdio_addr, regnum, data);
+
+	if (data)
+		*data = val;
+	return val;
+}
+
+static u8 rtl8372n_phy_get_link_status(u32 dev_id, u32 phy_id) {
+	return (rtl8372n_c22_read(phy_id, 1, NULL) & BIT(2)) ? 0 : 1;
+}
+
+static u32 rtl8372n_phy_get_duplex(u32 dev_id, u32 phy_id, fal_port_duplex_t *duplex) {
+	u32 dup_sts;
+	int cpu_port = rtl8372n_cpu_port_for(phy_id);
+
+	if (rtl8372n_reg_read(phy_id, RTL8372N_MAC_LINK_DUP_STS_ADDR, &dup_sts) < 0)
+		return -1;
+	*duplex = (dup_sts & BIT(cpu_port)) ? FAL_FULL_DUPLEX : FAL_HALF_DUPLEX;
+	return 0;
+}
+
+static u32 rtl8372n_phy_get_speed(u32 dev_id, u32 phy_id, fal_port_speed_t *speed) {
+	u32 speed_val;
+	int cpu_port = rtl8372n_cpu_port_for(phy_id);
+
+	if (rtl8372n_read_speed_val(phy_id, cpu_port, &speed_val) < 0)
+		return -1;
+	*speed = (fal_port_speed_t)rtl8372n_speed_mbps(speed_val);
+	return 0;
+}
+
+int ipq_rtl8372n_phy_init(struct phy_ops **ops, u32 phy_addr, int cpu_port) {
+	int phy_data;
+	struct phy_ops *rtl8372n_ops;
+
+	rtl8372n_ops = (struct phy_ops *)malloc(sizeof(struct phy_ops));
+	if (!rtl8372n_ops)
+		return -ENOMEM;
+	rtl8372n_ops->phy_get_link_status = rtl8372n_phy_get_link_status;
+	rtl8372n_ops->phy_get_speed = rtl8372n_phy_get_speed;
+	rtl8372n_ops->phy_get_duplex = rtl8372n_phy_get_duplex;
+	*ops = rtl8372n_ops;
+
+	if (rtl8372n_dev_count < RTL8372N_DEV_MAX) {
+		rtl8372n_dev_map[rtl8372n_dev_count].mdio_addr = phy_addr;
+		rtl8372n_dev_map[rtl8372n_dev_count].cpu_port = cpu_port;
+		rtl8372n_dev_count++;
+	}
+
+	phy_data = rtl8372n_c22_read(phy_addr, 2, NULL);
+	printf("PHY ID1: 0x%x\n", phy_data);
+	phy_data = rtl8372n_c22_read(phy_addr, 3, NULL);
+	printf("PHY ID2: 0x%x\n", phy_data);
+
+	return 0;
 }

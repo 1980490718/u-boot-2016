@@ -202,7 +202,7 @@
 #define RTL8372N_PORT_SPEED_5G		6
 #define RTL8372N_PORT_SPEED_10G		4
 
-#define RTL8372N_SDS_BUSY_POLL_CNT		100
+#define RTL8372N_SDS_BUSY_POLL_CNT		500
 #define RTL8372N_CHIP_PROBE_RETRY		2
 
 struct rtl8372n_sds_patch {
@@ -230,5 +230,8 @@ extern int ipq_rtl8372n_switch_init(ipq_rtl8372n_swt_cfg_t *swt_cfg);
 extern int ipq_rtl8372n_link_update(ipq_rtl8372n_swt_cfg_t *swt_cfg);
 extern void ipq_rtl8372n_switch_reset(int gpio);
 extern void ipq_rtl8372n_link_poll(void);
+extern int rtl8372n_c22_read(int mdio_addr, int regnum, ushort *data);
+struct phy_ops;
+extern int ipq_rtl8372n_phy_init(struct phy_ops **ops, u32 phy_addr, int cpu_port);
 
 #endif
