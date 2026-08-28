@@ -474,6 +474,7 @@ static const struct phy_id_name phy_c22_ext[] = {
 	{ 0x004DD101, "QCA8081 V1.1" },
 	{ 0x001CC849, "RTL8221"      },
 	{ 0x004DD180, "QCA8084"      },
+	{ 0x00837270, "RTL8372N"     },
 };
 
 static const struct phy_id_name phy_c45_aq[] = {
@@ -557,7 +558,7 @@ static int phy_scan_mdio(int pos, int *first, mdio_read_fn mdio_read) {
 				} else {
 					u16 ssr = (u16)mdio_read(phy_addr, 17, NULL);
 					if (is_ext)
-						spd = (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
+						spd = (ssr & 0x800) ? 5000 : (ssr & 0x400) ? 10000 : (ssr & 0x200) ? 2500 : (ssr & 0x100) ? 1000 : (ssr & 0x080) ? 100 : 10;
 					else {
 						int i = (ssr >> 14) & 3;
 						spd = i == 2 ? 1000 : i == 1 ? 100 : 10;
@@ -898,9 +899,13 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 #ifdef CONFIG_IPQ5018
 			extern int ipq5018_mdio_read(int mii_id, int regnum, ushort *data);
 			pos = phy_scan_mdio(pos, &ps_first, ipq5018_mdio_read);
-#endif
+#elif defined(CONFIG_RTL8372N_SWITCH)
+			extern int rtl8372n_c22_read(int mdio_addr, int regnum, ushort *data);
+			pos = phy_scan_mdio(pos, &ps_first, rtl8372n_c22_read);
+#else
 			extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);
 			pos = phy_scan_mdio(pos, &ps_first, ipq_mdio_read);
+#endif
 		}
 #elif defined(CONFIG_IPQ806X)
 		{
