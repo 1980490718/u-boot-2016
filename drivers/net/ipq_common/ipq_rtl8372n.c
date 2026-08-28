@@ -32,7 +32,10 @@ static int rtl8372n_mdio_wait_busy(u32 mdio_addr) {
 		ipq_mdio_read(mdio_addr, RTL8372N_MDC_MDIO_CTRL_REG, &ctrl);
 		if (!(ctrl & RTL8372N_MDC_MDIO_BUSY_BIT))
 			return 0;
-		udelay(10);
+		if (i < 10)
+			udelay(5);
+		else
+			udelay(10);
 	}
 
 #ifdef CONFIG_RTL8372N_DEBUG
@@ -103,7 +106,7 @@ static int rtl8372n_phy_access(u32 mdio_addr, u32 phy_mask_or_id, u32 page, u32 
 		if (rtl8372n_reg_read(mdio_addr, RTL8372N_SMI_ACCESS_PHY_CTRL_1_ADDR, &cmd_val) >= 0 &&
 		    !(cmd_val & ((1 << RTL8372N_SMI_ACCESS_PHY_CTRL_1_CMD_OFFSET) | RTL8372N_SMI_ACCESS_PHY_CTRL_1_FAIL_MASK)))
 			return 0;
-		udelay(10);
+		udelay(5);
 	}
 
 #ifdef CONFIG_RTL8372N_DEBUG
@@ -155,6 +158,9 @@ static int rtl8372n_phy_bits_write(u32 mdio_addr, u32 phy_id, u32 page, u32 reg,
 	if (!mask)
 		return 0;
 
+	if (mask == 0xFFFF)
+		return rtl8372n_phy_write(mdio_addr, 1 << phy_id, page, reg, val);
+
 	while (!(mask & (1 << shift)))
 		shift++;
 
@@ -175,18 +181,23 @@ static int rtl8372n_uc1_sram_read_8b(u32 mdio_addr, u32 phy, u16 addr, u16 *pval
 	return rtl8372n_phy_bits_read(mdio_addr, phy, 31, 0xa438, 0xff << 8, pval);
 }
 
-static int rtl8372n_uc1_sram_write_8b(u32 mdio_addr, u32 phy, u16 addr, u16 val) {
-	int ret;
-	ret = rtl8372n_phy_write(mdio_addr, 1 << phy, 31, 0xa436, addr);
-	if (ret) return ret;
-	return rtl8372n_phy_bits_write(mdio_addr, phy, 31, 0xa438, 0xff << 8, val);
+static int rtl8372n_sram_broadcast_8b(u32 mdio_addr, u32 port_mask, u16 addr_reg, u16 data_reg, u16 addr, u16 val) {
+	int port_index;
+	rtl8372n_phy_write(mdio_addr, port_mask, 31, addr_reg, addr);
+	for (port_index = 0; port_index < 8; port_index++) {
+		if (!(port_mask & (1 << port_index)))
+			continue;
+		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, data_reg, 0xff << 8, val);
+	}
+	return 0;
 }
 
-static int rtl8372n_uc2_sram_write_8b(u32 mdio_addr, u32 phy, u16 addr, u16 val) {
-	int ret;
-	ret = rtl8372n_phy_write(mdio_addr, 1 << phy, 31, 0xb87c, addr);
-	if (ret) return ret;
-	return rtl8372n_phy_bits_write(mdio_addr, phy, 31, 0xb87e, 0xff << 8, val);
+static int rtl8372n_uc1_sram_broadcast_8b(u32 mdio_addr, u32 port_mask, u16 addr, u16 val) {
+	return rtl8372n_sram_broadcast_8b(mdio_addr, port_mask, 0xa436, 0xa438, addr, val);
+}
+
+static int rtl8372n_uc2_sram_broadcast_8b(u32 mdio_addr, u32 port_mask, u16 addr, u16 val) {
+	return rtl8372n_sram_broadcast_8b(mdio_addr, port_mask, 0xb87c, 0xb87e, addr, val);
 }
 
 static int rtl8372n_data_ram_write_8b(u32 mdio_addr, u32 phy, u16 addr, u16 val) {
@@ -234,13 +245,13 @@ static const struct rtl8372n_sds_patch rtl8372n_10g_mac_patch[] = {
 static int rtl8372n_RTCT_para_6818C_231206(u32 mdio_addr, u32 port_mask) {
 	int port_index, i;
 
-	for (port_index = 0; port_index < 8; port_index++) {
-		if (!(port_mask & (1 << port_index)))
-			continue;
+	for (i = 0; i < ARRAY_SIZE(RTCT_para_6818C_231206_patch); i++) {
+		rtl8372n_phy_write(mdio_addr, port_mask, 31, 0xA436, RTCT_para_6818C_231206_patch[i].addr);
 
-		for (i = 0; i < ARRAY_SIZE(RTCT_para_6818C_231206_patch); i++) {
-			if (rtl8372n_phy_write(mdio_addr, 1 << port_index, 31, 0xA436, RTCT_para_6818C_231206_patch[i].addr) < 0 ||
-			    rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA438, 0xFF00, RTCT_para_6818C_231206_patch[i].data) < 0)
+		for (port_index = 0; port_index < 8; port_index++) {
+			if (!(port_mask & (1 << port_index)))
+				continue;
+			if (rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA438, 0xFF00, RTCT_para_6818C_231206_patch[i].data) < 0)
 				return -1;
 		}
 	}
@@ -250,30 +261,24 @@ static int rtl8372n_RTCT_para_6818C_231206(u32 mdio_addr, u32 port_mask) {
 static int rtl8372n_data_ram_patch_6818C_221026(u32 mdio_addr, u32 port_mask) {
 	int port_index;
 
+	rtl8372n_phy_bits_write(mdio_addr, port_mask, 31, 0xB876, 0x1, 0);
+	rtl8372n_phy_bits_write(mdio_addr, port_mask, 31, 0xB872, 0xFF00, 0);
+
 	for (port_index = 0; port_index < 8; port_index++) {
 		if (!(port_mask & (1 << port_index)))
 			continue;
-
-		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xB876, 0x1, 0);
-		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xB872, 0xFF00, 0);
 		rtl8372n_data_ram_write_8b(mdio_addr, port_index, 0xC206, 0xB1);
-		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xB876, 0x1, 1);
 	}
+
+	rtl8372n_phy_bits_write(mdio_addr, port_mask, 31, 0xB876, 0x1, 1);
 
 	return 0;
 }
 
 static int rtl8372n_afe_patch_6818C_220607(u32 mdio_addr, u32 port_mask) {
-	int port_index;
-
-	for (port_index = 0; port_index < 8; port_index++) {
-		if (!(port_mask & (1 << port_index)))
-			continue;
-
-		if (rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xBF84, 0x7, 4) < 0 ||
-		    rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xBF8C, 0x7C0, 0) < 0)
-			return -1;
-	}
+	if (rtl8372n_phy_bits_write(mdio_addr, port_mask, 31, 0xBF84, 0x7, 4) < 0 ||
+	    rtl8372n_phy_bits_write(mdio_addr, port_mask, 31, 0xBF8C, 0x7C0, 0) < 0)
+		return -1;
 
 	return 0;
 }
@@ -347,41 +352,52 @@ static int rtl8372n_patch_phy_v008(u32 mdio_addr, u32 port_mask, u32 *patched_ma
 
 		rtl8372n_RTCT_para_6818C_231206(mdio_addr, 1 << port_index);
 
-		rtl8372n_uc1_sram_write_8b(mdio_addr, port_index, 0x8FFB, 1);
-		rtl8372n_uc1_sram_write_8b(mdio_addr, port_index, 0x80DC, 0xA);
-		rtl8372n_uc1_sram_write_8b(mdio_addr, port_index, 0x8378, 0x22);
-
-		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA47E, 0xC0, 1);
-
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8217, 0x1E);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8384, 4);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD6, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD7, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD8, 0xC);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD9, 0x80);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDA, 0xA);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDB, 0x19);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDC, 0x19);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDD, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDE, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FDF, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FE0, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FE1, 0x20);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FE2, 0xC);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD3, 0);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD4, 0x15);
-		rtl8372n_uc2_sram_write_8b(mdio_addr, port_index, 0x8FD5, 0x15);
-
-		rtl8372n_afe_patch_6818C_220607(mdio_addr, 1 << port_index);
-
-		rtl8372n_phy_write(mdio_addr, 1 << port_index, 31, 0xA5D0, 0);
-		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA428, 0x200, 0);
-
 		*patched_mask |= (1 << port_index);
 
 #ifdef CONFIG_RTL8372N_DEBUG
 		printf("RTL8372N: PHY%d v008 patch applied\n", port_index);
 #endif
+	}
+
+	if (*patched_mask == 0)
+		return 0;
+
+	rtl8372n_uc1_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FFB, 1);
+	rtl8372n_uc1_sram_broadcast_8b(mdio_addr, *patched_mask, 0x80DC, 0xA);
+	rtl8372n_uc1_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8378, 0x22);
+
+	for (port_index = 0; port_index < 8; port_index++) {
+		if (!(*patched_mask & (1 << port_index)))
+			continue;
+		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA47E, 0xC0, 1);
+	}
+
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8217, 0x1E);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8384, 4);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD6, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD7, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD8, 0xC);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD9, 0x80);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDA, 0xA);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDB, 0x19);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDC, 0x19);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDD, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDE, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FDF, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FE0, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FE1, 0x20);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FE2, 0xC);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD3, 0);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD4, 0x15);
+	rtl8372n_uc2_sram_broadcast_8b(mdio_addr, *patched_mask, 0x8FD5, 0x15);
+
+	rtl8372n_afe_patch_6818C_220607(mdio_addr, *patched_mask);
+
+	rtl8372n_phy_write(mdio_addr, *patched_mask, 31, 0xA5D0, 0);
+	for (port_index = 0; port_index < 8; port_index++) {
+		if (!(*patched_mask & (1 << port_index)))
+			continue;
+		rtl8372n_phy_bits_write(mdio_addr, port_index, 31, 0xA428, 0x200, 0);
 	}
 
 	return 0;
@@ -433,7 +449,7 @@ static int rtl8372n_sds_wait_cmd_done(u32 mdio_addr) {
 		if (rtl8372n_reg_read(mdio_addr, RTL8372N_SDS_INDACS_CMD_ADDR, &cmd) >= 0 &&
 		    !((cmd >> RTL8372N_SDS_INDACS_CMD_SDS_CMD_OFFSET) & 1))
 			break;
-		udelay(10);
+		udelay(5);
 	}
 
 	return (i == RTL8372N_SDS_BUSY_POLL_CNT) ? -1 : 0;
@@ -587,7 +603,7 @@ static int rtl8372n_sds_mode_toggle(u32 mdio_addr) {
 }
 
 static int rtl8372n_sds_mode_set(u32 mdio_addr, u32 sds_index, u32 sds_mode) {
-	u32 usx_mask, mode_mask;
+	u32 usx_mask, mode_mask, reg_val;
 
 	if (sds_index > 1)
 		return -1;
@@ -606,8 +622,13 @@ static int rtl8372n_sds_mode_set(u32 mdio_addr, u32 sds_index, u32 sds_mode) {
 	usx_mask = (sds_index == 0) ? RTL8372N_SDS_MODE_SEL_SDS0_USX_SUB_MODE_MASK : RTL8372N_SDS_MODE_SEL_SDS1_USX_SUB_MODE_MASK;
 	mode_mask = (sds_index == 0) ? RTL8372N_SDS_MODE_SEL_SDS0_MODE_SEL_MASK : RTL8372N_SDS_MODE_SEL_SDS1_MODE_SEL_MASK;
 
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, usx_mask, sds_mode == RTL8372N_SDS_MODE_10GQXG ? 2 : 0);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, mode_mask, sds_mode == RTL8372N_SDS_MODE_10GQXG ? 0xD : sds_mode);
+	if (rtl8372n_reg_read(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, &reg_val) < 0)
+		return -1;
+	reg_val &= ~(usx_mask | mode_mask);
+	reg_val |= ((sds_mode == RTL8372N_SDS_MODE_10GQXG ? 2 : 0) << (sds_index == 0 ? 10 : 16)) & usx_mask;
+	reg_val |= ((sds_mode == RTL8372N_SDS_MODE_10GQXG ? 0xD : sds_mode) << (sds_index == 0 ? 0 : 5)) & mode_mask;
+	if (rtl8372n_reg_write(mdio_addr, RTL8372N_SDS_MODE_SEL_ADDR, reg_val) < 0)
+		return -1;
 
 	return 0;
 }
@@ -656,8 +677,7 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 		return -1;
 	}
 
-	rtl8372n_reg_set_bits(mdio_addr, 0x6330, 0x30000, 0);
-	rtl8372n_reg_set_bits(mdio_addr, 0x6330, 0xC0, 0);
+	rtl8372n_reg_set_bits(mdio_addr, 0x6330, 0x300C0, 0);
 	rtl8372n_reg_set_bits(mdio_addr, 0x6334, 0xF0, 0xF);
 	rtl8372n_reg_set_bits(mdio_addr, 0x6454, 0x7000, 7);
 	mdelay(1);
@@ -665,10 +685,10 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 	rtl8372n_sds_regbits_write(mdio_addr, 0, 0, 0, 0x200, 1);
 	rtl8372n_sds_regbits_write(mdio_addr, 0, 6, 2, 0x2000, 1);
 	rtl8372n_sds_regbits_write(mdio_addr, 1, 7, 16, 0xff, 3);
-	mdelay(5);
+	udelay(200);
 
 	rtl8372n_fw_reset_flow_tgr(mdio_addr, 1);
-	mdelay(5);
+	udelay(200);
 
 	rtl8372n_fw_reset_flow_tgr(mdio_addr, 0);
 
@@ -692,10 +712,12 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 
 	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_DW8051_CFG_ADDR, RTL8372N_DW8051_CFG_DW8051_READY_MASK, 1);
 
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT0_5_ADDR_CTRL_ADDR, RTL8372N_SMI_PORT0_5_ADDR_CTRL_PORT4_ADDR_MASK, 4);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT0_5_ADDR_CTRL_ADDR, RTL8372N_SMI_PORT0_5_ADDR_CTRL_PORT5_ADDR_MASK, 5);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT6_9_ADDR_CTRL_ADDR, RTL8372N_SMI_PORT6_9_ADDR_CTRL_PORT6_ADDR_MASK, 6);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT6_9_ADDR_CTRL_ADDR, RTL8372N_SMI_PORT6_9_ADDR_CTRL_PORT7_ADDR_MASK, 7);
+	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT0_5_ADDR_CTRL_ADDR,
+		RTL8372N_SMI_PORT0_5_ADDR_CTRL_PORT4_ADDR_MASK | RTL8372N_SMI_PORT0_5_ADDR_CTRL_PORT5_ADDR_MASK,
+		4 | (5 << 5));
+	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_SMI_PORT6_9_ADDR_CTRL_ADDR,
+		RTL8372N_SMI_PORT6_9_ADDR_CTRL_PORT6_ADDR_MASK | RTL8372N_SMI_PORT6_9_ADDR_CTRL_PORT7_ADDR_MASK,
+		6 | (7 << 5));
 
 	user_mask = port_mask & ~BIT(cpu_port);
 
@@ -709,7 +731,7 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 	rtl8372n_phy_write(mdio_addr, user_mask, 0x1f, 0xA610, 0x2058);
 
 	rtl8372n_reg_set_bits(mdio_addr, 0x632C, 0x1FF000, port_mask);
-	mdelay(5);
+	udelay(200);
 
 	rtl8372n_sds_mode_set(mdio_addr, 0, sds0_mode);
 	rtl8372n_sds_mode_set(mdio_addr, 1, sds1_mode);
@@ -725,7 +747,7 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 	rtl8372n_fw_reset_flow_tgr(mdio_addr, 1);
 
 	rtl8372n_reg_write(mdio_addr, RTL8372N_MAC_FORCE_MODE_CTRL0_ADDR(cpu_port), 1);
-	mdelay(1);
+	udelay(100);
 	rtl8372n_reg_write(mdio_addr, RTL8372N_MAC_FORCE_MODE_CTRL0_ADDR(cpu_port), RTL8372N_STOCK_CPU_FORCE);
 
 	rtl8372n_sds_power_down(mdio_addr);
@@ -760,8 +782,8 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 
 	rtl8372n_reg_write(mdio_addr, RTL8372N_MSTP_STATE0_ADDR, 0x000fffff);
 
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_MAC_L2_GLOBAL_CTRL0_ADDR, RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_INVLD_MAC_CTRL_MASK, 0);
-	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_MAC_L2_GLOBAL_CTRL0_ADDR, RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_UNKN_OPCODE_MASK, 0);
+	rtl8372n_reg_set_bits(mdio_addr, RTL8372N_MAC_L2_GLOBAL_CTRL0_ADDR,
+		RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_INVLD_MAC_CTRL_MASK | RTL8372N_MAC_L2_GLOBAL_CTRL0_FWD_UNKN_OPCODE_MASK, 0);
 
 #ifdef CONFIG_RTL8372N_DEBUG
 	{
