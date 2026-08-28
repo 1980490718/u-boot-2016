@@ -779,7 +779,9 @@ static int _rtl8372n_switch_init(u32 mdio_addr, u32 sds0_mode, u32 sds1_mode, u3
 }
 
 void ipq_rtl8372n_switch_reset(int gpio) {
+#ifdef CONFIG_RTL8372N_DEBUG
 	printf("RTL8372N: HW reset via GPIO %d\n", gpio);
+#endif
 	gpio_direction_output(gpio, 0);
 	mdelay(50);
 	gpio_direction_output(gpio, 1);
