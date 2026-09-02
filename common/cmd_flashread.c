@@ -553,8 +553,53 @@ int flashread_partition_chunk(const char *part_name, uint32_t load_addr,
 			char *out_detail)
 {
 #ifdef CONFIG_CMD_NAND
-	if (!strcmp(part_name, "nand_full") && raw)
-		return nand_raw_chunk_read(load_addr, user_offset, user_size, out_offset, out_size, out_detail);
+	if (!strcmp(part_name, "nand_full")) {
+		if (raw)
+			return nand_raw_chunk_read(load_addr, user_offset, user_size, out_offset, out_size, out_detail);
+		{
+#ifdef CONFIG_IPQ40XX
+			int nand_dev = is_spi_nand_available();
+#else
+			int nand_dev = CONFIG_NAND_FLASH_INFO_IDX;
+#endif
+			struct mtd_info *mtd = &nand_info[nand_dev];
+			u64 remain = mtd->size - user_offset;
+			uint32_t chunk_size = (user_size && (u64)user_size < remain) ? user_size : (u32)remain;
+			size_t left_to_read = chunk_size;
+			u64 cur_offset = user_offset;
+			u_char *p_buf = (u_char *)(uintptr_t)load_addr;
+			uint32_t erasesize = mtd->erasesize;
+
+			while (left_to_read > 0) {
+				size_t block_offset = cur_offset & (erasesize - 1);
+				size_t read_length;
+
+				if (nand_block_isbad(mtd, cur_offset & ~(erasesize - 1))) {
+					cur_offset += erasesize - block_offset;
+					continue;
+				}
+				if (left_to_read < (erasesize - block_offset))
+					read_length = left_to_read;
+				else
+					read_length = erasesize - block_offset;
+
+				if (nand_read(mtd, cur_offset, &read_length, p_buf) != 0 &&
+				    read_length == 0)
+					return CMD_RET_FAILURE;
+
+				left_to_read -= read_length;
+				cur_offset += read_length;
+				p_buf += read_length;
+
+				if (flashread_yield_fn)
+					flashread_yield_fn();
+			}
+			if (out_offset) *out_offset = (uint32_t)user_offset;
+			if (out_size) *out_size = chunk_size;
+			if (out_detail) snprintf(out_detail, 32, "0x%x bytes", chunk_size);
+			return CMD_RET_SUCCESS;
+		}
+	}
 #endif
 #ifdef CONFIG_QCA_MMC
 	if (mmc_get_dev(mmc_host.dev_num))
