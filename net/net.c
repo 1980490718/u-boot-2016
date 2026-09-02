@@ -217,6 +217,7 @@ int webfailsafe_is_running = 0;
 int webfailsafe_ready_for_upgrade = 0;
 int webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
 int webfailsafe_backup_avail_enabled = 0;
+int webfailsafe_auto_reboot_enabled = 1;
 extern int webfailsafe_post_done;
 extern int file_too_big;
 extern void failsafe_netif_input(volatile uchar *inpkt, int len);

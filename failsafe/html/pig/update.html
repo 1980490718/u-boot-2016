@@ -23,6 +23,7 @@
 		<p id="update-desc"></p>
 		<form enctype="multipart/form-data" id="update-form">
 			<input type="hidden" name="flash_backup" id="flash-backup-input" value="">
+			<input type="hidden" name="auto_reboot" id="auto-reboot-input" value="1">
 			<div class="form-group">
 				<label for="update-file" id="update-label"></label>
 				<input type="file" id="update-file" aria-label="选择文件" required>
@@ -36,7 +37,7 @@
 	<script src="submit.js?v=f"></script>
 	<script>
 	(function() {
-		var commonTips = ['更新过程中不能断开设备的电源；', '更新完成后将自动重启。'];
+		var commonTips = ['更新过程中不能断开设备的电源；', 'REBOOT_TIP'];
 		var commonAccept = '.bin,.BIN,.img,.IMG';
 		var tabData = {
 			firmware: {
@@ -47,7 +48,7 @@
 				name: 'U-BOOT', icon: 'icon-hard-drive',
 				accept: '.elf,.ELF,.mbn,.MBN',
 				danger: true,
-				tips: ['请确认所选的U-BOOT文件是正确的；', '更新U-BOOT<span style="color:red">非常危险</span>，可能会损坏设备；', '更新完成后将自动重启。']
+				tips: ['请确认所选的U-BOOT文件是正确的；', '更新U-BOOT<span style="color:red">非常危险</span>，可能会损坏设备；', 'REBOOT_TIP']
 			},
 			art: {
 				name: 'ART', icon: 'icon-wifi',
@@ -59,7 +60,7 @@
 				note: '(Configuration Data Table, 配置数据表)',
 				accept: '.cdt,.CDT,cdt.*,CDT.*',
 				danger: true,
-				tips: ['请确认所选的CDT文件是正确的；', '更新CDT<span style="color:red">非常危险</span>，可能会损坏设备；', '更新完成后将自动重启。']
+				tips: ['请确认所选的CDT文件是正确的；', '更新CDT<span style="color:red">非常危险</span>，可能会损坏设备；', 'REBOOT_TIP']
 			},
 			ptable: {
 				name: 'GPT/MIBIB', icon: 'icon-storage',
@@ -70,7 +71,7 @@
 				tips: [
 					'请确认所选的分区表文件是正确的；',
 					'更新分区表<span style="color:red">非常危险</span>，可能会损坏设备；',
-					'更新完成后将自动重启。'
+					'REBOOT_TIP'
 				]
 			},
 			initramfs: {
@@ -92,8 +93,16 @@
 		}
 
 		function buildTips(d) {
-			if (d.tips) return d.tips;
-			return ['请确认所选的' + d.name + '文件是正确的；'].concat(commonTips);
+			var tips = d.tips ? d.tips.slice() : ['请确认所选的' + d.name + '文件是正确的；'].concat(commonTips);
+			var autoReboot = true;
+			try { autoReboot = localStorage.getItem('auto_reboot') !== '0'; } catch (e) {}
+			var rebootTip = autoReboot ? '更新完成后将自动重启。' : '按需自动或手动重启。';
+			for (var i = 0; i < tips.length; i++) {
+				if (tips[i] === 'REBOOT_TIP') {
+					tips[i] = rebootTip;
+				}
+			}
+			return tips;
 		}
 
 		function buildAccept(d) {

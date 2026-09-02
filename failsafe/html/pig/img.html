@@ -33,7 +33,7 @@
 			<ul>
 				<li class="file-tip">请确认所选的IMG文件是正确的；</li>
 				<li class="file-tip">编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
-				<li class="file-tip">更新完成后将自动重启。</li>
+				<li class="file-tip" id="img-reboot-tip">更新完成后将自动重启。</li>
 				<li id="sha256-display" style="display:none;list-style:none"></li>
 			</ul>
 		</div>
@@ -46,8 +46,16 @@
 		var sizeEl = document.getElementById('size-display');
 		var submitBtn = document.getElementById('submit-btn');
 		var devices = [];
-
 		var nandType = 'none';
+
+		function updateRebootTip() {
+			var autoReboot = true;
+			try { autoReboot = localStorage.getItem('auto_reboot') !== '0'; } catch (e) {}
+			var tipEl = document.getElementById('img-reboot-tip');
+			if (tipEl) {
+				tipEl.innerHTML = autoReboot ? '更新完成后将自动重启。' : '按需自动或手动重启。';
+			}
+		}
 
 		function updateSelection() {
 			var dev = devices[sel.selectedIndex];
@@ -85,6 +93,8 @@
 				if (!confirm('无OOB的数据编程可能导致ECC错误，建议选择NAND_OOB模式并选择带OOB数据的文件。是否继续？')) { e.preventDefault(); e.stopPropagation(); }
 			}
 		});
+
+		updateRebootTip();
 	})();
 	</script>
 </body>

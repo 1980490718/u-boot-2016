@@ -414,6 +414,8 @@
 	function loadUpdsetTable() {
 		var tbody = document.getElementById('updset-tbody');
 		tbody.innerHTML = '';
+
+		// 第一行：更新备分区
 		var chk = document.createElement('input');
 		chk.type = 'checkbox';
 		chk.id = 'flash-backup-chk';
@@ -457,6 +459,31 @@
 		chk.onchange = function() {
 			try { localStorage.setItem('flash_backup', chk.checked ? '1' : '0'); applyState(true, stateText()); }
 			catch (e) { chk.checked = false; applyState(false, '不可用'); }
+		};
+
+		// 第二行：更新完成后自动重启
+		var chk2 = document.createElement('input');
+		chk2.type = 'checkbox';
+		chk2.id = 'auto-reboot-chk';
+		var lbl2 = document.createElement('label');
+		lbl2.htmlFor = 'auto-reboot-chk';
+		lbl2.style.marginLeft = '0.5rem';
+		var getRebootStateText = function() { return chk2.checked ? '已启用·自动重启' : '已关闭·手动重启'; };
+		try { chk2.checked = localStorage.getItem('auto_reboot') !== '0'; } catch (e) { chk2.checked = true; }
+		lbl2.textContent = getRebootStateText();
+		var tdName2 = document.createElement('td');
+		tdName2.textContent = '更新完成后自动重启';
+		var tdVal2 = document.createElement('td');
+		tdVal2.className = 'about-gpio-ops';
+		tdVal2.appendChild(chk2);
+		tdVal2.appendChild(lbl2);
+		var tr2 = document.createElement('tr');
+		tr2.appendChild(tdName2);
+		tr2.appendChild(tdVal2);
+		tbody.appendChild(tr2);
+		chk2.onchange = function() {
+			try { localStorage.setItem('auto_reboot', chk2.checked ? '1' : '0'); } catch (e) {}
+			lbl2.textContent = getRebootStateText();
 		};
 	}
 

@@ -80,6 +80,7 @@ static void reset_webfailsafe_state(void) {
 	webfailsafe_ready_for_upgrade = 0;
 	webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
 	webfailsafe_backup_avail_enabled = 0;
+	webfailsafe_auto_reboot_enabled = 1;
 }
 
 void HttpdStop(void) {

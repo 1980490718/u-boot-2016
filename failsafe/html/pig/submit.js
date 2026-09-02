@@ -49,6 +49,14 @@ function getFlashBackupPref() {
 	}
 }
 
+function getAutoRebootPref() {
+	try {
+		return localStorage.getItem('auto_reboot') !== '0' ? '1' : '0';
+	} catch (e) {
+		return '1';
+	}
+}
+
 function handleSubmit(e) {
 	e.preventDefault();
 	var form = e.target;
@@ -64,6 +72,12 @@ function handleSubmit(e) {
 		} else {
 			fbInput.disabled = true;
 		}
+	}
+
+	var arInput = document.getElementById('auto-reboot-input');
+	if (arInput) {
+		arInput.value = getAutoRebootPref();
+		arInput.disabled = false;
 	}
 
 	fetch('/', {
@@ -86,6 +100,13 @@ function pollUpgradeStatus() {
 		fetch('/upgrade_status').then(function(r) { return r.text(); }).then(function(s) {
 			if (s === 'type_mismatch') { done = 1; return showFail(true); }
 			if (s === 'rebooting') { done = 1; return pingDevice(); }
+			if (s === 'upgrade_done') {
+				done = 1;
+				var el = document.querySelector('.card');
+				if (!el) { el = document.createElement('div'); el.className = 'card'; (document.querySelector('main') || document.body).appendChild(el); }
+				el.innerHTML = '<h2>更新完成</h2><p>按需自动或手动重启。</p><button onclick="if(confirm(\'确认重启？\')){fetch(\'/webterm/cmd\',{method:\'POST\',headers:{\'Content-Type\':\'text/plain\'},body:\'reset\'})}">手动重启</button>';
+				return;
+			}
 			if (s === 'flashing') { showStep(2, '写入中...'); return setTimeout(check, 1000); }
 			showStep(1, '校验中...');
 			setTimeout(check, 500);

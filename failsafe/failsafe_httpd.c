@@ -241,6 +241,17 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 					strstr(start, "img_nor") ? IMG_FLASH_NOR : 0;
 			}
 			webfailsafe_backup_avail_enabled = strstr(start, "flash_backup") ? 1 : 0;
+			if (strstr(start, "auto_reboot")) {
+				char *ar_key = strstr(start, "auto_reboot");
+				char *ar_body = strstr(ar_key, "\r\n\r\n");
+				if (ar_body && ar_body >= ar_key && ar_body < ar_key + 100) {
+					webfailsafe_auto_reboot_enabled = (*(ar_body + 4) == '0') ? 0 : 1;
+				} else {
+					webfailsafe_auto_reboot_enabled = 1;
+				}
+			} else {
+				webfailsafe_auto_reboot_enabled = 1;
+			}
 			break;
 		}
 	}
@@ -445,7 +456,7 @@ static void httpd_send_static(struct failsafe_httpd_state *hs, const char *data,
 }
 
 static void httpd_handle_upgrade_status(struct failsafe_httpd_state *hs) {
-	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting"};
+	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting", "upgrade_done"};
 	static char resp[128];
 	int len = sprintf(resp, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s", status_text[upgrade_status]);
 	httpd_send_static(hs, resp, len);
@@ -1816,12 +1827,14 @@ void failsafe_httpd_poll(void) {
 			httpd_poll_wait(2000);
 			return;
 		}
-		upgrade_status = 4;
+		upgrade_status = webfailsafe_auto_reboot_enabled ? 4 : 5;
 
 		httpd_poll_wait(3000);
-		HttpdDone();
-		do_reset(NULL, 0, 0, NULL);
-		printf("reboot fail\n");
+		if (webfailsafe_auto_reboot_enabled) {
+			HttpdDone();
+			do_reset(NULL, 0, 0, NULL);
+			printf("reboot fail\n");
+		}
 		return;
 	}
 

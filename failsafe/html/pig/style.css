@@ -470,7 +470,8 @@ p {
 	justify-content: center
 }
 
-#info-tbody .about-gpio-ops {
+#info-tbody .about-gpio-ops,
+#updset-tbody .about-gpio-ops {
 	justify-content: flex-start
 }
 
