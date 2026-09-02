@@ -90,7 +90,7 @@
 			var text = await response.text();
 			if (text) {
 				terminalOutput.textContent += text;
-				terminalOutput.scrollTop = terminalOutput.scrollHeight;
+				terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
 				updateButtonStyles();
 			}
 		} catch (error) {}
