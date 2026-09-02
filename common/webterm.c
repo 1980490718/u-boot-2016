@@ -238,6 +238,9 @@ void webterm_http_handler(struct failsafe_httpd_state *hs, char *data, int data_
 		if (is_post)
 			webterm_abort_requested = 1;
 		webterm_respond(hs, is_post ? 200 : 405, "text/plain", is_post ? "OK\n" : "405\n");
+	} else if (strncmp(path, "reset", 5) == 0) {
+		webterm_reset();
+		webterm_respond(hs, 200, "text/plain", "OK\n");
 	} else if (is_post) {
 		return;
 	} else if (strncmp(path, "status", 6) == 0) {

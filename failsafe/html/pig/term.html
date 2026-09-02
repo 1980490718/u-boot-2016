@@ -39,7 +39,8 @@
 		STATUS: '/webterm/status',
 		DATA: '/webterm/data',
 		CMD: '/webterm/cmd',
-		ABORT: '/webterm/abort'
+		ABORT: '/webterm/abort',
+		RESET: '/webterm/reset'
 	};
 	var POLL_INTERVAL = 500;
 	var POLL_FAST = 100;
@@ -63,6 +64,15 @@
 
 	function restartPollFast() {
 		restartPoll(POLL_FAST);
+	}
+
+	function postAndPoll(cmd) {
+		postCommand(cmd);
+		restartPollFast();
+	}
+
+	function getInput() {
+		return terminalInput.value.trim();
 	}
 
 	async function fetchStatus() {
@@ -91,7 +101,6 @@
 			if (text) {
 				terminalOutput.textContent += text;
 				terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
-				updateButtonStyles();
 			}
 		} catch (error) {}
 	}
@@ -113,6 +122,7 @@
 
 	function clearTerminal() {
 		terminalOutput.textContent = '';
+		fetch(URL.RESET, { method: 'POST', headers: CMD_HEADERS }).catch(function() {});
 		updateButtonStyles();
 	}
 
@@ -128,7 +138,7 @@
 	}
 
 	function abortCommand() {
-		fetch(URL.ABORT, { method: 'POST', headers: CMD_HEADERS });
+		fetch(URL.ABORT, { method: 'POST', headers: CMD_HEADERS }).catch(function() {});
 		restartPollFast();
 	}
 
@@ -148,17 +158,6 @@
 	expandBtn.target = isFrame ? '_blank' : '';
 	expandBtn.title = isFrame ? '大窗' : '返回';
 
-	restartPollFast();
-
-	window.TermAPI = {
-		postCommand: postCommand,
-		restartPollFast: restartPollFast,
-		getInput: function () { return terminalInput.value.trim(); }
-	};
-})();
-
-(function () {
-	var api = window.TermAPI;
 	var envMenu = document.getElementById('envMenu');
 	envMenu.classList.add('show');
 
@@ -170,30 +169,31 @@
 	});
 
 	document.getElementById('queryEnv').addEventListener('click', function () {
-		var n = api.getInput();
-		api.postCommand(n ? 'printenv ' + n : 'printenv');
-		api.restartPollFast();
+		var n = getInput();
+		postAndPoll(n ? 'printenv ' + n : 'printenv');
 	});
 
 	document.getElementById('updateEnv').addEventListener('click', function () {
-		var n = api.getInput();
+		var n = getInput();
 		if (!n) { alert('输入变量名'); return; }
 		var v = prompt('修改 ' + n + ' 的值:');
-		if (v !== null) { api.postCommand('setenv ' + n + ' ' + v + '; saveenv'); api.restartPollFast(); }
+		if (v !== null) { postAndPoll('setenv ' + n + ' ' + v + '; saveenv'); }
 	});
 
 	document.getElementById('deleteEnv').addEventListener('click', function () {
-		var n = api.getInput();
+		var n = getInput();
 		if (!n) { alert('输入变量名'); return; }
-		if (confirm('确认删除 ' + n + '？')) { api.postCommand('setenv ' + n + '; saveenv'); api.restartPollFast(); }
+		if (confirm('确认删除 ' + n + '？')) { postAndPoll('setenv ' + n + '; saveenv'); }
 	});
 
 	document.getElementById('resetEnv').addEventListener('click', function () {
-		var n = api.getInput();
+		var n = getInput();
 		var msg = n ? '将 ' + n + ' 重置为缺省值？' : '重置全部为缺省值？';
 		var cmd = n ? 'env default -f ' + n + '; saveenv' : 'env default -a; saveenv';
-		if (confirm(msg)) { api.postCommand(cmd); api.restartPollFast(); }
+		if (confirm(msg)) { postAndPoll(cmd); }
 	});
+
+	restartPollFast();
 })();
 	</script>
 </body>
