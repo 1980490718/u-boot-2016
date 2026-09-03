@@ -104,7 +104,7 @@ function pollUpgradeStatus() {
 				done = 1;
 				var el = document.querySelector('.card');
 				if (!el) { el = document.createElement('div'); el.className = 'card'; (document.querySelector('main') || document.body).appendChild(el); }
-				el.innerHTML = '<h2>更新完成</h2><p>按需自动或手动重启。</p><button onclick="if(confirm(\'确认重启？\')){fetch(\'/webterm/cmd\',{method:\'POST\',headers:{\'Content-Type\':\'text/plain\'},body:\'reset\'})}">手动重启</button>';
+				el.innerHTML = '<h2>更新完成</h2><p>按需自动或手动重启。</p><button onclick="if(confirm(\'确认重启？\')){fetch(\'/webterm/cmd\',{method:\'POST\',headers:{\'Content-Type\':\'text/plain\'},body:\'reset\'});showStep(3,\'设备重启中...\',3);pingDevice(3)}">手动重启</button>';
 				return;
 			}
 			if (s === 'flashing') { showStep(2, '写入中...'); return setTimeout(check, 1000); }
