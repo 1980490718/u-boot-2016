@@ -14,7 +14,7 @@ int webterm_init(void);
 
 void webterm_capture_output(const char *str);
 
-int webterm_get_output(char *buf, int size);
+int webterm_get_output(char *buf, int size, int since);
 
 void webterm_reset(void);
 

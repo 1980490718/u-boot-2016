@@ -65,6 +65,7 @@ void webterm_reset(void) {
 		webterm_out.count = 0;
 		webterm_out.overflow = 0;
 	}
+	webterm_output_seq = 0;
 	webterm_line_pos = 0;
 	webterm_prev_char_was_cr = 0;
 }
@@ -114,7 +115,7 @@ static void webterm_batch_copy(const char *src, int len) {
 		webterm_out.count = webterm_out.size;
 		webterm_out.overflow = 1;
 	}
-	webterm_output_seq++;
+	webterm_output_seq += len;
 }
 
 void webterm_capture_output(const char *str) {
@@ -128,23 +129,26 @@ void webterm_putc(const char c) {
 	webterm_add_char(c);
 }
 
-int webterm_get_output(char *buf, int size) {
-	int len, first;
-	if (!buf || !webterm_out.buffer || size <= 0 || webterm_out.count <= 0) {
-		if (buf && size > 0) buf[0] = '\0';
+int webterm_get_output(char *buf, int size, int since) {
+	int len, skip, pos, first;
+
+	if (buf && size > 0) buf[0] = '\0';
+	if (since < 0) since = 0;
+	if (!buf || !webterm_out.buffer || size <= 0 || webterm_out.count <= 0 || since >= webterm_output_seq)
 		return 0;
-	}
 
-	len = min(size - 1, webterm_out.count);
-	first = min(len, webterm_out.size - webterm_out.tail);
+	len = min(webterm_output_seq - since, webterm_out.count);
+	if (len > size - 1)
+		len = size - 1;
+	skip = webterm_out.count - len;
+	pos = (webterm_out.tail + skip) % webterm_out.size;
+	first = min(len, webterm_out.size - pos);
 
-	memcpy(buf, &webterm_out.buffer[webterm_out.tail], first);
+	memcpy(buf, &webterm_out.buffer[pos], first);
 	if (len > first)
 		memcpy(buf + first, webterm_out.buffer, len - first);
 
 	buf[len] = '\0';
-	webterm_out.tail = (webterm_out.tail + len) % webterm_out.size;
-	webterm_out.count -= len;
 	return len;
 }
 
@@ -209,8 +213,8 @@ static int webterm_parse_post_body(char *data, int data_len, char *out, int out_
 
 void webterm_http_handler(struct failsafe_httpd_state *hs, char *data, int data_len) {
 	const char *path;
-	int is_post, len;
-	char cmd[WEBTERM_MAX_CMD_LEN];
+	int is_post, len, since;
+	char *qp, cmd[WEBTERM_MAX_CMD_LEN];
 
 	if (!hs || !data) return;
 
@@ -250,7 +254,11 @@ void webterm_http_handler(struct failsafe_httpd_state *hs, char *data, int data_
 	} else if (strncmp(path, "data", 4) == 0) {
 		if (webterm_line_pos > 0)
 			webterm_flush_line();
-		len = webterm_get_output(webterm_output_buf, sizeof(webterm_output_buf));
+		since = 0;
+		qp = strstr(path, "?since=");
+		if (qp)
+			since = simple_strtol(qp + 7, NULL, 10);
+		len = webterm_get_output(webterm_output_buf, sizeof(webterm_output_buf), since);
 		webterm_respond(hs, 200, "text/plain; charset=utf-8", "%s", len > 0 ? webterm_output_buf : "");
 	}
 }

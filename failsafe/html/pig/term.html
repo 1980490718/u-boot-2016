@@ -51,7 +51,7 @@
 		['terminalOutput', 'terminalInput', 'sendBtn', 'clearBtn', 'connectionStatus', 'abortBtn'].map(document.getElementById, document);
 
 	var pollTimer = null;
-	var lastSeq = -1;
+	var lastSeq = 0;
 
 	function postCommand(body) {
 		return fetch(URL.CMD, { method: 'POST', headers: CMD_HEADERS, body: body });
@@ -96,7 +96,7 @@
 
 	async function fetchOutput() {
 		try {
-			var response = await fetch(URL.DATA, FETCH_OPTS);
+			var response = await fetch(URL.DATA + '?since=' + lastSeq, FETCH_OPTS);
 			var text = await response.text();
 			if (text) {
 				terminalOutput.textContent += text;
