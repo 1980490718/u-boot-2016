@@ -99,29 +99,49 @@ check_node_module() {
 
 # Check for Node.js and modules
 node_available=0
+node_version=""
 if command -v node >/dev/null 2>&1; then
 	node_available=1
+	node_version=$(node --version 2>/dev/null)
 fi
 
 # Check for specific tools
 html_minifier_available=0
+html_minifier_version=""
 css_minifier_available=0
+css_minifier_version=""
 js_minifier_available=0
+js_minifier_version=""
 svgo_available=0
+svgo_version=""
 zopfli_available=0
+zopfli_version=""
 
 if [ $node_available -eq 1 ]; then
 	if check_node_module "html-minifier" "html_minifier_available"; then
 		html_minifier_available=1
+		html_minifier_version=$(node -e "try { console.log(require('html-minifier/package.json').version); } catch(e) {}" 2>/dev/null)
 	elif check_node_module "html-minifier-terser" "html_minifier_available"; then
 		html_minifier_available=1
+		html_minifier_version=$(node -e "try { console.log(require('html-minifier-terser/package.json').version); } catch(e) {}" 2>/dev/null)
 		mkdir -p node_modules
 		ln -sf $(dirname $(node -e "console.log(require.resolve('html-minifier-terser'))" 2>/dev/null)) node_modules/html-minifier 2>/dev/null || true
 	fi
 
-	check_node_module "clean-css" "css_minifier_available"
-	check_node_module "terser" "js_minifier_available"
-	check_node_module "svgo" "svgo_available"
+	if check_node_module "clean-css" "css_minifier_available"; then
+		css_minifier_version=$(node -e "try { console.log(require('clean-css/package.json').version); } catch(e) {}" 2>/dev/null)
+	fi
+
+	if check_node_module "terser" "js_minifier_available"; then
+		js_minifier_version=$(node -e "try { console.log(require('terser/package.json').version); } catch(e) {}" 2>/dev/null)
+	fi
+
+	if check_node_module "svgo" "svgo_available"; then
+		svgo_version=$(node -e "try { console.log(require('svgo/package.json').version); } catch(e) {}" 2>/dev/null)
+		if [ -z "$svgo_version" ]; then
+			svgo_version=$(svgo --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' || echo "")
+		fi
+	fi
 fi
 
 # Check for zopfli (Google's gzip optimizer)
@@ -129,6 +149,7 @@ if command -v zopfli >/dev/null 2>&1; then
     echo "test" > /tmp/zopfli_test.txt
     if zopfli --i1 /tmp/zopfli_test.txt 2>/dev/null && [ -f /tmp/zopfli_test.txt.gz ]; then
         zopfli_available=1
+        zopfli_version=$(dpkg -l zopfli 2>/dev/null | grep zopfli | awk '{print $3}' | cut -d'-' -f1 || rpm -q zopfli 2>/dev/null | grep -oP '\d+\.\d+\.\d+' || echo "")
         rm -f /tmp/zopfli_test.txt.gz
     fi
     rm -f /tmp/zopfli_test.txt
@@ -151,16 +172,26 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 echo "Node.js Modules:" >&2
-printf "  %-28s %b\n" "HTML -> html-minifier:"  "$([ $html_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
-printf "  %-28s %b\n" "CSS -> clean-css:"       "$([ $css_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
-printf "  %-28s %b\n" "JS -> terser:"           "$([ $js_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
-printf "  %-28s %b\n" "SVG -> svgo:"            "$([ $svgo_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+printf "  %-28s %b" "HTML -> html-minifier:"  "$([ $html_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+[ -n "$html_minifier_version" ] && printf " (v%s)" "$html_minifier_version" >&2
+echo "" >&2
+printf "  %-28s %b" "CSS -> clean-css:"       "$([ $css_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+[ -n "$css_minifier_version" ] && printf " (v%s)" "$css_minifier_version" >&2
+echo "" >&2
+printf "  %-28s %b" "JS -> terser:"           "$([ $js_minifier_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+[ -n "$js_minifier_version" ] && printf " (v%s)" "$js_minifier_version" >&2
+echo "" >&2
+printf "  %-28s %b" "SVG -> svgo:"            "$([ $svgo_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+[ -n "$svgo_version" ] && printf " (v%s)" "$svgo_version" >&2
+echo "" >&2
 echo "" >&2
 echo "Custom Scripts:" >&2
-printf "  %-28s %b\n" "ClassRename:"            "$([ $rename_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
+printf "  %-28s %b\n" "ClassRename:"          "$([ $rename_available -eq 1 ] && echo -e "${GREEN}✓${NC}" || echo -e "${RED}×${NC}")" >&2
 echo "" >&2
 echo "System Tools:" >&2
-printf "  %-28s %s\n" "Compress:"               "$compression_backend" >&2
+printf "  %-28s %s" "Compress:"               "$compression_backend" >&2
+[ -n "$zopfli_version" ] && printf " (v%s)" "$zopfli_version" >&2
+echo "" >&2
 
 # Previous fsdata_file var name
 prev_fsdata_struct="NULL"
