@@ -1,0 +1,9 @@
+{
+  "compress": {
+    "drop_console": true,
+    "passes": 2,
+    "dead_code": true,
+    "unused": true
+  },
+  "mangle": true
+}

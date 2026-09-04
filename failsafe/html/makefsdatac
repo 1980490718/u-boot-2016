@@ -52,6 +52,9 @@ fi
 
 # Vendor specific directory (default: "pig")
 
+# Config directory
+config_dir="$(dirname "$0")/npmjson"
+
 # Temporary files
 files_content_tmp="html/.files_content"
 files_list_tmp="html/.files_list"
@@ -207,9 +210,10 @@ function minify_svg() {
 		node -e "
 		const {optimize} = require('svgo');
 		const fs = require('fs');
-		const result = optimize(fs.readFileSync('$_input_file','utf8'), {
-			plugins: [{name:'preset-default',params:{overrides:{cleanupIds:{preservePrefixes:['icon-']}}}}]
-		});
+		const path = require('path');
+		const configDir = '$config_dir';
+		const config = JSON.parse(fs.readFileSync(path.join(configDir, 'svgo.config.json'), 'utf8'));
+		const result = optimize(fs.readFileSync('$_input_file','utf8'), config);
 		fs.writeFileSync('$_output_file', result.data);
 		" || cp "$_input_file" "$_output_file"
 	else
@@ -328,6 +332,8 @@ function minify_html_with_preserved_styling() {
 	if [ $html_minifier_available -eq 1 ]; then
 		node -e "
 		const fs = require('fs');
+		const path = require('path');
+		const configDir = '$config_dir';
 		(async function() {
 			try {
 				let htmlMinifier;
@@ -336,34 +342,9 @@ function minify_html_with_preserved_styling() {
 				} catch (e) {
 					htmlMinifier = require('html-minifier-terser');
 				}
+				const config = JSON.parse(fs.readFileSync(path.join(configDir, 'html-minifier.config.json'), 'utf8'));
 				const content = fs.readFileSync('$_input_file', 'utf8');
-				const result = await htmlMinifier.minify(content, {
-				collapseWhitespace: true,
-				removeComments: true,
-				collapseBooleanAttributes: true,
-				removeAttributeQuotes: true,
-				removeRedundantAttributes: true,
-				removeScriptTypeAttributes: true,
-				removeStyleLinkTypeAttributes: true,
-				removeOptionalTags: true,
-				minifyCSS: true,
-				minifyJS: true,
-				decodeEntities: true,
-				sortAttributes: true,
-				sortClassName: true,
-				useShortDoctype: true,
-				minifyJS: {
-					compress: {
-						drop_console: true,
-						passes: 2
-					},
-					mangle: true
-				},
-				minifyCSS: {
-					level: 2,
-					format: { all: false }
-				}
-			});
+				const result = await htmlMinifier.minify(content, config);
 				let finalResult = result.replace(/\r\n|\n|\r/g, '').trim();
 				finalResult = finalResult.replace(/>(\s+)([a-zA-Z0-9])/g, '>\$2');
 				finalResult = finalResult.replace(/>(\s+)</g, '><');
@@ -396,11 +377,11 @@ function minify_standalone_js() {
 			try {
 				var Terser = require('terser');
 				var fs = require('fs');
+				var path = require('path');
+				var configDir = '$config_dir';
+				var config = JSON.parse(fs.readFileSync(path.join(configDir, 'terser.config.json'), 'utf8'));
 				var content = fs.readFileSync('$_input_file', 'utf8');
-				var result = await Terser.minify(content, {
-					compress: {drop_console: true},
-					mangle: true
-				});
+				var result = await Terser.minify(content, config);
 				if (result.code) {
 					fs.writeFileSync('$_output_file', result.code);
 				} else {
@@ -434,18 +415,11 @@ function minify_standalone_css() {
 		try {
 			var CleanCSS = require('clean-css');
 			var fs = require('fs');
+			var path = require('path');
+			var configDir = '$config_dir';
 			var content = fs.readFileSync('$_input_file', 'utf8');
-			var result = new CleanCSS({
-				level: {
-					1: {all: true},
-					2: {
-						all: false,
-						mergeIntoShorthands: false,
-						mergeMediaQueries: false
-					}
-				},
-				format: false
-			}).minify(content);
+			var config = JSON.parse(fs.readFileSync(path.join(configDir, 'clean-css.config.json'), 'utf8'));
+			var result = new CleanCSS(config).minify(content);
 			if (result.styles) {
 				fs.writeFileSync('$_output_file', result.styles);
 			} else {
@@ -617,7 +591,7 @@ if [ -d "html/$vendor_dir" ]; then
 	if [ $rename_classes -eq 1 ] && [ $rename_available -eq 1 ]; then
 		renamed_dir="html/debug_output/rename_classes"
 		rm -rf "$renamed_dir"
-		if node html/rename_classes.js "$source_dir" "$renamed_dir" 2>/dev/null; then
+		if node html/rename_classes.js "$source_dir" "$renamed_dir" "$config_dir/rename-classes.config.json" 2>/dev/null; then
 			source_dir="$renamed_dir"
 		else
 			rm -rf "$renamed_dir"

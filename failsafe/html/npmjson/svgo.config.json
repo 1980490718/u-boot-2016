@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    {
+      "name": "preset-default",
+      "params": {
+        "overrides": {
+          "cleanupIds": {
+            "preservePrefixes": ["icon-"]
+          }
+        }
+      }
+    }
+  ]
+}

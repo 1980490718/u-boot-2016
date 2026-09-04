@@ -1,0 +1,27 @@
+{
+  "collapseWhitespace": true,
+  "removeComments": true,
+  "collapseBooleanAttributes": true,
+  "removeAttributeQuotes": true,
+  "removeRedundantAttributes": true,
+  "removeScriptTypeAttributes": true,
+  "removeStyleLinkTypeAttributes": true,
+  "removeOptionalTags": true,
+  "minifyCSS": true,
+  "minifyJS": true,
+  "decodeEntities": true,
+  "sortAttributes": true,
+  "sortClassName": true,
+  "useShortDoctype": true,
+  "minifyJS": {
+    "compress": {
+      "drop_console": true,
+      "passes": 2
+    },
+    "mangle": true
+  },
+  "minifyCSS": {
+    "level": 2,
+    "format": { "all": false }
+  }
+}

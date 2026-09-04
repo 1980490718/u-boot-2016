@@ -6,11 +6,16 @@ var path = require('path');
 
 var inputDir = process.argv[2];
 var outputDir = process.argv[3];
+var configPath = process.argv[4] || path.join(__dirname, 'npmjson', 'rename-classes.config.json');
 
 if (!inputDir || !outputDir) {
-	console.error('Usage: node rename_classes.js <input_dir> <output_dir>');
+	console.error('Usage: node rename_classes.js <input_dir> <output_dir> [config_file]');
 	process.exit(1);
 }
+
+var config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+var minLength = config.minLength || 4;
+var chars = config.charset || 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 fs.mkdirSync(outputDir, { recursive: true });
 
@@ -20,7 +25,6 @@ function escapeRegex(s) {
 
 var idx = 0;
 function shortName() {
-	var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 	var i = idx++;
 	var name = '';
 	do {
@@ -59,14 +63,14 @@ for (var fi = 0; fi < files.length; fi++) {
 
 var existingShort = {};
 Object.keys(allClasses).forEach(function(name) {
-	if (name.length <= 3) {
+	if (name.length < minLength) {
 		existingShort[name] = true;
 	}
 });
 
 var classMapping = {};
 Object.keys(allClasses).sort().forEach(function(name) {
-	if (name.length > 3) {
+	if (name.length >= minLength) {
 		var candidate;
 		do {
 			candidate = shortName();
