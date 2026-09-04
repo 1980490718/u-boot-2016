@@ -429,6 +429,12 @@ static u64 emmc_cached_base_offset = 0;
 static u64 emmc_cached_part_size = 0;
 static char emmc_cached_part_name[32] = "";
 
+void emmc_cache_invalidate(void) {
+	emmc_cached_base_offset = 0;
+	emmc_cached_part_size = 0;
+	emmc_cached_part_name[0] = '\0';
+}
+
 static int emmc_chunk_read(const char *part_name, u32 load_addr, u64 user_offset, u32 user_size, u32 *out_offset, u32 *out_size, char *out_detail) {
 	block_dev_desc_t *blk_dev = mmc_get_dev(mmc_host.dev_num);
 	u64 base_offset = 0, part_total_size = 0, chunk_offset, remain;

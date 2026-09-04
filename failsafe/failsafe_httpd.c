@@ -35,6 +35,7 @@ extern qca_mmc mmc_host;
 #else
 extern struct sdhci_host mmc_host;
 #endif
+extern void emmc_cache_invalidate(void);
 #endif
 extern unsigned int get_spi_flash_size(void);
 extern struct spi_flash *spi_flash_ptr[MAX_SF_BUS_NUM][MAX_SF_CS_NUM];
@@ -184,6 +185,9 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 		upload.packet_counter = 255;
 		memset(&backup, 0, sizeof(backup));
 		flashread_yield_fn = NULL;
+#ifdef CONFIG_QCA_MMC
+		emmc_cache_invalidate();
+#endif
 		led_on("blink_led");
 		if (boundary_value) {
 			free(boundary_value);
@@ -1471,8 +1475,12 @@ static void backup_chunk_next(void) {
 			hs_global->dataptr = (u8_t *)(uintptr_t)backup.data_addr;
 			hs_global->upload = backup.data_size;
 			httpd_send_data(hs_global);
+			backup.chunk_busy = 0;
+		} else {
+			backup.chunked = 0;
+			backup.total_remaining = 0;
+			backup.chunk_busy = 0;
 		}
-		backup.chunk_busy = 0;
 	} else {
 		printf("Backup: chunk failed at offset %llu.%02llu MiB\n",
 			mib_int(backup.chunk_offset), mib_frac(backup.chunk_offset));
