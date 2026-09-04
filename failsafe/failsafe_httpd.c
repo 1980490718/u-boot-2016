@@ -1316,11 +1316,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 		backup.chunk_offset = (u64)size;
 		backup.total_sent = (u64)size;
 		backup.total_remaining = backup.total_size - backup.total_sent;
-		printf("Backup: chunk %d/%d read %llu.%02llu MiB [0x%x | %s] remaining %llu.%02llu MiB\n",
-			   backup.chunk_num, backup.total_chunks,
-			   mib_int(backup.total_sent), mib_frac(backup.total_sent),
-			   backup.data_size, chunk_detail,
-			   mib_int(backup.total_remaining), mib_frac(backup.total_remaining));
+		printf("Backup: %d/%d %llu.%02llu/%llu.%02llu MiB\n", backup.chunk_num, backup.total_chunks, mib_int(backup.total_sent), mib_frac(backup.total_sent),  mib_int(backup.total_size), mib_frac(backup.total_size));
 		backup.chunk_num++;
 	} else {
 		if (flashread_partition(part_name, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, 0, raw, &offset, &size) != CMD_RET_SUCCESS) {
@@ -1464,11 +1460,7 @@ static void backup_chunk_next(void) {
 			backup.total_sent = backup.total_size;
 		}
 		backup.total_remaining = backup.total_size - backup.total_sent;
-		printf("Backup: chunk %d/%d read %llu.%02llu MiB [0x%x | %s] remaining %llu.%02llu MiB\n",
-			   backup.chunk_num, backup.total_chunks,
-			   mib_int(backup.total_sent), mib_frac(backup.total_sent),
-			   backup.data_size, chunk_detail,
-			   mib_int(backup.total_remaining), mib_frac(backup.total_remaining));
+		printf("Backup: %d/%d %llu.%02llu/%llu.%02llu MiB\n", backup.chunk_num, backup.total_chunks, mib_int(backup.total_sent), mib_frac(backup.total_sent), mib_int(backup.total_size), mib_frac(backup.total_size));
 		backup.chunk_num++;
 		httpd_poll_wait(2);
 		if (hs_global) {

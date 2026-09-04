@@ -419,7 +419,7 @@ static int nand_raw_chunk_read(u32 load_addr, u64 user_offset, u32 user_size, u3
 		return CMD_RET_FAILURE;
 	if (out_offset) *out_offset = (u32)user_offset;
 	if (out_size) *out_size = read_bytes;
-	if (out_detail) snprintf(out_detail, 32, "%u pages", read_bytes / raw_page_size);
+	if (out_detail) snprintf(out_detail, 32, "%u pg", read_bytes / raw_page_size);
 	return CMD_RET_SUCCESS;
 }
 #endif
@@ -479,7 +479,7 @@ static int emmc_chunk_read(const char *part_name, u32 load_addr, u64 user_offset
 	}
 	if (out_offset) *out_offset = (u32)chunk_offset;
 	if (out_size) *out_size = num_sectors * blksz;
-	if (out_detail) snprintf(out_detail, 32, "%u blocks", num_sectors);
+	if (out_detail) snprintf(out_detail, 32, "%u blk", num_sectors);
 	return CMD_RET_SUCCESS;
 }
 #endif
@@ -571,7 +571,7 @@ int flashread_partition_chunk(const char *part_name, u32 load_addr, u64 user_off
 		}
 		if (out_offset) *out_offset = (u32)user_offset;
 		if (out_size) *out_size = chunk_size;
-		if (out_detail) snprintf(out_detail, 32, "0x%x bytes", chunk_size);
+		if (out_detail) out_detail[0] = '\0';
 		return CMD_RET_SUCCESS;
 	}
 #endif
