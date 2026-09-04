@@ -23,6 +23,7 @@
 __pycache__/
 *.pyc
 *.pyo
+**/node_modules/
 
 
 # host programs on Cygwin

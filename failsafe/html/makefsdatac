@@ -124,8 +124,8 @@ if [ $node_available -eq 1 ]; then
 	elif check_node_module "html-minifier-terser" "html_minifier_available"; then
 		html_minifier_available=1
 		html_minifier_version=$(node -e "try { console.log(require('html-minifier-terser/package.json').version); } catch(e) {}" 2>/dev/null)
-		mkdir -p node_modules
-		ln -sf $(dirname $(node -e "console.log(require.resolve('html-minifier-terser'))" 2>/dev/null)) node_modules/html-minifier 2>/dev/null || true
+		mkdir -p html/node_modules
+		ln -sf $(dirname $(node -e "console.log(require.resolve('html-minifier-terser'))" 2>/dev/null)) html/node_modules/html-minifier 2>/dev/null || true
 	fi
 
 	if check_node_module "clean-css" "css_minifier_available"; then
@@ -338,29 +338,32 @@ function minify_html_with_preserved_styling() {
 				}
 				const content = fs.readFileSync('$_input_file', 'utf8');
 				const result = await htmlMinifier.minify(content, {
-					collapseWhitespace: true,
-					removeComments: true,
-					minifyCSS: true,
-					minifyJS: true,
-					removeRedundantAttributes: false,
-					removeScriptTypeAttributes: false,
-					removeStyleLinkTypeAttributes: false,
-					sortAttributes: false,
-					sortClassName: false,
-					preserveLineBreaks: false,
-					collapseBooleanAttributes: true,
-					removeEmptyAttributes: true,
-					minifyJS: {
-						compress: { drop_console: true },
-						mangle: true
+				collapseWhitespace: true,
+				removeComments: true,
+				collapseBooleanAttributes: true,
+				removeAttributeQuotes: true,
+				removeRedundantAttributes: true,
+				removeScriptTypeAttributes: true,
+				removeStyleLinkTypeAttributes: true,
+				removeOptionalTags: true,
+				minifyCSS: true,
+				minifyJS: true,
+				decodeEntities: true,
+				sortAttributes: true,
+				sortClassName: true,
+				useShortDoctype: true,
+				minifyJS: {
+					compress: {
+						drop_console: true,
+						passes: 2
 					},
-					minifyCSS: {
-						level: {
-							1: { all: true },
-							2: { all: false }
-						}
-					}
-				});
+					mangle: true
+				},
+				minifyCSS: {
+					level: 2,
+					format: { all: false }
+				}
+			});
 				let finalResult = result.replace(/\r\n|\n|\r/g, '').trim();
 				finalResult = finalResult.replace(/>(\s+)([a-zA-Z0-9])/g, '>\$2');
 				finalResult = finalResult.replace(/>(\s+)</g, '><');
