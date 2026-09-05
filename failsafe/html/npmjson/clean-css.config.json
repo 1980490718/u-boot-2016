@@ -1,7 +1,10 @@
 {
   "level": {
     "1": { "all": true },
-    "2": { "all": true }
+    "2": {
+      "all": true,
+      "restructureRules": false
+    }
   },
   "format": false
 }

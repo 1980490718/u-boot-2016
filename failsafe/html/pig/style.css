@@ -1,9 +1,15 @@
-/* ===== 基础重置 ===== */
+/* ============================================================
+   模块1：基础重置与变量
+   ============================================================ */
 * {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
 	font-family: Arial, sans-serif
+}
+
+html {
+	height: 100%
 }
 
 .no-transition,
@@ -13,7 +19,6 @@
 	transition: none !important
 }
 
-/* ===== 主题变量 ===== */
 :root {
 	--c-primary: #5dade2;
 	--c-primary-hover: #85c1e9;
@@ -41,363 +46,185 @@
 	--c-term-scroll-thumb: #4ecb71
 }
 
-/* ===== 公共属性 ===== */
-body,
-body.iframe-content,
-body.iframe-content .card,
-.sidebar,
-.sidebar-nav,
-.terminal-dropdown-menu.show,
-.terminal-container,
-.terminal-output-wrapper,
-.main-container,
-.content-frame-wrapper,
-.button-container,
-.additional-links,
-.terminal-input-line,
-.tips,
-.backup-row,
-.about-gpio-ops {
-	display: flex
-}
-
-body,
-body.iframe-content,
-body.iframe-content .card,
-.sidebar,
-.sidebar-nav,
-.terminal-dropdown-menu.show,
-.terminal-container,
-.terminal-output-wrapper {
-	flex-direction: column
-}
-
-body {
-	background: var(--c-bg)
-}
-
-body.iframe-content,
-.main-container,
-.card,
-.sidebar,
-.backup-col select,
-.size-display {
-	background: var(--c-card-bg)
-}
-
-.terminal-container,
-.terminal-output,
-.terminal-status-bottom {
-	background: var(--c-term-bg)
-}
-
-body.iframe-content .card,
-.main-container,
-.content-frame-wrapper,
-.card,
-.sidebar,
-.tips {
-	box-shadow: 0 4px 20px var(--c-shadow)
-}
-
-/* --- 颜色 --- */
-a,
-label,
-.label {
-	color: var(--c-link)
-}
-
-b,
-.backup-col select,
-.about-table th,
-#info-table td:first-child {
-	color: var(--c-text)
-}
-
-b,
-.about-table th {
-	text-align: center
-}
-
-.about-table thead th,
-.about-table tbody tr.gpio-btn-row {
-	position: sticky;
-	background: var(--c-card-bg);
-	border-bottom: 1px solid var(--c-border);
-	z-index: 2
-}
-
-.about-table thead th {
-	top: 0
-}
-
-#smem-table thead tr:nth-child(2) th {
-	top: 2rem;
-	box-shadow: none
-}
-
-a:hover {
-	color: var(--c-link-hover)
-}
-
-.card h2,
-.sidebar-nav-item.active a,
-.additional-links .link-tip a {
-	color: var(--c-heading)
-}
-
-button,
-.about-sm-btn,
-.terminal-prompt,
-.terminal-input,
-.terminal-output,
-.terminal-expand:hover {
-	color: var(--c-text-white)
-}
-
-.terminal-status-bottom,
-.terminal-expand {
-	color: var(--c-term-prompt);
-	top: 6px;
-	z-index: 20
-}
-
-button,
-.about-sm-btn,
-.terminal-btn.active,
-.terminal-clear.active {
-	background: var(--c-primary)
-}
-
-button:hover,
-.about-sm-btn:hover,
-.terminal-btn.active:hover,
-.terminal-clear.active:hover {
-	background: var(--c-primary-hover)
-}
-
-/* --- 定位 --- */
-.terminal-dropdown-menu,
-.terminal-status-bottom,
-.terminal-expand,
-.theme-thumb,
-.card h2 .tab-indicator {
-	position: absolute
-}
-
-body.iframe-content .terminal-container,
-.terminal-input-line,
-.terminal-output-wrapper,
-.theme-track,
-.card h2 {
-	position: relative
-}
-
-.terminal-dropdown-menu,
-.terminal-expand {
-	right: 8px
-}
-
-/* --- 布局 --- */
-.sidebar-nav,
-.terminal-dropdown-menu {
-	gap: 4px
-}
-
-body,
-.button-container,
-.additional-links {
-	justify-content: center
-}
-
-.sidebar-nav-item a,
-label,
-.label {
-	display: block
-}
-
-p,
-.form-group {
-	margin-bottom: 1rem
-}
-
-html,
+/* ============================================================
+   模块2：全局布局与通用容器
+   ============================================================ */
 body.iframe-content,
 .content-frame {
 	height: 100%
 }
 
-.content-frame,
-.card h2,
-.card,
-.form-group input,
-.backup-col select,
-.size-display,
-.about-table {
-	width: 100%
-}
-
-body,
-.terminal-input-line,
-.tips,
-.about-gpio-ops {
+body {
+	background: var(--c-bg);
+	color: var(--c-text);
+	min-height: 100vh;
+	line-height: 1.6;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
 	align-items: center
 }
 
-.content-frame-wrapper,
-.main-container,
-.terminal-container {
-	overflow: hidden
-}
-
-button,
-.about-sm-btn,
-.content-frame,
-.terminal-input {
-	border: none
-}
-
-/* --- 排版 --- */
-.terminal-prompt,
-.terminal-input,
-.terminal-output,
-.terminal-btn,
-.terminal-clear {
-	font-family: monospace
-}
-
-.tips ul,
-.error p,
-.backup-col label,
-.backup-col .label,
-.backup-col select,
-.size-display,
-.about-table {
-	font-size: .8rem
-}
-
-.error p {
-	color: #dc3545
-}
-
-.card h2,
-.sidebar-nav-item a,
-.button-container button,
-.tab-item {
-	white-space: nowrap
-}
-
-p,
-.card h2 {
-	text-align: center
-}
-
-a {
-	text-decoration: none;
-	transition: color .6s ease
-}
-
-body {
-	color: var(--c-text);
-	min-height: 100vh;
-	line-height: 1.6
-}
-
-body.iframe-content,
-.terminal-output,
-.sidebar-nav {
-	overflow-y: auto;
-	padding: 1rem 0
-}
-
-body.iframe-content:has(.terminal-container),
-.tab-container {
-	overflow-y: auto
-}
-
 body.iframe-content {
-	animation: none
-}
-
-body.iframe-content .card {
-	max-width: 900px;
-	width: calc(100% - 2.5rem);
-	margin: 0 auto;
-	flex-shrink: 0
-}
-
-body.iframe-content .card:has(.terminal-container),
-.terminal-output-wrapper,
-.sidebar-nav,
-body.iframe-content .about-card,
-.tab-container {
+	background: var(--c-card-bg);
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	padding: 1rem 0;
+	animation: none;
+	height: 100%;
 	min-height: 0
 }
 
-body.iframe-content .card:has(.terminal-container),
-body.iframe-content .terminal-container,
-.content-frame-wrapper,
-.terminal-output,
-.terminal-input,
-.terminal-output-wrapper,
-.backup-col,
-.sidebar-nav,
-.tab-container,
-body.in-frame .tab-container {
-	flex: 1
+body.iframe-content:has(.about-card) {
+	justify-content: flex-start
+}
+
+body.iframe-content:has(.terminal-container) {
+	overflow-y: auto
+}
+
+body.iframe-content .card {
+	display: flex;
+	flex-direction: column;
+	max-width: 900px;
+	width: calc(100% - 2.5rem);
+	margin: 0 auto;
+	box-shadow: 0 4px 20px var(--c-shadow);
+	flex-shrink: 0
+}
+
+body.iframe-content .card:has(.terminal-container) {
+	min-height: 0;
+	flex: 1;
+	flex-shrink: 1;
+	overflow: hidden
 }
 
 body.iframe-content .tips {
 	margin: 0
 }
 
-button,
-.about-sm-btn,
-.theme-switch,
-.tab-item {
-	cursor: pointer
-}
-
-button,
-.about-sm-btn,
-.terminal-btn,
-.terminal-clear {
-	transition: background-color .3s
-}
-
-button {
-	padding: .8rem 2rem
-}
-
-p,
-.about-table td {
-	color: var(--c-text-light)
-}
-
-p {
-	font-size: 15px;
-	overflow-wrap: break-word
-}
-
-/* ===== 布局 ===== */
 .main-container {
+	display: flex;
+	background: var(--c-card-bg);
+	box-shadow: 0 4px 20px var(--c-shadow);
 	width: 1100px;
 	max-width: 1100px;
 	height: 650px;
 	padding: 20px;
-	margin: 1.5rem auto
+	margin: 1.5rem auto;
+	overflow: hidden
 }
 
 .content-frame-wrapper {
+	display: flex;
+	box-shadow: 0 4px 20px var(--c-shadow);
 	min-width: 800px;
-	margin-left: 1.5rem
+	margin-left: 1.5rem;
+	overflow: hidden;
+	flex: 1
+}
+
+.content-frame {
+	width: 100%;
+	height: 100%;
+	border: none
+}
+
+.button-container {
+	display: flex;
+	justify-content: center;
+	gap: 1rem;
+	margin: 1.5rem 0;
+	flex-wrap: wrap
+}
+
+.button-container button {
+	white-space: nowrap
+}
+
+.additional-links {
+	display: flex;
+	justify-content: center
+}
+
+.additional-links .link-tip {
+	font-size: 12px
+}
+
+.additional-links .link-tip a {
+	color: var(--c-heading)
+}
+
+.additional-links .link-tip a:hover {
+	text-decoration: underline
+}
+
+/* 通用 transition */
+.sidebar-nav-item a,
+.tab-item {
+	transition: color .6s ease, background-color .6s ease
+}
+
+/* ============================================================
+   模块3：侧边栏
+   ============================================================ */
+.sidebar {
+	display: flex;
+	flex-direction: column;
+	background: var(--c-card-bg);
+	box-shadow: 0 4px 20px var(--c-shadow);
+	padding: .5rem 0
+}
+
+.sidebar-nav {
+	display: flex;
+	flex-direction: column;
+	list-style: none;
+	padding: .8rem 0;
+	overflow-y: auto;
+	gap: 4px;
+	flex: 1;
+	min-height: 0
+}
+
+.sidebar-nav-item a {
+	display: block;
+	padding: .6rem 1.2rem;
+	font-size: 1rem;
+	white-space: nowrap
+}
+
+.sidebar-nav-item a:hover {
+	background: var(--c-sidebar-hover)
+}
+
+.sidebar-nav-item.active a {
+	color: var(--c-heading);
+	font-weight: 700
+}
+
+/* ============================================================
+   模块4：卡片与通用内容区
+   ============================================================ */
+.card {
+	background: var(--c-card-bg);
+	box-shadow: 0 4px 20px var(--c-shadow);
+	width: 100%;
+	padding: 1rem 2rem
 }
 
 .card h2 {
+	color: var(--c-heading);
+	position: relative;
+	width: 100%;
 	border-bottom: 1px solid var(--c-border);
 	padding-bottom: 1rem;
 	margin: 0 auto 1.5rem;
-	font-size: 2rem
+	font-size: 2rem;
+	white-space: nowrap;
+	text-align: center
 }
 
 .card h2.has-tabs {
@@ -406,198 +233,70 @@ p {
 }
 
 .card h2 .tab-indicator {
+	position: absolute;
 	bottom: -1px;
 	height: 2px;
 	background: var(--c-primary);
 	transition: left .3s, width .3s
 }
 
-.card {
-	padding: 1rem 2rem
+/* ============================================================
+   模块5：终端
+   ============================================================ */
+.terminal-container,
+.terminal-output,
+.terminal-status-bottom {
+	background: var(--c-term-bg)
 }
 
-/* ===== 侧边栏 ===== */
-.sidebar {
-	padding: .5rem 0
+.terminal-container {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	flex: 1;
+	min-height: 0;
+	position: relative
 }
 
-.sidebar-nav {
-	list-style: none;
-	padding: .8rem 0
-}
-
-.sidebar-nav-item a {
-	padding: .6rem 1.2rem;
-	font-size: 1rem
-}
-
-.icon {
-	width: 1em;
-	height: 1em;
-	margin-right: .5em;
-	fill: none;
-	stroke: currentColor;
-	stroke-width: 1.5;
-	stroke-linecap: round;
-	stroke-linejoin: round;
-	vertical-align: -0.125em
-}
-
-.icon-spin {
-	animation: spin 1s linear infinite
-}
-
-.sidebar-nav-item a:hover {
-	background: var(--c-sidebar-hover)
-}
-
-.sidebar-nav-item.active a,
-.tab-item.active,
-.about-btn-pressed,
-.terminal-prompt,
-.backup-col label,
-.backup-col .label,
-.about-table th,
-#info-table td:first-child {
-	font-weight: 700
-}
-
-/* ===== 表单 ===== */
-.button-container,
-.backup-row,
-.about-gpio-ops {
-	gap: 1rem;
-	justify-content: center
-}
-
-#info-tbody .about-gpio-ops,
-#updset-tbody .about-gpio-ops {
-	justify-content: flex-start
-}
-
-.button-container,
-.backup-row {
-	margin: 1.5rem 0
-}
-
-.button-container,
-.about-gpio-ops {
-	flex-wrap: wrap
-}
-
-label,
-.tab-item {
-	font-weight: 500
-}
-
-/* ===== 提示框 ===== */
-.tips {
-	background: var(--c-tip-bg);
-	border: 2px solid var(--c-tip-border);
-	padding: .7rem .8rem;
-	margin-top: 1rem;
-	min-height: 7rem;
-	max-height: 8rem;
-	overflow: auto
-}
-
-.tips ul {
-	list-style: disc;
-	margin-left: 2rem;
-	overflow-wrap: break-word;
-	word-break: break-word
-}
-
-.tips-danger {
-	background: rgba(231, 76, 60, .1)
-}
-
-/* ===== 页脚链接 ===== */
-.additional-links .link-tip {
-	font-size: 12px
-}
-
-.additional-links .link-tip a:hover {
-	text-decoration: underline
-}
-
-/* ===== 加载动画 ===== */
-.theme-thumb {
-	border-radius: 50%
-}
-
-@keyframes spin {
-	0% {
-		transform: rotate(0deg)
-	}
-
-	100% {
-		transform: rotate(360deg)
-	}
-}
-
-/* ===== 终端页面 ===== */
 .terminal-dropdown-menu {
+	position: absolute;
+	right: 8px;
+	bottom: 100%;
 	background: var(--c-term-dropdown);
 	display: none;
-	bottom: 100%;
-	padding: 3px 5px
+	padding: 3px 5px;
+	gap: 4px
 }
 
-.terminal-output {
-	padding: 15px;
-	line-height: 1.2;
-	white-space: pre-wrap;
-	word-wrap: break-word
+.terminal-dropdown-menu.show {
+	display: flex;
+	flex-direction: column
 }
 
-.terminal-output::-webkit-scrollbar {
-	width: 8px
-}
-
-.terminal-output::-webkit-scrollbar-track {
-	background: var(--c-term-scroll-track)
-}
-
-.terminal-output::-webkit-scrollbar-thumb {
-	background: var(--c-term-scroll-thumb)
+.terminal-output-wrapper {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	min-height: 0;
+	flex: 1;
+	overflow: hidden
 }
 
 .terminal-input-line {
+	display: flex;
+	align-items: center;
+	position: relative;
 	padding: 5px 13px 5px 5px;
-	gap: 5px
+	gap: 5px;
+	flex-shrink: 0
 }
 
-.terminal-prompt,
-.terminal-input,
-.terminal-output {
-	font-size: 13px
-}
-
-.terminal-input {
-	background: transparent;
-	outline: none
-}
-
-.terminal-input::placeholder {
-	color: var(--c-term-placeholder)
-}
-
-.terminal-btn,
-.terminal-clear {
-	background: var(--c-term-btn);
-	padding: 5px 15px;
-	font-size: .7rem
-}
-
-.terminal-btn.active:active,
-.terminal-clear.active:active {
-	background: var(--c-primary-active)
-}
-
-.terminal-btn:hover:not(.active),
-.terminal-clear:hover:not(.active) {
-	background: var(--c-term-btn-hover)
+.terminal-status-bottom,
+.terminal-expand {
+	position: absolute;
+	z-index: 20;
+	color: var(--c-term-prompt);
+	top: 6px
 }
 
 .terminal-status-bottom {
@@ -605,12 +304,242 @@ label,
 }
 
 .terminal-expand {
+	right: 8px;
 	line-height: 1;
 	font-size: 1.1rem;
 	transform: scaleX(-1)
 }
 
-/* ===== 主题 ===== */
+.terminal-expand:hover {
+	color: var(--c-text-white)
+}
+
+/* ============================================================
+   模块6：备份与表单
+   ============================================================ */
+.backup-row {
+	display: flex;
+	gap: 1rem;
+	justify-content: center;
+	align-items: flex-start;
+	margin: 1.5rem 0
+}
+
+.backup-col {
+	flex: 1;
+	min-width: 0
+}
+
+.backup-col label,
+.backup-col .label {
+	display: block;
+	font-size: .8rem;
+	font-weight: 700;
+	margin-bottom: .3rem
+}
+
+.form-group {
+	margin-bottom: 1rem
+}
+
+.form-group input {
+	width: 100%;
+	border: 1px solid var(--c-border);
+	padding: .5rem;
+	border-radius: 4px
+}
+
+/* ============================================================
+   模块7：关于页面
+   ============================================================ */
+.about-card {
+	min-height: calc(100vh - 2.5rem)
+}
+
+body.iframe-content .about-card {
+	max-width: 900px;
+	width: calc(100% - 2.5rem);
+	max-height: calc(100vh - 2rem);
+	min-height: 0;
+	flex: 1;
+	margin: .5rem auto;
+	overflow-y: auto
+}
+
+body.in-frame .about-card {
+	max-height: calc(100vh - 3rem)
+}
+
+.about-card .tab-nav {
+	margin-bottom: 0
+}
+
+.about-section {
+	margin-bottom: .2rem
+}
+
+.about-table {
+	width: 100%;
+	font-size: .8rem;
+	border-collapse: separate;
+	border-spacing: 0;
+	border-top: 1px solid var(--c-border);
+	border-left: 1px solid var(--c-border)
+}
+
+.about-table th,
+.about-table td {
+	padding: 0 4px;
+	height: 2rem;
+	line-height: 2rem;
+	border-right: 1px solid var(--c-border);
+	border-bottom: 1px solid var(--c-border)
+}
+
+.about-table th {
+	color: var(--c-text);
+	text-align: center;
+	font-weight: 700
+}
+
+.about-table td {
+	color: var(--c-text-light)
+}
+
+.about-table thead th {
+	position: sticky;
+	background: var(--c-card-bg);
+	border-bottom: 1px solid var(--c-border);
+	z-index: 2;
+	top: 0
+}
+
+.about-table tbody tr.gpio-btn-row {
+	position: sticky;
+	background: var(--c-card-bg);
+	border-bottom: 1px solid var(--c-border);
+	z-index: 2
+}
+
+#smem-table thead tr:nth-child(2) th {
+	top: 2rem;
+	box-shadow: none
+}
+
+#info-table td:first-child {
+	color: var(--c-text);
+	font-weight: 700;
+	white-space: nowrap;
+	min-width: 5.5rem
+}
+
+#mac-table td,
+#mac-table th,
+#gpio-table td,
+#gpio-table th {
+	text-align: center
+}
+
+.about-gpio-ops {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	flex-wrap: wrap
+}
+
+#info-tbody .about-gpio-ops,
+#updset-tbody .about-gpio-ops {
+	justify-content: flex-start
+}
+
+.about-table tbody tr.about-row-changed {
+	background: rgba(46, 204, 113, .3)
+}
+
+#update-desc {
+	margin-top: 1rem;
+	margin-bottom: 2rem
+}
+
+#update-form .form-group {
+	margin-bottom: 2rem
+}
+
+/* ============================================================
+   模块8：标签页组件
+   ============================================================ */
+.tab-nav {
+	display: flex;
+	margin-bottom: 1.5rem;
+	overflow-x: auto
+}
+
+.tab-item {
+	white-space: nowrap;
+	padding: 0.3rem 1.5rem;
+	font-size: 1rem;
+	color: var(--c-text-light);
+	flex-shrink: 0;
+	font-weight: 500;
+	cursor: pointer
+}
+
+.tab-item:hover {
+	color: var(--c-primary);
+	background: rgba(255, 255, 255, 0.05)
+}
+
+.tab-item.active {
+	color: var(--c-primary);
+	background: rgba(93, 173, 226, 0.1);
+	font-weight: 700
+}
+
+.tab-container {
+	overflow-y: auto;
+	min-height: 0;
+	flex: 1
+}
+
+body.in-frame .tab-container {
+	flex: 1
+}
+
+.tab-content {
+	display: none
+}
+
+.tab-content.active {
+	display: block
+}
+
+/* ============================================================
+   模块9：主题切换
+   ============================================================ */
+.theme-switch {
+	margin-top: auto;
+	padding: .6rem 1rem .6rem 1.8rem;
+	-webkit-user-select: none;
+	user-select: none;
+	font-size: .8rem;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: .3rem;
+	cursor: pointer
+}
+
+.theme-switch span {
+	color: var(--c-heading);
+	cursor: pointer
+}
+
+.theme-track {
+	position: relative
+}
+
 [data-theme="light"] {
 	--c-primary: #3498db;
 	--c-primary-hover: #2980b9;
@@ -637,122 +566,87 @@ label,
 	--c-term-scroll-thumb: #4ecb71
 }
 
-/* ===== 备份页面 ===== */
-.backup-row {
-	align-items: flex-start
-}
-
-.backup-col {
-	min-width: 0
-}
-
-.backup-col label,
-.backup-col .label {
-	margin-bottom: .3rem
-}
-
-.backup-col select,
-.size-display,
-.form-group input {
-	border: 1px solid var(--c-border)
-}
-
-.about-table th,
-.about-table td {
-	border-right: 1px solid var(--c-border);
-	border-bottom: 1px solid var(--c-border)
-}
-
-.backup-col select, .size-display,
-.form-group input {
-	padding: .5rem;
-	border-radius: 4px
-}
-
-.backup-col select, .size-display {
-	height: 2.2rem;
-	line-height: 1.2rem
-}
-
-/* ===== 主题选择器 ===== */
-.theme-switch {
-	margin-top: auto;
-	padding: .6rem 1rem .6rem 1.8rem;
-	-webkit-user-select: none;
-	user-select: none;
-	font-size: .8rem;
-	line-height: 1;
+/* ============================================================
+   模块10：提示框与工具类
+   ============================================================ */
+.tips {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	gap: .3rem
+	background: var(--c-tip-bg);
+	border: 2px solid var(--c-tip-border);
+	box-shadow: 0 4px 20px var(--c-shadow);
+	padding: .7rem .8rem;
+	margin-top: 1rem;
+	min-height: 7rem;
+	max-height: 8rem;
+	overflow: auto
 }
 
-.theme-switch span {
-	color: var(--c-heading);
-	cursor: pointer
+.tips ul {
+	list-style: disc;
+	margin-left: 2rem;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	font-size: .8rem
 }
 
-/* ===== 关于页面 ===== */
-.about-card {
-	min-height: calc(100vh - 2.5rem)
+.tips-danger {
+	background: rgba(231, 76, 60, .1)
 }
 
-body.iframe-content .about-card {
-	max-width: 900px;
-	width: calc(100% - 2.5rem);
-	max-height: calc(100vh - 2rem);
-	min-height: 0;
-	flex: 1;
-	margin: .5rem auto;
-	overflow-y: auto
+.error p {
+	font-size: .8rem;
+	color: #dc3545
 }
 
-body.in-frame .about-card {
-	max-height: calc(100vh - 3rem)
+/* ============================================================
+   模块11：图标与动画
+   ============================================================ */
+.icon {
+	width: 1em;
+	height: 1em;
+	margin-right: .5em;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	vertical-align: -0.125em
 }
 
-body.iframe-content:has(.about-card) {
-	justify-content: flex-start
+.icon-spin {
+	animation: spin 1s linear infinite
 }
 
-.about-card .tab-nav {
-	margin-bottom: 0
+@keyframes spin {
+	0% {
+		transform: rotate(0deg)
+	}
+
+	100% {
+		transform: rotate(360deg)
+	}
 }
 
-.about-section {
-	margin-bottom: .2rem
-}
-
-.about-table {
-	border-collapse: separate;
-	border-spacing: 0;
-	border-top: 1px solid var(--c-border);
-	border-left: 1px solid var(--c-border)
-}
-
-.about-table th,
-.about-table td,
+/* ============================================================
+   模块12：按钮组（合并所有按钮相关样式）
+   ============================================================ */
+button,
 .about-sm-btn {
-	padding: 0 4px
+	color: var(--c-text-white);
+	background: var(--c-primary);
+	cursor: pointer;
+	transition: background-color .3s;
+	border: none
 }
 
-.about-table th,
-.about-table td {
-	height: 2rem;
-	line-height: 2rem
+button {
+	padding: .8rem 2rem
 }
 
-#info-table td:first-child {
-	white-space: nowrap;
-	min-width: 5.5rem
-}
-
-#mac-table td,
-#mac-table th,
-#gpio-table td,
-#gpio-table th {
-	text-align: center
+button:hover,
+.about-sm-btn:hover {
+	background: var(--c-primary-hover)
 }
 
 .about-sm-btn {
@@ -766,72 +660,161 @@ body.iframe-content:has(.about-card) {
 }
 
 .about-btn-pressed {
+	font-weight: 700;
 	background: #e74c3c
 }
 
-.about-table tbody tr.about-row-changed {
-	background: rgba(46, 204, 113, .3)
+.terminal-btn,
+.terminal-clear {
+	font-family: monospace;
+	background: var(--c-term-btn);
+	padding: 5px 15px;
+	font-size: .7rem;
+	transition: background-color .3s;
+	border: none;
+	cursor: pointer;
+	color: var(--c-text-white)
 }
 
-#update-desc {
-	margin-top: 1rem;
-	margin-bottom: 2rem
+.terminal-btn.active,
+.terminal-clear.active {
+	background: var(--c-primary)
 }
 
-#update-form .form-group {
-	margin-bottom: 2rem
+.terminal-btn.active:hover,
+.terminal-clear.active:hover {
+	background: var(--c-primary-hover)
 }
 
-/* ===== 标签页组件 ===== */
-.tab-nav {
-	display: flex;
-	margin-bottom: 1.5rem;
-	overflow-x: auto
+.terminal-btn.active:active,
+.terminal-clear.active:active {
+	background: var(--c-primary-active)
 }
 
+.terminal-btn:hover:not(.active),
+.terminal-clear:hover:not(.active) {
+	background: var(--c-term-btn-hover)
+}
+
+/* ============================================================
+   模块13：全局文本与链接
+   ============================================================ */
+a {
+	color: var(--c-link);
+	text-decoration: none;
+	transition: color .6s ease
+}
+
+a:hover {
+	color: var(--c-link-hover)
+}
+
+label,
+.label {
+	color: var(--c-link);
+	display: block
+}
+
+b {
+	color: var(--c-text);
+	text-align: center
+}
+
+p {
+	color: var(--c-text-light);
+	font-size: 15px;
+	overflow-wrap: break-word;
+	text-align: center;
+	margin-bottom: 1rem
+}
+
+.theme-thumb {
+	position: absolute;
+	border-radius: 50%
+}
+
+/* ============================================================
+   模块14：终端组件（合并终端文字、字体、背景等共享样式）
+   ============================================================ */
+.terminal-output,
+.terminal-prompt,
+.terminal-input {
+	color: var(--c-text-white);
+	font-family: monospace;
+	font-size: 13px
+}
+
+.terminal-output {
+	overflow-y: auto;
+	padding: 15px;
+	line-height: 1.2;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	flex: 1;
+	min-height: 0
+}
+
+.terminal-prompt {
+	font-weight: 700
+}
+
+.terminal-input {
+	background: transparent;
+	outline: none;
+	border: none;
+	flex: 1
+}
+
+.terminal-input::placeholder {
+	color: var(--c-term-placeholder)
+}
+
+/* ============================================================
+   模块15：表单控件（合并select和size-display的共享样式）
+   ============================================================ */
+.backup-col select,
+.size-display {
+	background: var(--c-card-bg);
+	color: var(--c-text);
+	font-size: .8rem;
+	width: 100%;
+	border: 1px solid var(--c-border);
+	padding: .5rem;
+	border-radius: 4px;
+	height: 2.2rem;
+	line-height: 1.2rem
+}
+
+/* ============================================================
+   模块16：滚动条隐藏（统一合并）
+   ============================================================ */
 body.iframe-content,
 body.iframe-content .about-card,
-.tips,
+body.iframe-content:has(.terminal-container),
 .tab-nav,
-.tab-container {
+.tab-container,
+.tips {
 	scrollbar-width: none;
 	-ms-overflow-style: none
 }
 
 body.iframe-content::-webkit-scrollbar,
 body.iframe-content .about-card::-webkit-scrollbar,
-.tips::-webkit-scrollbar,
+body.iframe-content:has(.terminal-container)::-webkit-scrollbar,
 .tab-nav::-webkit-scrollbar,
-.tab-container::-webkit-scrollbar {
+.tab-container::-webkit-scrollbar,
+.tips::-webkit-scrollbar {
 	display: none
 }
 
-.sidebar-nav-item a,
-.tab-item {
-	transition: color .6s ease, background-color .6s ease
+.terminal-output::-webkit-scrollbar {
+	width: 8px
 }
 
-.tab-item {
-	padding: 0.3rem 1.5rem;
-	font-size: 1rem;
-	color: var(--c-text-light);
-	flex-shrink: 0
+.terminal-output::-webkit-scrollbar-track {
+	background: var(--c-term-scroll-track)
 }
 
-.tab-item:hover {
-	color: var(--c-primary);
-	background: rgba(255, 255, 255, 0.05)
-}
-
-.tab-item.active {
-	color: var(--c-primary);
-	background: rgba(93, 173, 226, 0.1)
-}
-
-.tab-content {
-	display: none
-}
-
-.tab-content.active {
-	display: block
+.terminal-output::-webkit-scrollbar-thumb {
+	background: var(--c-term-scroll-thumb)
 }
