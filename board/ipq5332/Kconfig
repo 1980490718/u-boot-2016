@@ -71,6 +71,9 @@ config RTL8221_PHY
 config YT8821_PHY
 	bool "Enable YT8821 PHY support"
 
+config YT9215_SWITCH
+	bool "Enable YT9215 Switch support"
+
 config RTL8372N_SWITCH
 	bool "Enable RTL8372N Switch support"
 
@@ -138,4 +141,11 @@ config IPQ5332_XIAOMI_BE3600_PRO_WIRED_8PORTS
 	default n
 	help
 		Enable support for IPQ5332_XIAOMI_BE3600_PRO_WIRED_8PORTS (Dual RTL8372N) support
+
+config IPQ5332_XIAOMI_BE3600_PRO_MD16
+	bool "For IPQ5332_XIAOMI_BE3600_PRO_MD16 support"
+	select YT9215_SWITCH
+	default n
+	help
+		Enable support for IPQ5332_XIAOMI_BE3600_PRO_MD16 (YT9215s + YT8821c) support
 endif

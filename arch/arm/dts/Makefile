@@ -142,6 +142,8 @@ else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE3600_PRO_WIRED_5PORTS),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be3600-pro-wired-5ports.dtb
 else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE3600_PRO_WIRED_8PORTS),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be3600-pro-wired-8ports.dtb
+else ifeq ($(CONFIG_IPQ5332_XIAOMI_BE3600_PRO_MD16),y)
+dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-xiaomi-be3600-pro-md16.dtb
 else
 ifneq ($(CONFIG_IPQ_TINY),y)
 dtb-$(CONFIG_ARCH_IPQ5332) += ipq5332-emulation.dtb \
