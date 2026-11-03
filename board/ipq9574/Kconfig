@@ -45,4 +45,9 @@ config IPQ9574_XIAOMI_BE7000
 	default n
 	help
 		Enable support for IPQ9574 Xiaomi BE7000 support
+config IPQ9574_XIAOMI_BE10000
+	bool "For IPQ9574 Xiaomi BE10000 support"
+	default n
+	help
+	  Enable the Xiaomi BE10000 C4 board with its four QCA8084 ports.
 endif

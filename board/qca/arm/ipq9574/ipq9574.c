@@ -757,6 +757,8 @@ void qca808x_phy_reset_init(void)
 				qca808x_gpio_base = (unsigned int *)GPIO_CONFIG_ADDR(qca808x_gpio[i]);
 				cfg = GPIO_OE | GPIO_DRV_8_MA | GPIO_PULL_UP;
 				writel(cfg, qca808x_gpio_base);
+				/* Assert reset even when entered from another bootloader. */
+				gpio_set_value(qca808x_gpio[i], 0);
 			}
 		}
 	}
@@ -1124,6 +1126,11 @@ void uniphy_port5_clock_source_set(void)
 		printf("\nError: switch_mac_mode1 not specified in dts");
 		return;
 	}
+	/* Replace the parent field; ORing with a previous parent can select
+	 * an unsupported source when returning from another bootloader.
+	 */
+	reg_val &= ~GENMASK(10, 8);
+	reg_val1 &= ~GENMASK(10, 8);
 	if (mode == PORT_WRAPPER_MAX) { /* PORT_WRAPPER_MAX */
 		reg_val |= 0x200;
 		reg_val1 |= 0x300;

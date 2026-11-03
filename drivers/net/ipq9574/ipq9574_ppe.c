@@ -1038,7 +1038,8 @@ void ipq9574_ppe_interface_mode_init(void)
 	} else if (is_uniphy_enabled(PPE_UNIPHY_INSTANCE1)) {
 		ppe_port_mux_mac_type_set(PORT5, mode1);
 	}
-	if (is_uniphy_enabled(PPE_UNIPHY_INSTANCE2)) {
+	if (mode2 != EPORT_WRAPPER_MAX &&
+	    is_uniphy_enabled(PPE_UNIPHY_INSTANCE2)) {
 		ppe_port_mux_mac_type_set(PORT6, mode2);
 	}
 }

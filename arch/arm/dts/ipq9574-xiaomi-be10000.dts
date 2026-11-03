@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+/dts-v1/;
+#include "ipq9574-al02-c4.dts"
+
+/ {
+	model = "Xiaomi BE10000";
+	machid = <0x8050301>;
+	config_name = "config@al02-c4", "config-al02-c4", "config@rdp433", "config-rdp433";
+
+	aliases {
+		power_led = "/tlmm-gpio/led_gpio/led_system_white";
+		blink_led = "/tlmm-gpio/led_gpio/led_system_amber";
+	};
+
+	tlmm-gpio {
+		led_gpio {
+			led_system_white {
+				gpio = <40>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+
+			led_system_amber {
+				gpio = <41>;
+				func = <0>;
+				out = <GPIO_OUT_LOW>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_DOWN>;
+				oe = <GPIO_OE_ENABLE>;
+			};
+		};
+
+		key_gpio {
+			reset {
+				gpio = <45>;
+				func = <0>;
+				drvstr = <GPIO_8MA>;
+				pull = <GPIO_PULL_UP>;
+				oe = <GPIO_OE_DISABLE>;
+			};
+		};
+	};
+
+	ess-switch {
+		switch_mac_mode0 = <PORT_WRAPPER_UQXGMII>;
+		switch_mac_mode1 = <PORT_WRAPPER_MAX>;
+		switch_mac_mode2 = <PORT_WRAPPER_MAX>;
+		/delete-property/ qca807x_gpio;
+		/delete-property/ qca807x_gpio_cnt;
+		/delete-property/ aquantia_gpio;
+		/delete-property/ aquantia_gpio_cnt;
+		/delete-property/ aquantia_port;
+		/delete-property/ aquantia_port_cnt;
+		qca808x_gpio = <60>;
+		qca808x_gpio_cnt = <1>;
+		mdc_mdio_gpio = <38 39>;
+
+		port_phyinfo {
+			port@0 {
+				phy_address = <1>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@1 {
+				phy_address = <2>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@2 {
+				phy_address = <3>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@3 {
+				phy_address = <4>;
+				phy_type = <QCA8084_PHY_TYPE>;
+			};
+			port@4 {
+				phy_type = <UNUSED_PHY_TYPE>;
+			};
+			port@5 {
+				phy_type = <UNUSED_PHY_TYPE>;
+			};
+		};
+	};
+};
