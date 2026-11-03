@@ -66,6 +66,10 @@ void noncached_init(void)
 	end = ALIGN(mem_malloc_start, MMU_SECTION_SIZE) - MMU_SECTION_SIZE;
 	size = ALIGN(CONFIG_SYS_NONCACHED_MEMORY, MMU_SECTION_SIZE);
 	start = end - size;
+#ifdef CONFIG_SYS_NONCACHED_START
+	start = CONFIG_SYS_NONCACHED_START;
+	end = start + size;
+#endif
 
 	debug("mapping memory %pa-%pa non-cached\n", &start, &end);
 

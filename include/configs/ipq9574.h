@@ -31,6 +31,10 @@
 #define CONFIG_IPQ_NO_RELOC
 
 #define CONFIG_SYS_NONCACHED_MEMORY     (1 << 20)
+#ifdef CONFIG_IPQ9574_XIAOMI_BE10000
+/* Keep DMA buffers inside RC01's bootloader area, above TrustZone. */
+#define CONFIG_SYS_NONCACHED_START      0x4a100000
+#endif
 
 #define CONFIG_IPQ9574_UART
 #define CONFIG_NR_DRAM_BANKS		1
@@ -135,7 +139,11 @@ extern loff_t board_env_size;
 #define CONFIG_ENV_OFFSET		board_env_offset
 #define CONFIG_ENV_SIZE			CONFIG_ENV_SIZE_MAX
 #define CONFIG_ENV_RANGE		board_env_range
+#ifdef CONFIG_IPQ9574_XIAOMI_BE10000
+#define CONFIG_ENV_SIZE_MAX		(64 << 10) /* Stock environment format */
+#else
 #define CONFIG_ENV_SIZE_MAX		(256 << 10) /* 256 KB */
+#endif
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE_MAX + (1024 << 10))
 
 #define CONFIG_ENV_IS_IN_NAND		1
@@ -372,7 +380,8 @@ extern loff_t board_env_size;
 /*
  * MMC configs
  */
-#ifndef CONFIG_IPQ9574_XIAOMI_BE7000
+#if !defined(CONFIG_IPQ9574_XIAOMI_BE7000) && \
+    !defined(CONFIG_IPQ9574_XIAOMI_BE10000)
 #define CONFIG_QCA_MMC
 #endif
 

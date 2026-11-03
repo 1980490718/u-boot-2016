@@ -211,7 +211,9 @@ dtb-$(CONFIG_ARCH_IPQ6018) += ipq6018-cp01-c1.dtb \
 			ipq6018-db-cp02.dtb
 endif
 
-ifeq ($(CONFIG_IPQ9574_XIAOMI_BE7000),y)
+ifeq ($(CONFIG_IPQ9574_XIAOMI_BE10000),y)
+dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-xiaomi-be10000.dtb
+else ifeq ($(CONFIG_IPQ9574_XIAOMI_BE7000),y)
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-xiaomi-be7000.dtb
 else
 dtb-$(CONFIG_ARCH_IPQ9574) += ipq9574-al01-c1.dtb \
