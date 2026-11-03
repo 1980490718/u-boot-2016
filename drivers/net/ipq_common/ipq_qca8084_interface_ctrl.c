@@ -85,8 +85,10 @@ static void qca8084_uniphy_calibration(uint32_t uniphy_addr)
 	/* wait calibration done to uniphy*/
 	while (calibration_done != QCA8084_UNIPHY_MMD1_CALIBRATION_DONE) {
 		mdelay(1);
-		if (retries-- == 0)
-			pr_debug("uniphy callibration time out!\n");
+		if (retries-- == 0) {
+			printf("QCA8084 uniphy calibration timed out: %04x\n", uniphy_data);
+			return;
+		}
 		uniphy_data = qca8084_phy_mmd_read(uniphy_addr, QCA8084_UNIPHY_MMD1,
 			QCA8084_UNIPHY_MMD1_CALIBRATION4);
 
@@ -269,8 +271,10 @@ static void qca8084_uniphy_xpcs_10g_r_linkup(void)
 	/* wait 10G_R link up */
 	while (linkup != QCA8084_UNIPHY_MMD3_10GBASE_R_UP) {
 		mdelay(1);
-		if (retries-- == 0)
-			pr_debug("10g_r link up timeout\n");
+		if (retries-- == 0) {
+			printf("QCA8084 10GBASE-R link timed out: %04x\n", uniphy_data);
+			return;
+		}
 		uniphy_data = qca8084_uniphy_xpcs_mmd_read(QCA8084_UNIPHY_MMD3,
 			QCA8084_UNIPHY_MMD3_10GBASE_R_PCS_STATUS1);
 
@@ -289,8 +293,10 @@ static void qca8084_uniphy_xpcs_soft_reset(void)
 
 	while (reset_done) {
 		mdelay(1);
-		if (retries-- == 0)
-			pr_debug("xpcs soft reset timeout\n");
+		if (retries-- == 0) {
+			printf("QCA8084 XPCS reset timed out: %04x\n", uniphy_data);
+			return;
+		}
 		uniphy_data = qca8084_uniphy_xpcs_mmd_read(QCA8084_UNIPHY_MMD3,
 						QCA8084_UNIPHY_MMD3_DIG_CTRL1);
 
@@ -351,24 +357,18 @@ void qca8084_uniphy_uqxgmii_function_reset(uint32_t qca8084_port_id)
 
 void qca8084_uniphy_xpcs_autoneg_restart(uint32_t qca8084_port_id)
 {
-	uint32_t retries = 500, uniphy_data = 0, mmd_id = 0;
+	uint32_t mmd_id;
 
 	mmd_id = qca8084_uniphy_xpcs_port_to_mmd(qca8084_port_id);
 	qca8084_uniphy_xpcs_modify_mmd(mmd_id, QCA8084_UNIPHY_MMD_MII_CTRL,
 		QCA8084_UNIPHY_MMD_MII_AN_RESTART, QCA8084_UNIPHY_MMD_MII_AN_RESTART);
 	mdelay(1);
-	uniphy_data = qca8084_uniphy_xpcs_mmd_read(mmd_id,
-						QCA8084_UNIPHY_MMD_MII_ERR_SEL);
-	while(!(uniphy_data & QCA8084_UNIPHY_MMD_MII_AN_COMPLETE_INT))
-	{
-		mdelay(1);
-		if (retries-- == 0)
-		{
-			pr_debug("xpcs uniphy autoneg restart timeout\n");
-		}
-		uniphy_data = qca8084_uniphy_xpcs_mmd_read(mmd_id,
-			QCA8084_UNIPHY_MMD_MII_ERR_SEL);
-	}
+
+	/* Channel clocks are configured after restarting auto-negotiation.
+	 * Clear the completion interrupt without waiting for those clocks.
+	 */
+	qca8084_uniphy_xpcs_modify_mmd(mmd_id, QCA8084_UNIPHY_MMD_MII_ERR_SEL,
+		QCA8084_UNIPHY_MMD_MII_AN_COMPLETE_INT, 0);
 }
 
 static void _qca8084_interface_uqxgmii_mode_set(uint32_t uniphy_addr)
@@ -448,7 +448,7 @@ static void _qca8084_interface_uqxgmii_mode_set(uint32_t uniphy_addr)
 
 void qca8084_interface_uqxgmii_mode_set(void)
 {
-	uint32_t uniphy_addr = 0, qca8084_port_id = 0;
+	uint32_t uniphy_addr = 0, qca8084_port_id = 0, phy_addr = 0;
 
 	qca8084_serdes_addr_get(QCA8084_UNIPHY_SGMII_1, &uniphy_addr);
 
@@ -491,6 +491,13 @@ void qca8084_interface_uqxgmii_mode_set(void)
 		qca8084_uniphy_xpcs_modify_port_mmd(qca8084_port_id,
 			QCA8084_UNIPHY_MMD_MII_XAUI_MODE_CTRL, 0x1,
 			QCA8084_UNIPHY_MMD_TX_IPG_CHECK_DISABLE);
+
+		/* Copper EEE can corrupt the QXGMII/XGMAC receive path. */
+		qca8084_ephy_addr_get(qca8084_port_id, &phy_addr);
+		qca8084_phy_mmd_write(phy_addr, QCA8084_PHY_MMD7_NUM,
+			QCA8084_PHY_MMD7_ADDR_8023AZ_EEE_CTRL, 0);
+		qca8084_phy_mmd_write(phy_addr, QCA8084_PHY_MMD7_NUM,
+			QCA8084_PHY_MMD7_ADDR_8023AZ_EEE_2500M_CTRL, 0);
 	}
 
 	/*enable EEE for xpcs*/
