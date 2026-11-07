@@ -64,6 +64,7 @@ cd u-boot-2016
 | IPQ40xx | ipq40xx                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq40xx`                                |
 | IPQ5018 | ipq5018_ctcc_ap301_l                   | CTCC AP301-L                      |       0x8040002        |    ✓     | `./build.sh ipq5018_ctcc_ap301_l`                   |
 | IPQ5018 | ipq5018_cmcc_rax3000q                  | CMCC RAX3000Q                     |       0x8040000        |    ×     | `./build.sh ipq5018_cmcc_rax3000q`                  |
+| IPQ5018 | ipq5018_xiaomi_cr880x                  | 红米 AX3000<br>小米 CR880x         |       0x8040000        |    ×     | `./build.sh ipq5018_xiaomi_cr880x`                  |
 | IPQ5018 | ipq5018_cucc_vs010                     | CUCC VS010                        |       0x8040000        |    ✓     | `./build.sh ipq5018_cucc_vs010`                     |
 | IPQ5018 | ipq5018_gl_b3000                       | GLINET GL-B3000                   |       0x8040004        |    ×     | `./build.sh ipq5018_gl_b3000`                       |
 | IPQ5018 | ipq5018_jdcloud_ax3000                 | JDCloud AX3000(RE-OS-03U)         |       0x8040104        |    ✓     | `./build.sh ipq5018_jdcloud_ax3000`                 |
