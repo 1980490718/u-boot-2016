@@ -330,7 +330,10 @@ extern loff_t board_env_size;
 #define CONFIG_SERVERIP	192.168.1.2
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO			1
+/* Set the external reference clock before normal NAND boot as well. */
+#ifndef CONFIG_IPQ807X_TPLINK_ER2260T
 #define CONFIG_IPQ_ETH_INIT_DEFER
+#endif
 #define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD
