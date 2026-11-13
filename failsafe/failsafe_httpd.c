@@ -1088,7 +1088,7 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	}
 	pos += sprintf(buf + pos, "\",\"mac_off\":\"");
 #ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-	pos += sprintf(buf + pos, "NAND 0x70000D (base + index)");
+	pos += sprintf(buf + pos, "0:ART + 0x10000D (base + index)");
 #else
 	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++)
 		pos += sprintf(buf + pos, "%s0x%X", i ? ", " : "", i * 6);
