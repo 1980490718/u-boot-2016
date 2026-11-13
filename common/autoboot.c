@@ -353,8 +353,10 @@ const char *bootdelay_process(void)
 #endif
 		s = getenv("bootcmd");
 #ifdef CONFIG_LWIP_HTTPD
+#ifndef CONFIG_IPQ807X_TPLINK_ER2260T
 		if (s && strcmp(s, "bootipq") != 0)
 			s = "bootipq";
+#endif
 	}
 #endif
 
@@ -411,7 +413,9 @@ void autoboot_command(const char *s)
 	if (apps_iscrashed_crashdump_disabled()) {
 		printf("Crashdump disabled, resetting the board..\n");
 #ifdef CONFIG_LWIP_HTTPD
+#ifndef CONFIG_IPQ807X_TPLINK_ER2260T
 		eth_initialize();
+#endif
 		run_command("httpd", 0);
 		return;
 #else
@@ -436,7 +440,7 @@ void autoboot_command(const char *s)
 	}
 #ifdef CONFIG_LWIP_HTTPD
 	else if (stored_bootdelay != -1) {
-#ifndef CONFIG_IPQ40XX
+#if !defined(CONFIG_IPQ40XX) && !defined(CONFIG_IPQ807X_TPLINK_ER2260T)
 		eth_initialize();
 #endif
 		run_command("httpd", 0);

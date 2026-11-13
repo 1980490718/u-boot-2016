@@ -65,6 +65,13 @@ config IPQ807X_REDMI_AX6
 	help
 	  Enable support for IPQ807x REDMI AX6 board
 
+config IPQ807X_TPLINK_ER2260T
+	bool "IPQ807x TP-Link TL-ER2260T v1 board support"
+	default n
+	help
+	  Enable the TL-ER2260T v1 NAND layout, factory MAC address and
+	  four QCA8075 copper ports. Preserve both stock boot areas.
+
 config IPQ807X_XGLINK_5GCPE
 	bool "IPQ807x XGLINK 5GCPE board support"
 	default n

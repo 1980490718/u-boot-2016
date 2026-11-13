@@ -230,6 +230,17 @@ static int art_write(loff_t offset, size_t size, const void *buf) {
 }
 
 int macaddr_read_base(u8 *mac, int mac_index) {
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+	u8 addresses[CONFIG_IPQ_NO_MACS * ART_MAC_LEN];
+	int ret;
+
+	if (!mac || mac_index < 0 || mac_index >= CONFIG_IPQ_NO_MACS)
+		return -EINVAL;
+	ret = get_eth_mac_address(addresses, CONFIG_IPQ_NO_MACS);
+	if (!ret)
+		memcpy(mac, addresses + mac_index * ART_MAC_LEN, ART_MAC_LEN);
+	return ret;
+#else
 	u8 *buf;
 	int ret;
 
@@ -246,9 +257,14 @@ int macaddr_read_base(u8 *mac, int mac_index) {
 
 	free(buf);
 	return ret;
+#endif
 }
 
 int macaddr_modify_base(const u8 *new_mac, int mac_index) {
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+	/* The vendor record is checksummed and is not an ART MAC array. */
+	return -EOPNOTSUPP;
+#else
 	u8 *buf;
 	int ret;
 
@@ -270,6 +286,7 @@ int macaddr_modify_base(const u8 *new_mac, int mac_index) {
 out:
 	free(buf);
 	return ret;
+#endif
 }
 
 #if defined(CONFIG_IPQ40XX) || defined(CONFIG_IPQ806X)

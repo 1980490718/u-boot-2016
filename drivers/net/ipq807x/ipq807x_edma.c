@@ -914,8 +914,9 @@ static int ipq807x_eth_init(struct eth_device *eth_dev, bd_t *this)
 	active_port = getenv("active_port");
 	if (active_port != NULL) {
 		current_active_port = simple_strtol(active_port, NULL, 10);
-		if (current_active_port < 0 || current_active_port > 5)
-			printf("active_port must be in the range of 0 to 5 in ipq807x platform\n");
+		if (current_active_port < 0 || current_active_port >= PHY_MAX)
+			printf("active_port must be in the range of 0 to %d in ipq807x platform\n",
+			       PHY_MAX - 1);
 	} else {
 		current_active_port = -1;
 	}

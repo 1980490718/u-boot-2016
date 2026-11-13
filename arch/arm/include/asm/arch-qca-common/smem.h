@@ -55,6 +55,9 @@ struct version_entry
 
 unsigned int smem_get_board_platform_type(void);
 int smem_ptable_init(void);
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+int smem_ptable_update(void);
+#endif
 #ifdef CONFIG_IPQ_MIBIB_RELOAD
 int mibib_ptable_init(unsigned int* load_addr);
 #endif

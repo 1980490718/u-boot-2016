@@ -76,6 +76,7 @@ uint32_t part_size, uint32_t file_size, char *layout)
 {
 
 	char runcmd[256];
+	const char *nand_write_suffix = "";
 #ifdef CONFIG_IPQ40XX
 	int nand_dev = is_spi_nand_available();
 #else
@@ -84,6 +85,12 @@ uint32_t part_size, uint32_t file_size, char *layout)
 
 	if (((flash_type == SMEM_BOOT_NAND_FLASH) ||
 		(flash_type == SMEM_BOOT_QSPI_NAND_FLASH))) {
+
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+		/* Preserve erased pages for UBI's later writes on this NAND. */
+		if (file_size >= 4 && !memcmp((void *)(ulong)address, "UBI#", 4))
+			nand_write_suffix = ".trimffs";
+#endif
 
 		snprintf(runcmd, sizeof(runcmd), "nand device %d && ", nand_dev);
 
@@ -95,9 +102,9 @@ uint32_t part_size, uint32_t file_size, char *layout)
 
 		snprintf(runcmd + strlen(runcmd), sizeof(runcmd),
 			"nand erase 0x%x 0x%x && "
-			"nand write 0x%x 0x%x 0x%x && ",
+			"nand write%s 0x%x 0x%x 0x%x && ",
 			offset, part_size,
-			address, offset, file_size);
+			nand_write_suffix, address, offset, file_size);
 
 	} else if (flash_type == SMEM_BOOT_MMC_FLASH) {
 

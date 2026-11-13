@@ -19,6 +19,9 @@
 #include <asm/arch-qca-common/smem.h>
 #include <asm/arch-qca-common/qca_common.h>
 #include <sdhci.h>
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+int er2260t_get_eth_mac_address(uchar *enetaddr, uint no_of_macs);
+#endif
 #ifdef CONFIG_IPQ_TINY_SPI_NOR
 #include <spi.h>
 #include <spi_flash.h>
@@ -44,6 +47,9 @@ extern  struct sdhci_host mmc_host;
  */
 int get_eth_mac_address(uchar *enetaddr, uint no_of_macs)
 {
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+	return er2260t_get_eth_mac_address(enetaddr, no_of_macs);
+#else
 	s32 ret = 0 ;
 	u32 start_blocks;
 	u32 size_blocks;
@@ -156,6 +162,7 @@ int get_eth_mac_address(uchar *enetaddr, uint no_of_macs)
 #endif
 	}
 	return ret;
+#endif
 }
 
 void set_ethmac_addr(void)

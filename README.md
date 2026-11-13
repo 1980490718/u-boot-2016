@@ -104,6 +104,7 @@ cd u-boot-2016
 | IPQ806x | ipq806x                                | 公版基础                          |      Multi-machid      |    ?     | `./build.sh ipq806x`                                |
 | IPQ807x | ipq807x_aliyun_ap8220                  | 阿里云 AP8220                     |       0x0801000A       |    ✓     | `./build.sh ipq807x_aliyun_ap8220`                  |
 | IPQ807x | ipq807x_redmi_ax6                      | 小米 AX3600<br>红米 AX6           |       0x08010010       |    ✓     | `./build.sh ipq807x_redmi_ax6`                      |
+| IPQ807x | ipq807x_tplink_tl_er2260t              | TP-Link TL-ER2260T v1             |       0x08010006       |    ×     | `./build.sh ipq807x_tplink_tl_er2260t`              |
 | IPQ807x | ipq807x_tiny                           | 公版简                            |      Multi-machid      |    ✓     | `./build.sh ipq807x_tiny`                           |
 | IPQ807x | ipq807x_xglink_5gcpe                   | XGlink 5GCPE                      |       0x08010008       |    ✓     | `./build.sh ipq807x_xglink_5gcpe`                   |
 | IPQ807x | ipq807x                                | 公版基础                          |      Multi-machid      |    ✓     | `./build.sh ipq807x`                                |

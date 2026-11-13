@@ -20,7 +20,11 @@
 #include "athrs17_phy.h"
 #endif
 
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+#define PHY_MAX		4
+#else
 #define PHY_MAX		6
+#endif
 #define IPQ9574_PHY_MAX	6
 #define IPQ6018_PHY_MAX 5
 #define IPQ5332_PHY_MAX	2
