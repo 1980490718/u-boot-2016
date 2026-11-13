@@ -185,6 +185,7 @@ extern loff_t board_env_size;
  */
 #if !defined(CONFIG_IPQ807X_ALIYUN_AP8220) && \
 	!defined(CONFIG_IPQ807X_REDMI_AX6) && \
+	!defined(CONFIG_IPQ807X_TPLINK_ER2260T) && \
 	!defined(CONFIG_IPQ807X_XGLINK_5GCPE)
 #define CONFIG_QCA_MMC
 #endif
@@ -249,6 +250,9 @@ extern loff_t board_env_size;
 #define CONFIG_SYS_MEMTEST_END		CONFIG_SYS_MEMTEST_START + 0x100
 
 /* NSS firmware loaded using bootm */
+#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
+#define CONFIG_CMD_NAND_TRIMFFS
+#endif
 #define CONFIG_BOOTCOMMAND  "bootipq"
 #define CONFIG_BOOTARGS "console=ttyMSM0,115200n8"
 #define QCA_ROOT_FS_PART_NAME "rootfs"
@@ -326,7 +330,10 @@ extern loff_t board_env_size;
 #define CONFIG_SERVERIP	192.168.1.2
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO			1
+/* Set the external reference clock before normal NAND boot as well. */
+#ifndef CONFIG_IPQ807X_TPLINK_ER2260T
 #define CONFIG_IPQ_ETH_INIT_DEFER
+#endif
 #define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD

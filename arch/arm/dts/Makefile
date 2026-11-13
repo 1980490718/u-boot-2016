@@ -24,6 +24,8 @@ ifeq ($(CONFIG_IPQ807X_ALIYUN_AP8220),y)
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-aliyun-ap8220.dtb
 else ifeq ($(CONFIG_IPQ807X_REDMI_AX6),y)
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-redmi-ax6.dtb
+else ifeq ($(CONFIG_IPQ807X_TPLINK_ER2260T),y)
+dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-tplink-tl-er2260t.dtb
 else ifeq ($(CONFIG_IPQ807X_XGLINK_5GCPE),y)
 dtb-$(CONFIG_ARCH_IPQ807x) += ipq807x-xglink-5gcpe.dtb
 else
