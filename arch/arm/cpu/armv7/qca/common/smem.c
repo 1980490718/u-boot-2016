@@ -143,30 +143,6 @@ struct smem_ptable {
 /* partition table from SMEM */
 static struct smem_ptable smem_ptable;
 
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-/* The OEM MIBIB describes a reference board, not the shipping NAND layout. */
-#define ER2260T_PART(name, offset, size) \
-	{ name, (offset) / SZ_128K, (size) / SZ_128K, 0xffff }
-static const struct smem_ptn er2260t_partitions[] = {
-	ER2260T_PART("0:SBL1",       0x0000000, 0x0080000),
-	ER2260T_PART("0:MIBIB",      0x0080000, 0x0080000),
-	ER2260T_PART("0:QSEE",       0x0100000, 0x0200000),
-	ER2260T_PART("0:DEVCFG",     0x0300000, 0x0020000),
-	ER2260T_PART("0:RPM",        0x0320000, 0x0040000),
-	ER2260T_PART("0:CDT",        0x0360000, 0x0020000),
-	ER2260T_PART("0:APPSBL",     0x0380000, 0x0180000),
-	ER2260T_PART("0:ETHPHYFW",   0x0500000, 0x0080000),
-	ER2260T_PART("0:APPSBLENV",  0x0580000, 0x0080000),
-	ER2260T_PART("factory_info", 0x0700000, 0x0020000),
-	ER2260T_PART("0:ART",        0x0800000, 0x0020000),
-	ER2260T_PART("config",       0x0900000, 0x0200000),
-	ER2260T_PART("no_uc_config", 0x0b00000, 0x0480000),
-	ER2260T_PART("normal_boot",  0x1000000, 0x0640000),
-	ER2260T_PART("rootfs",       0x1700000, 0x6900000),
-};
-#undef ER2260T_PART
-#endif
-
 static struct smem *smem = (void *)(CONFIG_QCA_SMEM_BASE);
 
 qca_smem_flash_info_t qca_smem_flash_info;
@@ -500,58 +476,11 @@ int smem_ptable_init(void)
 		smem_ptable.magic[1] != _SMEM_PTABLE_MAGIC_2)
 		return -ENOMSG;
 
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-	if (qca_smem_flash_info.flash_type != SMEM_BOOT_NAND_FLASH ||
-	    qca_smem_flash_info.flash_block_size != SZ_128K)
-		return -EINVAL;
-	/* This is a private copy: neither MIBIB nor shared SMEM is written. */
-	memcpy(smem_ptable.parts, er2260t_partitions,
-	       sizeof(er2260t_partitions));
-	smem_ptable.len = ARRAY_SIZE(er2260t_partitions);
-#endif
-
 	debug("smem ptable found: ver: %d len: %d\n",
 	      smem_ptable.version, smem_ptable.len);
 
 	return 0;
 }
-
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-int smem_ptable_update(void)
-{
-	struct smem_alloc_info *ainfo =
-		&smem->alloc_info[SMEM_AARM_PARTITION_TABLE];
-	struct smem_ptable *shared;
-	unsigned int offset, size, len;
-
-	len = offsetof(struct smem_ptable, parts) +
-	      smem_ptable.len * sizeof(struct smem_ptn);
-	if (!readl(&ainfo->allocated) ||
-	    smem_ptable.len != ARRAY_SIZE(er2260t_partitions))
-		return -EINVAL;
-
-	offset = readl(&ainfo->offset);
-	size = readl(&ainfo->size);
-	if ((offset & 3) || size < len)
-		return -ENOSPC;
-
-	shared = (void *)(CONFIG_QCA_SMEM_BASE + offset);
-	if (readl(&shared->magic[0]) != _SMEM_PTABLE_MAGIC_1 ||
-	    readl(&shared->magic[1]) != _SMEM_PTABLE_MAGIC_2)
-		return -EINVAL;
-
-	/* Only shared RAM changes; the NAND MIBIB remains untouched. */
-	memcpy(shared, &smem_ptable, len);
-	flush_dcache_range((ulong)shared & ~(ARCH_DMA_MINALIGN - 1),
-			  ALIGN((ulong)shared + len, ARCH_DMA_MINALIGN));
-	if (memcmp(shared, &smem_ptable, len))
-		return -EIO;
-
-	debug("smem ptable updated: ver: %d len: %d\n",
-	      smem_ptable.version, smem_ptable.len);
-	return 0;
-}
-#endif
 
 /**
  * mibib_ptable_init - initializes SMEM partition table

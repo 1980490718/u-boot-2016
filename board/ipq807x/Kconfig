@@ -69,8 +69,8 @@ config IPQ807X_TPLINK_ER2260T
 	bool "IPQ807x TP-Link TL-ER2260T v1 board support"
 	default n
 	help
-	  Enable the TL-ER2260T v1 NAND layout, factory MAC address and
-	  four QCA8075 copper ports. Preserve both stock boot areas.
+	  Enable the TL-ER2260T v1 factory MAC address and four QCA8075
+	  copper ports. Partition geometry is read from the native SMEM table.
 
 config IPQ807X_XGLINK_5GCPE
 	bool "IPQ807x XGLINK 5GCPE board support"

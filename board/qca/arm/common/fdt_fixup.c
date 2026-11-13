@@ -335,11 +335,6 @@ void ipq_fdt_fixup_mtdparts(void *blob, struct flash_node_info *ni)
 	char *parts;
 	int noff;
 
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-	/* Preserve the kernel DT's partition parser and NVMEM metadata. */
-	return;
-#endif
-
 	parts = getenv("mtdparts");
 	if (!parts)
 		return;
@@ -1095,15 +1090,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 		{ "s25fl256s1", MTD_DEV_TYPE_NAND, 1 },
 		{ NULL, 0, -1 },	/* Terminator */
 	};
-#endif
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-	if (fdt_node_offset_by_compatible(blob, -1, "qcom,smem-part") >= 0) {
-		ret = smem_ptable_update();
-		if (ret) {
-			printf("Cannot publish ER2260T SMEM partitions: %d\n", ret);
-			return ret;
-		}
-	}
 #endif
 	fdt_fixup_memory_banks(blob, &memory_start, &memory_size, 1);
 	ipq_fdt_fixup_version(blob);

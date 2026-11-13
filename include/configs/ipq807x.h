@@ -112,11 +112,7 @@
 #define CONFIG_QCA_SMEM_BASE		0x4AB00000
 
 #define CONFIG_IPQ_FDT_HIGH		0x4A200000
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-#define CONFIG_IPQ_NO_MACS		4
-#else
 #define CONFIG_IPQ_NO_MACS		6
-#endif
 #define CONFIG_ENV_IS_IN_SPI_FLASH	1
 #define CONFIG_ENV_SECT_SIZE        	(64 * 1024)
 
@@ -256,10 +252,8 @@ extern loff_t board_env_size;
 /* NSS firmware loaded using bootm */
 #ifdef CONFIG_IPQ807X_TPLINK_ER2260T
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_BOOTCOMMAND  "er2260t_boot"
-#else
-#define CONFIG_BOOTCOMMAND  "bootipq"
 #endif
+#define CONFIG_BOOTCOMMAND  "bootipq"
 #define CONFIG_BOOTARGS "console=ttyMSM0,115200n8"
 #define QCA_ROOT_FS_PART_NAME "rootfs"
 
@@ -336,9 +330,7 @@ extern loff_t board_env_size;
 #define CONFIG_SERVERIP	192.168.1.2
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO			1
-#ifndef CONFIG_IPQ807X_TPLINK_ER2260T
 #define CONFIG_IPQ_ETH_INIT_DEFER
-#endif
 #define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
 #define CONFIG_CMD_DHCPD

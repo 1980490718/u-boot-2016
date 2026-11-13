@@ -1088,7 +1088,7 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	}
 	pos += sprintf(buf + pos, "\",\"mac_off\":\"");
 #ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-	pos += sprintf(buf + pos, "factory_info + 0xD (base + index)");
+	pos += sprintf(buf + pos, "NAND 0x70000D (base + index)");
 #else
 	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++)
 		pos += sprintf(buf + pos, "%s0x%X", i ? ", " : "", i * 6);
@@ -1748,9 +1748,6 @@ static struct netif failsafe_netif;
 
 static int httpd_progress_start_done = 0;
 static int eth_init_attempted = 0;
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-static ulong eth_init_timer;
-#endif
 static ulong periodic_timer = 0;
 
 static void abort_port_pcb(struct tcp_pcb **list) {
@@ -1857,16 +1854,8 @@ void failsafe_httpd_poll(void) {
 #endif
 
 	if (!eth_is_active(eth_get_dev())) {
-		if (!eth_init_attempted
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-		    || get_timer(eth_init_timer) >= 1000
-#endif
-		   ) {
+		if (!eth_init_attempted) {
 			eth_init_attempted = 1;
-#ifdef CONFIG_IPQ807X_TPLINK_ER2260T
-			/* The PHY may still be negotiating when recovery starts. */
-			eth_init_timer = now;
-#endif
 			eth_halt();
 			eth_set_current();
 			eth_init();
