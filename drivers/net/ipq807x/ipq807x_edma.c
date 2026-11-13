@@ -1398,7 +1398,7 @@ static void ipq807x_edma_configure_txdesc_ring(struct ipq807x_edma_hw *ehw,
 	data = ipq807x_edma_reg_read(IPQ807X_EDMA_REG_TXDESC_CONS_IDX(
 				txdesc_ring->id));
 
-	data &= ~(IPQ807X_EDMA_TXDESC_CONS_IDX_MASK);
+	data &= IPQ807X_EDMA_TXDESC_CONS_IDX_MASK;
 	hw_cons_idx = data;
 
 	data = ipq807x_edma_reg_read(IPQ807X_EDMA_REG_TXDESC_PROD_IDX(
